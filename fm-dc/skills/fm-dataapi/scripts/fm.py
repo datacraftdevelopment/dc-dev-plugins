@@ -423,30 +423,32 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    # Connection options
-    parser.add_argument('--profile', default='DEFAULT', help='Credential profile: FM_<PROFILE>_* env vars, falling back to bare FM_HOST/FM_DATABASE/... (default: DEFAULT)')
-    parser.add_argument('--server', help='Override server hostname')
-    parser.add_argument('--database', help='Override database name')
-    parser.add_argument('--username', help='Override username')
-    parser.add_argument('--password', help='Override password')
-    parser.add_argument('--file', help='Database file, e.g. MyFile.fmp12 (alias for --database; .fmp12 stripped)')
-    parser.add_argument('--account', help='Account name (alias for --username)')
-    parser.add_argument('--config', help='Path to a hostedFile.md-style or .json credentials file')
+    # Connection options — a parent parser so credentials work AFTER the subcommand
+    # (e.g. `fm.py test --server h --file f.fmp12 --account a --password p`), matching fm_odata.
+    creds = argparse.ArgumentParser(add_help=False)
+    creds.add_argument('--profile', default='DEFAULT', help='Credential profile: FM_<PROFILE>_* env vars, falling back to bare FM_HOST/FM_DATABASE/... (default: DEFAULT)')
+    creds.add_argument('--server', help='FileMaker Server host')
+    creds.add_argument('--database', help='Database name (or use --file)')
+    creds.add_argument('--username', help='Account (or use --account)')
+    creds.add_argument('--password', help='Password')
+    creds.add_argument('--file', help='Database file, e.g. MyFile.fmp12 (alias for --database; .fmp12 stripped)')
+    creds.add_argument('--account', help='Account name (alias for --username)')
+    creds.add_argument('--config', help='Path to a hostedFile.md-style or .json credentials file')
 
     subs = parser.add_subparsers(dest='command', help='Commands')
 
     # test
-    subs.add_parser('test', help='Test connection')
+    subs.add_parser('test', parents=[creds], help='Test connection')
 
     # tables
-    subs.add_parser('tables', help='List tables')
+    subs.add_parser('tables', parents=[creds], help='List tables')
 
     # schema
-    p = subs.add_parser('schema', help='Get table schema')
+    p = subs.add_parser('schema', parents=[creds], help='Get table schema')
     p.add_argument('table', help='Table name')
 
     # query
-    p = subs.add_parser('query', help='Query records (OData)')
+    p = subs.add_parser('query', parents=[creds], help='Query records (OData)')
     p.add_argument('table', help='Table name')
     p.add_argument('--filter', help='OData $filter expression')
     p.add_argument('--select', help='Fields to return (comma-separated)')
@@ -455,35 +457,35 @@ def main():
     p.add_argument('--skip', type=int, help='Skip N records')
 
     # get
-    p = subs.add_parser('get', help='Get single record')
+    p = subs.add_parser('get', parents=[creds], help='Get single record')
     p.add_argument('table', help='Table name')
     p.add_argument('record_id', help='Record ID')
 
     # create
-    p = subs.add_parser('create', help='Create record (Data API)')
+    p = subs.add_parser('create', parents=[creds], help='Create record (Data API)')
     p.add_argument('table', help='Table/layout name')
     p.add_argument('--data', required=True, help='JSON field data')
 
     # update
-    p = subs.add_parser('update', help='Update record (Data API)')
+    p = subs.add_parser('update', parents=[creds], help='Update record (Data API)')
     p.add_argument('table', help='Table/layout name')
     p.add_argument('record_id', help='Record ID (simple integer)')
     p.add_argument('--data', required=True, help='JSON field data')
 
     # delete
-    p = subs.add_parser('delete', help='Delete record (Data API)')
+    p = subs.add_parser('delete', parents=[creds], help='Delete record (Data API)')
     p.add_argument('table', help='Table/layout name')
     p.add_argument('record_id', help='Record ID')
 
     # find
-    p = subs.add_parser('find', help='Find by field value')
+    p = subs.add_parser('find', parents=[creds], help='Find by field value')
     p.add_argument('table', help='Table name')
     p.add_argument('field', help='Field name')
     p.add_argument('value', help='Value to search')
     p.add_argument('--op', default='eq', help='Operator: eq, ne, contains, startswith, endswith, gt, lt')
 
     # count
-    p = subs.add_parser('count', help='Count records')
+    p = subs.add_parser('count', parents=[creds], help='Count records')
     p.add_argument('table', help='Table name')
     p.add_argument('--filter', help='OData $filter expression')
 

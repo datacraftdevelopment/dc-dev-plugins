@@ -12,6 +12,14 @@ project's specific database**, using a generated knowledge base so every `TO::Fi
 script call, and custom function is resolved against the real schema. The output is
 `fmxmlsnippet` XML the user pastes straight back into FileMaker.
 
+## Output — DEFAULT: paste-ready XML, on screen
+
+When the user asks for a script, the deliverable is the **actual `fmxmlsnippet` XML, shown inline in the chat** in a fenced code block they can copy and paste into FileMaker. This is the default — no one has to ask for it.
+
+- **Give the XML, not a description of it.** A one- or two-line plain-English summary of what the script does is a fine preface, but **never hand over readable pseudo-code *instead of* the paste XML** — the XML is the product. (Pseudo-code alone can't be pasted.)
+- **Do NOT save it to a file** unless the user explicitly asks ("write it to a file", "put it in the project"). Show it in the conversation. If you need a file to run `fmlint`, use a throwaway temp file and delete it after — don't leave artifacts in the user's project.
+- Only route to the patch pipeline / clipboard tooling when the user asks to *apply* it, not merely to *see* it.
+
 ## The knowledge base (load this first)
 
 Everything you need is under **`schema/readable/<db>/`** (generated from the DDR):

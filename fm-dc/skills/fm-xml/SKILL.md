@@ -31,7 +31,7 @@ One skill owns "producing or reading FileMaker XML." Route by task, load only th
    ```bash
    python3 ${CLAUDE_PLUGIN_ROOT}/tools/fmlint/validate_snippet.py <file-or-dir>
    ```
-   Catches unbalanced blocks, unknown step names, unclosed calculations, naming/documentation issues. No exceptions — a snippet that fails lint does not get pasted or patched.
+   Catches unbalanced blocks, unknown step names, unclosed calculations, naming/documentation issues. No exceptions — a snippet that fails lint does not get pasted or patched. (Use a throwaway temp file for the lint; don't leave it in the user's project.)
 2. **Never invent XML shape from memory.** The shape comes from the guides and the OOE corpus; the model's job is slotting values into known shapes. If a shape isn't covered, say so and check a real export rather than guessing.
-3. **Delivery is a separate decision.** Generating XML is this skill; getting it into a file is either the clipboard (human paste — scripts into Script Workspace, layout objects in Layout mode) or the patch pipeline (fm-patch skill / fm-patch-builder agent). Consult fm-patch's tier rules before choosing.
+3. **DEFAULT output: the paste-ready XML, inline on screen.** Present the generated `fmxmlsnippet` / layout XML **in the chat, in a fenced code block the user copies** — the user pastes it into FileMaker themselves (scripts into the Script Workspace, layout objects in Layout mode). **Do NOT save it to a file** unless the user explicitly asks, and **never hand over pseudo-code instead of the XML.** Only reach for the patch pipeline (fm-patch / fm-patch-builder) when the user asks to *apply* the change to a `.fmp12`, not merely to see the XML.
 4. **Round-trip edits of an existing database's scripts** (paste in → modify with schema awareness → paste back) are the fm-scripts skill's job — it layers this skill's formats over the project's `schema/readable/` knowledge base.
