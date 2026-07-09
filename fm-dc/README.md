@@ -31,7 +31,7 @@ cp .env.example .env      # fill in FM credentials if the defaults don't fit
 
 Use **`/fm-scaffold`** on its own only when you want structure *without* a file yet (greenfield), or the wider `--full` / `--client-kit` shapes.
 
-## The 10 skills — one verb each
+## The 12 skills — one verb each
 
 Skills load automatically when the topic matches. They're organized by what you're doing:
 
@@ -53,10 +53,12 @@ Skills load automatically when the topic matches. They're organized by what you'
 |---|---|
 | **`fm-patch`** | The **mutation pipeline** — export → diff dev/prod → generate an FMUpgradeTool patch → apply safely → verify by re-export → roll back. The only path that touches a `.fmp12`. |
 
-### 🔌 Integrate — data & web
+### 🔌 Integrate — connect to a live file *(tool-skills: hand them creds, they run)*
 | Skill | Owns |
 |---|---|
-| **`fm-connections`** | **Live data** over Data API + OData — query, CRUD, schema, connection tests (the four-mode doctrine). |
+| **`fm-dataapi`** | **Records** over the Data API — query/create/update/delete/find/count on a hosted file, connecting *directly* with supplied credentials. Ships a ready-to-run zero-dep client. |
+| **`fm-odata`** | The **schema side-door** — connect over OData with credentials and create/alter tables & fields on a live file. SQL-DDL validation baked in (no more `8310`). Ships a ready-to-run client. |
+| **`fm-connections`** | The **router** — which method when (MCP vs direct OData vs direct Data API vs offline), and the "arbitrary file → go direct, never the fixed MCP" rule. |
 | **`fm-proofkit`** | The **ProofKit bridge** — MCP server (live schema, SQL, CRUD, ERD), React web-viewer apps inside FileMaker, and the ProofGeist TS toolchain for external web apps. |
 
 ### 🧩 Extend — third-party plugins *(unprefixed by design — they're separate products)*

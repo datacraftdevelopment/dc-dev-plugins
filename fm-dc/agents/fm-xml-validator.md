@@ -37,7 +37,7 @@ Scope the check like Claris does: only re-examine the catalogs the change touche
 ## Check 3 — Live database (when a server/bridge is reachable)
 
 - ProofKit MCP up? (`connectedFiles` returns the file) → pull `get_filemaker_ddl_schema` for touched tables and diff against what the change claims; `execute_filemaker_sql` a SELECT to prove a new field/table actually accepts a query; `get_script_names` to confirm a script exists.
-- Data API reachable? A scoped read against the relevant API layout (`${CLAUDE_PLUGIN_ROOT}/skills/fm-connections/scripts/fm.py`) proves end-to-end visibility.
+- Data API reachable? A scoped read against the relevant API layout (`${CLAUDE_PLUGIN_ROOT}/skills/fm-dataapi/scripts/fm.py`) proves end-to-end visibility.
 - Neither reachable → say so; skip, don't fake.
 
 ## Report contract (your entire final message)

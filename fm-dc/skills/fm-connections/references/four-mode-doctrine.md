@@ -5,7 +5,7 @@ Pick the mode by what you're doing. They coexist — a real dev session weaves b
 | Mode | Requires | Best for |
 |------|----------|---------|
 | **ProofKit MCP** | ProofKit app + FM file open (bridge active) | Active dev: live schema exploration, SQL queries, CRUD testing, web viewer builds |
-| **Data API** (`fm.py` / `fm_client.py` / `@proofkit/fmdapi`) | FM Server reachable (no app needed) | Headless/automated: agents, scripted workflows, layout-scoped reads/writes |
+| **Data API** (`fm-dataapi` skill: `fm.py` / `fm_client.py`; or `@proofkit/fmdapi`) | FM Server reachable (no app needed) | Headless/automated: agents, scripted workflows, layout-scoped reads/writes |
 | **OData** | FM Server with OData enabled | **Schema mutations** (create tables, add fields) — the only live path that exposes these. Also bulk/typed table access |
 | **Schema pipeline** (`${CLAUDE_PLUGIN_ROOT}/tools/ddr/ddr.py`) | DDR or FM 2026 Save-as-XML export | Deep static analysis: calcs, scripts, relationship graph, offline reference, agent knowledge base |
 

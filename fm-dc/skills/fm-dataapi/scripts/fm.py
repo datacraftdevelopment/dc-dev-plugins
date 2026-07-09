@@ -123,12 +123,60 @@ def get_credentials(profile: str = 'DEFAULT', **overrides) -> dict:
                     "type": "missing_config",
                     "message": f"Missing credentials for profile '{profile}': {', '.join(still_missing)}",
                     "suggestion": "Set FM_HOST, FM_DATABASE, FM_USERNAME, FM_PASSWORD in the project .env "
-                                  f"(or profile-scoped FM_{profile.upper()}_SERVER, FM_{profile.upper()}_DATABASE, ...)"
+                                  f"(or profile-scoped FM_{profile.upper()}_SERVER, FM_{profile.upper()}_DATABASE, ...), "
+                                  "or pass --server/--file/--account/--password or --config <file>."
                 }
             }, indent=2))
             sys.exit(1)
 
     return creds
+
+
+def load_creds_file(path: str) -> dict:
+    """Read server/file/account/password from a hostedFile.md-style key-value
+    file (`server - host`, `file - x.fmp12`, `account - user`, `pass - secret`)
+    or a JSON object. Returns override kwargs for get_credentials()."""
+    import re
+    text = open(path, encoding='utf-8').read()
+    if text.lstrip().startswith('{'):
+        d = json.loads(text)
+        server = d.get('server')
+        file_ = d.get('file') or d.get('database')
+        account = d.get('account') or d.get('username')
+        password = d.get('password') or d.get('pass')
+    else:
+        def grab(key):
+            m = re.search(rf'^\s*{key}\s*-\s*(.+?)\s*$', text, re.MULTILINE | re.IGNORECASE)
+            return m.group(1).strip() if m else None
+        server, file_, account, password = grab('server'), grab('file'), grab('account'), grab('pass')
+    out = {}
+    if server:
+        out['server'] = server.replace('https://', '').replace('http://', '').strip().rstrip('/')
+    if file_:
+        out['database'] = re.sub(r'\.fmp12$', '', file_, flags=re.IGNORECASE)
+    if account:
+        out['username'] = account
+    if password:
+        out['password'] = password
+    return out
+
+
+def resolve_overrides(args) -> dict:
+    """Merge credential sources into get_credentials overrides.
+    Precedence (low→high): --config file < --file/--account aliases < explicit flags."""
+    import re
+    overrides = {}
+    if getattr(args, 'config', None):
+        overrides.update(load_creds_file(args.config))
+    if getattr(args, 'file', None):
+        overrides['database'] = re.sub(r'\.fmp12$', '', args.file, flags=re.IGNORECASE)
+    if getattr(args, 'account', None):
+        overrides['username'] = args.account
+    for key, val in (('server', args.server), ('database', args.database),
+                     ('username', args.username), ('password', args.password)):
+        if val:
+            overrides[key] = val
+    return overrides
 
 
 def strip_auto_managed(data: dict) -> dict:
@@ -381,6 +429,9 @@ def main():
     parser.add_argument('--database', help='Override database name')
     parser.add_argument('--username', help='Override username')
     parser.add_argument('--password', help='Override password')
+    parser.add_argument('--file', help='Database file, e.g. MyFile.fmp12 (alias for --database; .fmp12 stripped)')
+    parser.add_argument('--account', help='Account name (alias for --username)')
+    parser.add_argument('--config', help='Path to a hostedFile.md-style or .json credentials file')
 
     subs = parser.add_subparsers(dest='command', help='Commands')
 
@@ -441,14 +492,8 @@ def main():
         parser.print_help()
         sys.exit(0)
 
-    # Get credentials
-    creds = get_credentials(
-        args.profile,
-        server=args.server,
-        database=args.database,
-        username=args.username,
-        password=args.password
-    )
+    # Get credentials — inline flags / --file/--account aliases / --config file / .env profile
+    creds = get_credentials(args.profile, **resolve_overrides(args))
 
     # Stash for use in handlers
     args._server = creds['server']

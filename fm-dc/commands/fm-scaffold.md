@@ -26,7 +26,7 @@ Scaffold the DataCraft project structure into the current directory from the plu
        ├── SKILL.md                      ← trigger metadata stub
        ├── connection.md  schema.md  glossary.md  recipes.md  guardrails.md   ← per-client stubs
        ├── samples/
-       └── scripts/fm_client.py          ← copy from ${CLAUDE_PLUGIN_ROOT}/skills/fm-connections/scripts/fm_client.py
+       └── scripts/fm_client.py          ← copy from ${CLAUDE_PLUGIN_ROOT}/skills/fm-dataapi/scripts/fm_client.py
    ```
 
    Ask for the client name first and substitute it throughout. Stub bodies: one heading + a comment saying what to fill in and from where (schema.md ← parsed DDR; glossary.md ← client conversations; recipes.md ← observed workflows; guardrails.md ← read-only defaults, layout whitelist).
