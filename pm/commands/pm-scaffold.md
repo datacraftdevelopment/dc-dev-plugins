@@ -3,7 +3,7 @@ description: Scaffold a new client project from the datacraft PM starter — cop
 argument-hint: <ClientName>
 ---
 
-# /pm:scaffold
+# /pm-scaffold
 
 Stand up a new client engagement from the bundled starter. Three moves: **copy → rename → orient**. Do them in order; don't skip the interview.
 
