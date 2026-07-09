@@ -1,0 +1,6 @@
+{
+  "name": "fm-dc",
+  "version": "0.1.0",
+  "description": "DataCraft agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit and server-connection doctrine, project scaffolding.",
+  "author": { "name": "Joe DaSilva / DataCraft Development", "email": "joe@datacraftdev.com" }
+}

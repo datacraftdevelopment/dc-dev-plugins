@@ -22,6 +22,7 @@ Update everything later with:
 | Plugin | Command / skills | What it does |
 |---|---|---|
 | **pm** | `/pm:scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts` | Scaffolds a client engagement from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
+| **fm-dc** | `/fm-dc:fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `ddr`, `fm-patch`, `fm-xml`, `fm-connections`, `fm-core`, `fm-scripts`, `fm-docs`, `fm-proofkit` | Agentic FileMaker development — SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit doctrine. Needs system `python3` + `lxml`/`requests`/`python-dotenv` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 
 ## Adding a new plugin
 
@@ -38,10 +39,17 @@ No new marketplace is ever needed — this repo is the single marketplace for ev
 dc-plugins/
 ├── .claude-plugin/
 │   └── marketplace.json     ← lists every plugin
-└── pm/                      ← plugin: project management
+├── pm/                      ← plugin: project management
+│   ├── .claude-plugin/plugin.json
+│   ├── commands/            ← /pm:scaffold
+│   ├── skills/              ← whats-next, stepping-away, design-handoff, html-artifacts
+│   ├── template/            ← the starter /pm:scaffold copies
+│   └── _starter-design/     ← design rationale (reference only)
+└── fm-dc/                   ← plugin: agentic FileMaker development
     ├── .claude-plugin/plugin.json
-    ├── commands/            ← /pm:scaffold
-    ├── skills/              ← whats-next, stepping-away, design-handoff, html-artifacts
-    ├── template/            ← the starter /pm:scaffold copies
-    └── _starter-design/     ← design rationale (reference only)
+    ├── commands/            ← /fm-dc:fm-init, fm-scaffold, fm-status, ...
+    ├── agents/              ← fm-patch-builder, fm-xml-validator
+    ├── skills/              ← ddr, fm-patch, fm-xml, fm-connections, ...
+    ├── tools/               ← Python tooling (ddr, patch, fmlint, docs)
+    └── templates/           ← what /fm-dc:fm-scaffold copies
 ```

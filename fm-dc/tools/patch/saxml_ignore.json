@@ -1,0 +1,12 @@
+{
+  "_comment": "Patterns match the key suffix after 'kind:'. For fields that's 'Table::Name'; for relationships it's 'LeftTO|RightTO|sig'. fnmatch glob syntax, case-sensitive.",
+  "base_table": ["ProofKit*"],
+  "table_occurrence": ["ProofKit*"],
+  "field": ["ProofKit*::*"],
+  "script": ["Connect to MCP*", "FETCH CALLBACK*", "SendCallBack*", "get_script_names", "ProofKit*"],
+  "layout": ["ProofKit*"],
+  "custom_function": ["ProofKit*"],
+  "value_list": [],
+  "relationship": [],
+  "external_data_source": []
+}
