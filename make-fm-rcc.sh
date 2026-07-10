@@ -65,7 +65,7 @@ EDITS = [
      '"description": "Agentic FileMaker development:'),
     (".claude-plugin/plugin.json",
      '"name": "Joe DaSilva / DataCraft Development"',
-     '"name": "Joe DaSilva"'),
+     '"name": "Joe DaSilva and Richard Carlton"'),
     (".claude-plugin/plugin.json",
      '"email": "joe@datacraftdev.com"',
      '"email": "digitaljoed@gmail.com"'),
@@ -217,7 +217,7 @@ print(f"token pass: fm-dc -> fm-rcc in {count} files")
 
 # Credit + license note at the end of the plugin README
 readme = plugin / "README.md"
-readme.write_text(readme.read_text().rstrip() + "\n\n---\n\nBuilt by **Joe DaSilva**. © 2026 RCC — MIT licensed, see [LICENSE](LICENSE).\n")
+readme.write_text(readme.read_text().rstrip() + "\n\n---\n\nBuilt by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — MIT licensed, see [LICENSE](LICENSE).\n")
 PYEOF
 
 # --- 5. marketplace manifest, LICENSE, root README, root .gitignore -------------
@@ -281,7 +281,7 @@ Full documentation: [fm-rcc/README.md](fm-rcc/README.md).
 
 ---
 
-Built by **Joe DaSilva**. © 2026 RCC — [MIT licensed](LICENSE).
+Built by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — [MIT licensed](LICENSE).
 EOF
 
 printf '.DS_Store\n' > "$REPO/.gitignore"
