@@ -15,7 +15,7 @@ A Claude Code plugin that turns a session into a competent FileMaker developer. 
 pip3 install lxml requests python-dotenv
 ```
 
-**Requirements:** macOS, Python 3.10+, and for *patching* the Claris CLI tools (`FMDeveloperTool`, `FMUpgradeTool` — ship with FileMaker Server, expected in `/usr/local/bin`). `/fm-init` runs a doctor that checks all of it.
+**Requirements:** macOS, Python 3.10+, and for *patching* the Claris CLI tools (`FMDeveloperTool`, `FMUpgradeTool` — ship with FileMaker Server, expected in `/usr/local/bin`). `/fm-dc:fm-init` runs a doctor that checks all of it.
 
 > Developing the plugin (running the test suite)? Use a venv instead: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 
@@ -23,13 +23,13 @@ pip3 install lxml requests python-dotenv
 
 ```
 cd my-client-project/     # a folder with your .fmp12 in it
-/fm-init                  # ensures structure, then adopts: doctor, config, baseline export, changelog
+/fm-dc:fm-init            # ensures structure, then adopts: doctor, config, baseline export, changelog
 cp .env.example .env      # fill in FM credentials if the defaults don't fit
 ```
 
-`/fm-init` scaffolds the project structure itself (idempotent, never overwrites), so there's no separate setup step. Then just work — the skills fire on FileMaker topics. Check state with `/fm-status`, undo with `/fm-rollback`, build the offline docs cache once with `/fm-docs-sync`.
+`/fm-dc:fm-init` scaffolds the project structure itself (idempotent, never overwrites), so there's no separate setup step. Then just work — the skills fire on FileMaker topics. Check state with `/fm-dc:fm-status`, undo with `/fm-dc:fm-rollback`, build the offline docs cache once with `/fm-dc:fm-docs-sync`.
 
-Use **`/fm-scaffold`** on its own only when you want structure *without* a file yet (greenfield), or the wider `--full` / `--client-kit` shapes.
+Use **`/fm-dc:fm-scaffold`** on its own only when you want structure *without* a file yet (greenfield), or the wider `--full` / `--client-kit` shapes.
 
 ## The 12 skills — one verb each
 
@@ -69,13 +69,15 @@ Skills load automatically when the topic matches. They're organized by what you'
 
 ## Commands — the project lifecycle
 
+> Commands are namespaced under the plugin — type `/fm-dc:fm-init`, `/fm-dc:fm-status`, etc. The bare form (`/fm-init`) won't resolve.
+
 | Command | Does |
 |---|---|
-| **`/fm-init`** `[file.fmp12]` | Adopt a FileMaker file: doctor → ensure structure → config → baseline Save-as-XML export → seed changelog. Auto-scaffolds if the folder is bare. |
-| **`/fm-scaffold`** `[--full] [--client-kit]` | Lay down the DataCraft project structure without adopting a file. |
-| **`/fm-status`** | Read-only health report: managed files, baselines, patch history + verdicts, backups, recent changelog. |
-| **`/fm-rollback`** `[ts]` | Restore a `.fmp12` to a pre-patch state — safety-copies *now* first, then verifies the change is gone. |
-| **`/fm-docs-sync`** `[--docsets] [--limit]` | Build/refresh the local Claris docs mirror at `~/.fm-dc/docs-cache`. |
+| **`/fm-dc:fm-init`** `[file.fmp12]` | Adopt a FileMaker file: doctor → ensure structure → config → baseline Save-as-XML export → seed changelog. Auto-scaffolds if the folder is bare. |
+| **`/fm-dc:fm-scaffold`** `[--full] [--client-kit]` | Lay down the DataCraft project structure without adopting a file. |
+| **`/fm-dc:fm-status`** | Read-only health report: managed files, baselines, patch history + verdicts, backups, recent changelog. |
+| **`/fm-dc:fm-rollback`** `[ts]` | Restore a `.fmp12` to a pre-patch state — safety-copies *now* first, then verifies the change is gone. |
+| **`/fm-dc:fm-docs-sync`** `[--docsets] [--limit]` | Build/refresh the local Claris docs mirror at `~/.fm-dc/docs-cache`. |
 
 ## Agents
 
@@ -100,7 +102,7 @@ Changes to a `.fmp12` only land through the pipeline: timestamped backup → `--
 
 ## Per-client kits (overlay model)
 
-fm-dc is the generic core. Each engagement gets a thin overlay — schema bible, glossary, recipes, guardrails, connection facts — scaffolded by `/fm-scaffold --client-kit` and shipped to the client as its own plugin. Core updates never touch overlays.
+fm-dc is the generic core. Each engagement gets a thin overlay — schema bible, glossary, recipes, guardrails, connection facts — scaffolded by `/fm-dc:fm-scaffold --client-kit` and shipped to the client as its own plugin. Core updates never touch overlays.
 
 ## Status
 
