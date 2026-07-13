@@ -24,9 +24,11 @@ End-of-day ritual. Capture what happened, compare it to the Intent set this morn
 
 **3. Update `_pm/TASKS.md`.** Move shipped items OUT of Current (they live in the session entry now). Promote Next → Current as warranted (add Why + Done-when). Flag anything in Waiting on that's over a week old.
 
-**4. Decision entry — only if warranted.** A durable choice retrievable by topic? Draft `_pm/decisions/YYYY-MM-DD-<topic>.md`. Most days, skip. Ask before writing.
+**4. Knowledge log — only if the bundle changed.** If `knowledge/` exists and concepts changed today, append a dated entry to the bundle's `log.md`. Skip if the bundle doesn't keep one — flat one-screen bundles usually don't. Format per the `okf` skill.
 
-**5. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
+**5. Decision entry — only if warranted.** A durable choice retrievable by topic? Draft `_pm/decisions/YYYY-MM-DD-<topic>.md`. Most days, skip. Ask before writing.
+
+**6. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
 
 ## What this skill does NOT do
 

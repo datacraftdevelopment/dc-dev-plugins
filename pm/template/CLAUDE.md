@@ -27,6 +27,8 @@ datacraft-Project/
 │   ├── research/
 │   └── history/
 │
+├── knowledge/                 ← OPT-IN, not shipped. Sprouts as an OKF bundle when facts turn entity-shaped
+│
 └── _pm/                       ← project management — everything operational
     ├── README.md              ← orients agents
     ├── skeleton.md            ← Wei Hao 5-step. Default planning artifact.
@@ -41,7 +43,7 @@ datacraft-Project/
     └── bridges/               ← Claude ↔ ChatGPT PII shuttle
 ```
 
-**The split:** `_pm/` = operational project management. `docs/` = meta and ad-hoc Claude output that isn't PM workflow. `resources/` = material brought in from outside the Claude-driven workflow.
+**The split:** `_pm/` = operational project management. `docs/` = meta and ad-hoc Claude output that isn't PM workflow. `resources/` = material brought in from outside the Claude-driven workflow. `knowledge/` = curated project knowledge as an OKF bundle — exists only once sprouted.
 
 ## New Project Setup
 
@@ -51,7 +53,7 @@ datacraft-Project/
 4. Add tasks to `_pm/TASKS.md`.
 5. End each working day with the `stepping-away` skill.
 
-That's the light mode. Heavier folders (`_pm/milestones/`, `_pm/requirements/`, `_pm/deliverables/`) sprout as warranted.
+That's the light mode. Heavier folders (`_pm/milestones/`, `_pm/requirements/`, `_pm/deliverables/` — and top-level `knowledge/`) sprout as warranted.
 
 ## The skeleton — default planning artifact
 
@@ -86,12 +88,25 @@ Four temporal layers cover project context:
 
 **Sessions don't split by milestone.** One unified log per project, always. Per-milestone narrative (if needed) lives in `_pm/milestones/M0-name/retro.md`.
 
+## Knowledge — opt-in folder, fixed format
+
+No `knowledge/` by default; gotchas go to `docs/quirks.md`, narrative to sessions. **Sprout `knowledge/` when facts turn entity-shaped** — the same tables/systems/processes re-described across sessions, a catalog IS the deliverable, or a second consumer (client team, other agents, future-you) needs the facts. A minimal sprout is one file.
+
+When it exists, it is an [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) bundle — never a homegrown structure. Format conventions live in the global `okf` skill (pm plugin); this file only owns the local boundaries:
+
+- `docs/quirks.md` stays the fast-capture inbox; durable quirks get *promoted* into concepts.
+- `resources/research/` and `_pm/artifacts/` hold raw material; concepts cite it (`# Citations`), never absorb it.
+- `_pm/decisions/` stays ADRs — concepts may link to them; they don't become concepts.
+- Craft (reusable, client-agnostic) never lives here — it belongs in the owning starter or domain builder, not a client project.
+
+The daily skills are knowledge-aware only when the bundle exists: `whats-next` skims `knowledge/index.md` on cold start; `stepping-away` appends `log.md` when concepts changed.
+
 ## The two skills
 
 | Skill | When | Reads | Writes |
 |---|---|---|---|
-| `whats-next` | Start of day / cold-start | Last sessions, TASKS, skeleton (all in `_pm/`) | Today's Intent block |
-| `stepping-away` | End of day | TASKS, today's session, git log, conversation | Session entry, updated TASKS, optional decision |
+| `whats-next` | Start of day / cold-start | Last sessions, TASKS, skeleton; `knowledge/index.md` if sprouted | Today's Intent block |
+| `stepping-away` | End of day | TASKS, today's session, git log, conversation | Session entry, updated TASKS, optional decision, `knowledge/log.md` if bundle changed |
 
 These two skills ship globally with the `pm` plugin (they're no longer copied into each project), so they're available in every session without living in this repo. Joe's other cross-project skills live in `~/.claude/skills/`.
 
