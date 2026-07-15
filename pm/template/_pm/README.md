@@ -2,7 +2,7 @@
 
 Everything operational to managing the engagement lives here. Outside this folder, `docs/` is for meta and Claude-generated catch-all (notes, quirks, design history); `resources/` holds material you bring in from outside.
 
-The `_` prefix groups this folder visually at the top of the directory listing and signals "container, not a working folder." Matches Joe's `_app/`/`_ws/` convention in `datacraft-sass`.
+The `_` prefix groups this folder visually at the top of the directory listing and signals "container, not a working folder." Same convention as the code-surface containers (`_app/`, `_ws/`).
 
 ## What's inside
 
@@ -28,6 +28,6 @@ The two project-local skills in `.claude/skills/` read and write here:
 
 For the active-intent loop and the broader conventions, see the root `CLAUDE.md`.
 
-## Companion mode — dropping `_pm/` into another starter
+## Portability
 
-`_pm/` is **portable**. To add the engagement-management layer to a code starter (e.g., `datacraft-Project-FM` for a FileMaker engagement), drop this whole folder in alongside the code folders. No path changes needed inside — all references are local to `_pm/` or reach up to the shared `../docs/` and `../resources/` which exist in every starter.
+`_pm/` is **portable**. All references are local to `_pm/` or reach up to the shared `../docs/` and `../resources/`, which exist in every stamped project. Code surfaces live beside it as underscore containers (`_app/`, `_ws/`) — the root stays clean however much the engagement grows.

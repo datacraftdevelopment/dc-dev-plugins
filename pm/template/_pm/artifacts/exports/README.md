@@ -12,4 +12,4 @@ Exports from systems you're integrating with or replacing. Schemas, screenshots,
 
 ## Why exports, not raw `schema/` or `data/`
 
-In code starters (`datacraft-fm` etc.) there's a dedicated `schema/` pipeline. This starter is codebase-agnostic — `exports/` is a neutral home for whatever you exported. If the project becomes companion-mode with a code starter, the code starter's structured pipeline (e.g. FM's `schema/ddrs/` + `schema/parsed/`) takes over and this folder becomes "miscellaneous exports."
+The scaffold is codebase-agnostic — `exports/` is a neutral home for whatever you exported. If the engagement grows a code surface with its own structured pipeline (e.g. an fm-dc-scaffolded FileMaker setup with DDR parsing, or an `_app/` with schema tooling), that pipeline takes over and this folder becomes "miscellaneous exports."

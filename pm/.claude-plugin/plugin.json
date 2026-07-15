@@ -1,7 +1,7 @@
 {
   "name": "pm",
-  "version": "0.3.1",
-  "description": "Project-management scaffold + session and delivery skills. /pm-scaffold starts a client engagement from the datacraft starter; whats-next and stepping-away run the day; design-handoff and html-artifacts support delivery; okf holds the knowledge-bundle conventions.",
+  "version": "0.3.2",
+  "description": "Project-management scaffold + session and delivery skills. /pm:pm-scaffold starts a client engagement from the datacraft starter; whats-next and stepping-away run the day; design-handoff and html-artifacts support delivery; okf holds the knowledge-bundle conventions.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

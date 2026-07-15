@@ -18,6 +18,6 @@ Paper prototypes are great because they're throwaway — nobody defends them. Bu
 
 `prototype-<feature-or-flow>-<n>.html` — e.g. `prototype-search-results-v2.html`. Version numbers when you iterate; iteration history matters when the customer says "I liked v1 better."
 
-## Companion mode
+## Code prototypes live elsewhere
 
-In a companion-mode project (e.g. dropped into `datacraft-fm`), use the code starter's existing `dev/`, `webviewer/`, or `web/` folders for prototype work instead — don't duplicate. This `prototypes/` folder is for standalone-mode use.
+This folder is customer-validation HTML only. When the engagement has code surfaces (`_app/`, `_ws/`), code prototypes and experiments live inside the owning container — don't duplicate them here.

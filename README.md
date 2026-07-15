@@ -21,7 +21,7 @@ Update everything later with:
 
 | Plugin | Command / skills | What it does |
 |---|---|---|
-| **pm** | `/pm-scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts` | Scaffolds a client engagement from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
+| **pm** | `/pm:pm-scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts`, `okf` | Scaffolds a client engagement from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-proofkit`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, ProofKit doctrine, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 
 ## Adding a new plugin
@@ -41,9 +41,9 @@ dc-plugins/
 │   └── marketplace.json     ← lists every plugin
 ├── pm/                      ← plugin: project management
 │   ├── .claude-plugin/plugin.json
-│   ├── commands/            ← /pm-scaffold
-│   ├── skills/              ← whats-next, stepping-away, design-handoff, html-artifacts
-│   └── template/            ← the starter /pm-scaffold copies
+│   ├── commands/            ← /pm:pm-scaffold
+│   ├── skills/              ← whats-next, stepping-away, design-handoff, html-artifacts, okf
+│   └── template/            ← the starter /pm:pm-scaffold copies (mirrored from DC-Project-Builder)
 └── fm-dc/                   ← plugin: agentic FileMaker development
     ├── .claude-plugin/plugin.json
     ├── commands/            ← /fm-init, fm-scaffold, fm-status, ...

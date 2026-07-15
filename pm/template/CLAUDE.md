@@ -8,7 +8,7 @@ This file orients Claude Code when working in this repository.
 
 A **project-management starter** — the connective tissue around a client engagement. Light by default (a three-hour change request uses it without sprouting structure). Scales up (a six-month fixed-bid uses the same scaffold with `_pm/milestones/` and richer `_pm/requirements/`). One structure either way.
 
-Agnostic to codebase. The deliverable might be FileMaker, web, SaaS, or pure consulting. When the engagement *also* needs code, this starter's `_pm/` folder drops alongside the code starter's folders — see "Companion mode" below, and the paired starter `datacraft-Project-FM/` for the FM combination.
+Agnostic to codebase. The deliverable might be FileMaker, web, SaaS, or pure consulting. Every engagement starts from this scaffold — there are no paired code starters. When the engagement grows code, each surface gets an underscore container at root (`_app/`, `_ws/`) — see "Code surfaces" below. FileMaker-specific scaffolding ships in the fm-dc plugin.
 
 ## Repository Layout
 
@@ -28,6 +28,8 @@ datacraft-Project/
 │   └── history/
 │
 ├── knowledge/                 ← OPT-IN, not shipped. Sprouts as an OKF bundle when facts turn entity-shaped
+│
+├── _app/ · _ws/ · …           ← OPT-IN code surfaces — one underscore container per surface
 │
 └── _pm/                       ← project management — everything operational
     ├── README.md              ← orients agents
@@ -110,30 +112,27 @@ The daily skills are knowledge-aware only when the bundle exists: `whats-next` s
 
 These two skills ship globally with the `pm` plugin (they're no longer copied into each project), so they're available in every session without living in this repo. Joe's other cross-project skills live in `~/.claude/skills/`.
 
-## Companion mode — drop `_pm/` into a code starter
+## Code surfaces — underscore containers
 
-When the engagement IS code, drop the `_pm/` folder alongside the code starter's folders. For FM specifically, use the paired starter `datacraft-Project-FM/` which already has the layout baked in.
+Every engagement starts from this scaffold, whatever the deliverable. When the engagement grows a code surface, it gets **one underscore-prefixed container at root** — sprouted when the surface becomes real, never pre-built:
 
 ```
-datacraft-Acme-FM/  (renamed from datacraft-Project-FM)
+datacraft-Acme/
 ├── CLAUDE.md
 ├── README.md
-├── .claude/skills/
-├── docs/                      ← shared meta + catch-all
-├── resources/                 ← shared taxonomy
+├── docs/                      ← meta + catch-all
+├── resources/                 ← external inputs
 ├── _pm/                       ← engagement management
 │
-├── plugin/                    ← FM-specific code
-├── schema/
-├── webviewer/
-├── web/
-├── scripts/
-└── dev/
+├── _app/                      ← web app / viewer — sprouted when one exists
+└── _ws/                       ← website — sprouted when one exists
 ```
 
-`_pm/` is **portable** — all internal references are local to the folder; outward references reach to `../docs/` and `../resources/` which exist in every starter.
+- **One container per surface.** Coin new names by the same pattern as surfaces emerge; the underscore keeps them sorted together and signals *container, not working folder*. The root stays readable no matter how much the engagement grows.
+- **FileMaker-specific structure** comes from the fm-dc plugin (`/fm-dc:fm-scaffold`) — the retired FM starter's job lives there now.
+- `_pm/prototypes/` stays customer-validation HTML only; code prototypes and experiments live inside their surface container.
 
-`prototypes/` lives inside `_pm/` because it's customer-validation work — even in code engagements, the validation prototypes are PM artifacts. Code prototypes go in the code starter's `dev/`, `webviewer/`, `web/`.
+`_pm/` is **portable** — internal references stay local to the folder; outward references reach `../docs/` and `../resources/`, which exist in every stamped project.
 
 ## Working conventions
 

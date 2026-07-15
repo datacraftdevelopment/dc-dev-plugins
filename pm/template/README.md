@@ -1,27 +1,16 @@
 # datacraft-Project
 
-Project-management starter for client engagements. Light by default; scales up via opt-in `milestones/` when warranted.
+Project-management scaffold for this client engagement. Light by default; scales up via opt-in `milestones/` when warranted.
 
-## Quick start
+## Working the project
 
-1. Rename this folder: `datacraft-Project/` → `datacraft-<ProjectOrClientName>/` (e.g., `datacraft-Acme`). The capital `P` is a placeholder slot.
-2. Fill in `_pm/skeleton.md` — even a paragraph is fine to start.
-3. Drop transcripts, customer docs, exports into `_pm/artifacts/` as they arrive.
-4. Add tasks to `_pm/TASKS.md` as work surfaces.
-5. End each working day with the `stepping-away` skill (it writes today's session entry and updates TASKS).
+1. `_pm/skeleton.md` holds the engagement's outcome, journey, and non-negotiables — written at scaffold time; keep it current as scope moves.
+2. Drop transcripts, customer docs, exports into `_pm/artifacts/` as they arrive.
+3. Add tasks to `_pm/TASKS.md` as work surfaces.
+4. Start working days with the `whats-next` skill; end them with `stepping-away`.
 
-For the full picture — folder layout, the four skills, companion mode for code projects — read `CLAUDE.md`.
+For the full picture — folder layout, the skills, code-surface containers (`_app/`, `_ws/`), the opt-in knowledge bundle — read `CLAUDE.md`.
 
-## Design rationale
+## Where this came from
 
-The "why this looks this way" reference: `docs/_design/2026-06-06-starter-design.html`. Open it in a browser.
-
-Built from two transcripts at Elevate FM 2026: Charlie Bailey (Codence) on AI-PM operations, and Wei Hao (Direct Impact Solutions) on Magic-the-Gathering-style scope control. Both lived in this starter's design conversation.
-
-## Sibling starters
-
-- `../datacraft-fm/` — FileMaker development projects
-- `../datacraft-web/` — single-site web projects
-- `../datacraft-sass/` — SaaS workspaces (multi-repo)
-- `../datacraft-agent/` — agent-framework projects
-- `../task-changelog/` — canonical task + session scaffolding (copied verbatim into each starter's `docs/`)
+Stamped by the pm plugin's `/pm:pm-scaffold` from the DC-Project-Builder repo (`datacraftdevelopment/dc-project-builder`), where the scaffold's design history lives.
