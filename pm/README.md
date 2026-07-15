@@ -2,7 +2,7 @@
 
 Claude Code plugin that packages Joe's project-management starter. Provides:
 
-- **`/pm:pm-scaffold <ClientName>`** — stands up a new client engagement: copies the `_pm/` / `docs/` / `resources/` starter into `datacraft-<ClientName>/`, renames the placeholder, and runs the skeleton interview.
+- **`/pm:pm-scaffold <name>`** — stands up a project from the starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal project (`self HomeLab` → plain `HomeLab/`), or `here` to add `_pm/` to an existing folder. Renames the placeholder and runs the skeleton interview either way.
 - **`whats-next`** skill — morning open: reads project memory, proposes a pick-up, drafts the day's Intent block.
 - **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS.
 - **`design-handoff`** skill — writes a lean brief for pasting into Claude Design (data-driven or concept-driven).
