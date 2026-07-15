@@ -51,34 +51,53 @@ The runtime path needs no Pro, no plugins, no ProofKit — pure OData.
 
 ---
 
-## 3. One-time file setup
+## 3. One-time file setup — the setup interview
 
-### 3a. Transport fields (agent does this, via OData)
+Every file is different: some already have a usable log table, some need one created,
+and the layout situation varies. So setup is an **agent-led interview**, not a fixed
+recipe — and nothing gets hardcoded. When a project first points at a hosted file (or
+the user says "set up the export"), the agent walks these steps, asking before acting:
 
-The export script needs a **log table** to drop results into. Requirements:
+**Step 0 — Offer.** "This file doesn't have the export capability yet — want to set it
+up now?" (Skip everything below if the trigger already answers: a `POST Script.Agent_SaXML_Export`
+probe that doesn't 404 means it's already installed.)
 
-- a regular table (NOT globals — server sessions discard them) **that is on at least one layout**
-  (the script's `New Record/Request` needs a layout context)
-- a **text field** for the XML payload (the primary transport — SaXML output is UTF-8 text)
-- optionally a **container field** (secondary; see §6 gotcha 5)
-- a text field for a label, and one for the request params (audit trail)
+**Step 1 — Discover and choose the drop table.** List the file's tables over OData and
+look for an existing candidate: a regular table (NOT globals — server sessions discard
+them) that is **already on a layout**, with room for text fields. Present the options:
 
-Reuse an existing log-ish table if the file has one. Otherwise create one via OData
-(`fm-odata` skill) — but remember OData **cannot create layouts**, so a human must put the
-new table on a layout once in Pro. Adding fields to an *existing* table:
+- *Reuse table X* — least invasive; the agent adds any missing fields via OData
+- *Create a new table* (e.g. `AgentLog`) — cleanest separation; needs the layout step
+
+Required fields either way: a **text field** for the XML payload (the transport — SaXML
+output is UTF-8 text), a text label field, a text params field (audit trail), and
+optionally a **container field** (bonus copy; see §6 gotcha 5).
+
+**Step 2 — Create/extend the table (agent, via OData).** New table: `POST /FileMaker_Tables`
+with SQL DDL types. Adding fields to an existing table:
 
 ```
 PATCH /fmi/odata/v4/{db}/FileMaker_Tables/{table}
 {"fields": [{"name": "XMLText", "type": "VARCHAR(255)"}]}     ← PATCH, not POST
 ```
 
-### 3b. Install the script (human pastes, once)
+Expect and retry on error 303 (a Pro client sitting in Manage Database blocks all
+schema changes).
 
-The agent prints the full `fmxmlsnippet` XML **on screen** (never silently to the
-clipboard — the operator must be able to see and version-check what they're pasting).
-The first step is always a Comment carrying the script name, **version**, and date.
+**Step 3 — Layout (human, only if a new table was created).** No API can create
+layouts. Ask the operator to make one layout in Pro showing the new table (name it
+after the table), then confirm. Skipped entirely when reusing a table that's already
+on a layout.
 
-In FileMaker Pro, on the hosted file:
+**Step 4 — Generate the script.** From the plugin template
+`${CLAUDE_PLUGIN_ROOT}/templates/agent-saxml-export.template.xml`, substitute the
+placeholders with THIS file's names: `{{DROP_LAYOUT}}`, `{{DROP_TO}}`, `{{LABEL_FIELD}}`,
+`{{PARAMS_FIELD}}`, `{{TEXT_FIELD}}`, `{{CONTAINER_FIELD}}` (delete that one Set Field
+step if the table has no container). Print the result **on screen** — never silently to
+the clipboard; the operator must be able to see and version-check what they're pasting.
+The first step is a Comment carrying the version and date.
+
+**Step 5 — Install (human pastes, once).** In FileMaker Pro, on the hosted file:
 
 1. Script Workspace → New Script → name it exactly **`Agent_SaXML_Export`**
 2. Click into the empty step area → paste → the steps appear
@@ -87,11 +106,12 @@ In FileMaker Pro, on the hosted file:
 4. Check **"Run script with full access privileges"** (Save a Copy as XML requires it)
 5. Save (⌘S) — *unsaved scripts run the old version; this bites*
 
-### 3c. Verify the install
-
-Copy the script's steps back out of FileMaker and hand the XML to the agent (or the agent
-reads the clipboard). The agent confirms the version comment and that name-resolution
-populated real IDs. Then fire a small export (one catalog) and check `error: 0`.
+**Step 6 — Record and verify.** Write the chosen names into the project config
+(`fm/fm-dc.json`, under the file entry: `dropLayout`, `dropTO`, `textField`, …) so the
+export driver and every later session read them from config — never hardcoded. Then
+copy the script back out of FileMaker for a round-trip check (version comment present,
+names resolved to real IDs), and fire a one-catalog smoke export: success = `error: 0`
+AND `chars > 0` AND fetched bytes > 0.
 
 ---
 
@@ -105,14 +125,14 @@ Contract:
 - Rules baked in: catalog **selection on, splitting off, DDR_INFO off** (one small file);
   errors captured per hop; the result carries the record ID for pickup.
 
-**Adapt 4 references** when installing into a new file (everything else is portable):
-the `Go to Layout` layout name, and the table/field names in the three `Set Field` steps
-(label field, params field, text-transport field) plus the optional container `Set Field`.
-Emit `id="1"` placeholders — FileMaker resolves by exact name on paste (case- and
-whitespace-sensitive) and stamps real IDs.
+**Never adapt by hand — generate from the template** (`templates/agent-saxml-export.template.xml`,
+v4, which also fixes the `chars` context bug below) via the §3 interview. The template's
+placeholders cover the layout, table occurrence, and field names; ids are `id="1"`
+placeholders — FileMaker resolves by exact name on paste (case- and whitespace-sensitive)
+and stamps real IDs.
 
-Working XML as proven (targets `AI_RequestLog` / `Prompt` / `PayLoadJSON` / `XMLDrop` /
-`ResponseText`):
+Historical reference — the v3 XML exactly as first proven (targets `AI_RequestLog` /
+`Prompt` / `PayLoadJSON` / `XMLDrop` / `ResponseText`):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -283,10 +303,12 @@ Authorization: Basic {account:pass}
 {"scriptParameterValue": "{\"runId\":\"run-...\",\"options\":{\"catalogs_included\":[\"ScriptCatalog\"],\"include_details\":false,\"split_catalogs\":false}}"}
 ```
 
-Pickup:
+Pickup — table and field come from the project config recorded in §3 step 6, never
+hardcoded (shown here with the proven file's names):
 
 ```
-GET https://{host}/fmi/odata/v4/{db}/AI_RequestLog({recordId})?$select=ResponseText
+GET https://{host}/fmi/odata/v4/{db}/{dropTO}({recordId})?$select={textField}
+e.g. .../AI_RequestLog(9)?$select=ResponseText
 ```
 
 Then, in the project:
