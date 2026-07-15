@@ -1,15 +1,25 @@
 ---
-description: Adopt a FileMaker file — ensures project structure, doctor checks, config, baseline Save-as-XML export, change log
-argument-hint: "[path/to/file.fmp12]"
+description: Adopt a FileMaker file (local .fmp12 or hosted) — ensures project structure, doctor checks, config, baseline export, change log
+argument-hint: "[path/to/file.fmp12 | host/File.fmp12]"
 allowed-tools: Bash, Read, Write, Glob, AskUserQuestion
 ---
 
 Initialize the current project for fm-dc-managed FileMaker development. Mirrors the shape of Claris's `/filemaker-init`, using the DataCraft pipeline. Because init means "I'm about to patch this file," it also makes sure the project structure exists — no separate scaffold step required.
 
-1. **Doctor first.** Run `python3 ${CLAUDE_PLUGIN_ROOT}/tools/doctor.py` and show the table. If FMDeveloperTool or FMUpgradeTool is missing, stop and tell the user what to install — nothing below works without them.
+**Two adoption modes.** A **local** `.fmp12` on disk gets the full pipeline (baseline via FMDeveloperTool, patching). A **hosted** file (there is no local copy — only a server) gets the same project structure plus a remote connection config; its baseline comes over the wire. Detect hosted mode when: $ARGUMENTS looks like `host/File.fmp12`, an `fmnet:/` path, or a URL; or no `.fmp12` exists locally and the user says the file is hosted.
+
+1. **Doctor first.** Run `python3 ${CLAUDE_PLUGIN_ROOT}/tools/doctor.py` and show the table.
+   - *Local mode:* if FMDeveloperTool or FMUpgradeTool is missing, stop and tell the user what to install — nothing below works without them.
+   - *Hosted mode:* the Claris CLI tools are NOT required — only `python3` and network reach to the server. Note missing CLI tools as "needed later if you patch locally," don't stop.
 
 2. **Find the file(s).** Use $ARGUMENTS if given; otherwise glob `*.fmp12` in the project (excluding `fm/backups/`). Confirm with the user: file path(s), account name, and password env var. Defaults: account `Admin`, empty password (FileMaker defaults) via `FM_DEV_USER`/`FM_DEV_PASS` from `.env` if present.
-   - **No `.fmp12` anywhere?** Stop. This is a greenfield project — there's nothing to adopt yet. Point the user at `/fm-dc:fm-scaffold` to lay down structure, then add their file and re-run `/fm-dc:fm-init`.
+   - **No `.fmp12` anywhere?** Ask whether the file is **hosted**. If yes → hosted mode: collect server host, file name, and an OData-enabled account, then continue below (structure, config, remote baseline). If the project truly has no file yet, point the user at `/fm-dc:fm-scaffold` to lay down structure and re-run `/fm-dc:fm-init` later.
+
+2a. **Hosted mode specifics.**
+   - Write credentials to `fm/hostedFile.md` (`server - host` / `file - X.fmp12` / `account - user` / `pass - secret`, the fm-odata config shape). Ensure `.gitignore` covers it — credentials never commit.
+   - Verify the connection: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/fm-odata/scripts/fm_odata.py connect --config fm/hostedFile.md`.
+   - **Remote baseline** requires the `Agent_SaXML_Export` script installed in the hosted file (a one-time paste). Follow `${CLAUDE_PLUGIN_ROOT}/docs/guides/remote-file-agent-workflow.md`: check for the script, install it if missing (print the version-commented XML on screen — never silently to the clipboard), then trigger the export over OData and land the XML in `schema/ddrs/YYYY-MM-DD/` (this replaces step 5's local export; parse it per the fm-saxml skill).
+   - In `fm/fm-dc.json`, record the file with `"hosted": true` and `"config": "fm/hostedFile.md"` instead of a local path. Patching a hosted file still requires downloading a closed copy later — say so in the report.
 
 3. **Ensure project structure (silent, idempotent).** Patching needs somewhere to live, so lay down the minimized DataCraft structure — don't ask, just do it. It never overwrites, so this is safe whether the folder is empty, half-set-up, or complete:
 
