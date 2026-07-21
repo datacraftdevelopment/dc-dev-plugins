@@ -58,7 +58,8 @@ Skills load automatically when the topic matches. They're organized by what you'
 |---|---|
 | **`fm-dataapi`** | **Records** over the Data API — query/create/update/delete/find/count on a hosted file, connecting *directly* with supplied credentials. Ships a ready-to-run zero-dep client. |
 | **`fm-odata`** | The **schema side-door** — connect over OData with credentials and create/alter tables & fields on a live file. SQL-DDL validation baked in (no more `8310`). Ships a ready-to-run client. |
-| **`fm-connections`** | The **router** — which method when (MCP vs direct OData vs direct Data API vs offline), and the "arbitrary file → go direct, never the fixed MCP" rule. |
+| **`fm-admin`** | The **server door** — Admin API v2 with console credentials: hosted-file inventory, server status, and **download a hosted `.fmp12`** (close → download → always reopen). Ships a ready-to-run driver. |
+| **`fm-connections`** | The **router** — which method when (MCP vs direct OData vs direct Data API vs Admin API vs offline), and the "arbitrary file → go direct, never the fixed MCP" rule. |
 | **`fm-proofkit`** | The **ProofKit bridge** — MCP server (live schema, SQL, CRUD, ERD), React web-viewer apps inside FileMaker, and the ProofGeist TS toolchain for external web apps. |
 
 ### 🧩 Extend — third-party plugins *(unprefixed by design — they're separate products)*
@@ -106,4 +107,4 @@ fm-dc is the generic core. Each engagement gets a thin overlay — schema bible,
 
 ## Status
 
-Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and Phase 4 (hosted-file lane, `/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.
+Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). v0.6.0 opened the **hosted-file lane**: the `fm-admin` server door (Admin API download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships the remote-export toolbelt + numbered runbooks. Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and the rest of Phase 4 (`/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.
