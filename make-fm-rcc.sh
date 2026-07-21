@@ -87,8 +87,8 @@ EDITS = [
      "Lay down the DataCraft project structure without adopting a file.",
      "Lay down the standard project structure without adopting a file."),
     ("README.md",
-     "Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and Phase 4 (hosted-file lane, `/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.",
-     "Tools are vendored and tested, agents and commands are live, and the skill pack is organized as **one verb per skill**. Planned next: a deterministic `genobj` shape compiler, a fuller docs cache, a hosted-file lane, and a `/fm-client-kit` generator."),
+     "Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). v0.6.0 opened the **hosted-file lane**: the `fm-admin` server door (Admin API download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships the remote-export toolbelt + numbered runbooks. Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and the rest of Phase 4 (`/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.",
+     "Tools are vendored and tested, agents and commands are live, and the skill pack is organized as **one verb per skill**. v0.6.0 opened the **hosted-file lane**: the `fm-admin` server door (Admin API download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships the remote-export toolbelt + numbered runbooks. Planned next: a deterministic `genobj` shape compiler, a fuller docs cache, and a `/fm-client-kit` generator."),
 
     # Plugin dev guide: drop SCOPE refs, de-brand clean-room rule, repoint marketplace
     ("CLAUDE.md",
