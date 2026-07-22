@@ -284,7 +284,7 @@ Full documentation: [fm-rcc/README.md](fm-rcc/README.md).
 Built by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — [MIT licensed](LICENSE).
 EOF
 
-printf '.DS_Store\n' > "$REPO/.gitignore"
+printf '.DS_Store\n/_pm/\n' > "$REPO/.gitignore"   # /_pm/ = local-only personal tracking in checkouts, never published
 
 # --- 6. verification gate: zero brand/leak residue, valid manifests, no symlinks
 echo "== verify"
