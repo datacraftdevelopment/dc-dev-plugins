@@ -53,6 +53,13 @@ The runtime path needs no Pro, no plugins, no ProofKit — pure OData.
 
 ## 3. One-time file setup — the setup interview
 
+> **Since v0.7.0 this interview is the FALLBACK, not the default.** The standard
+> install is the v5 paste-in pair — `templates/saxml-table.xml` +
+> `templates/agent-saxml-export-v5.xml`, table → layout → script, no placeholders,
+> fixed names `SAXML`/`ResponseText` (walkthrough: the scaffold's `workflow/02`
+> runbook). Run this interview only when the standard `SAXML` table can't land
+> as-is (naming conventions, reuse of an existing log table, no-new-tables rule).
+
 Every file is different: some already have a usable log table, some need one created,
 and the layout situation varies. So setup is an **agent-led interview**, not a fixed
 recipe — and nothing gets hardcoded. When a project first points at a hosted file (or
