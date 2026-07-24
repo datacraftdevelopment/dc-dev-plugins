@@ -82,7 +82,7 @@ Their delivery mechanism is the **patch tool** (FMUpgradeTool) with **clipboard 
 | Session telemetry | Timing command + bundle | None | **Behind** (low priority) |
 | Init UX | Polished one-shot `/filemaker-init` | Manual per-project setup | **Behind** (build `/fm-init`) |
 
-**Positioning:** fm-dc is not a Claris-toolkit clone. It's the DataCraft harness: same deterministic foundations, plus the three things they don't have — a hosted-file lane, live-database verification, and a proven client-kit overlay. When Claris ships publicly, their patch tool improvements become a swappable backend under our agents, not a replacement for the harness.
+**Positioning:** fm-dc is not a Claris-toolkit clone. It's the DataCraft harness: same deterministic foundations, plus the three things they don't have — a **live hosted loop** (tables/fields over OData + generated XML pasted into the open file, so the file never comes down), live-database verification, and a proven client-kit overlay. The patch tool is a *local-and-closed* mechanism — the only door that moves **whole layouts, relationships, and table occurrences**, plus dev→prod migration and build-from-a-starter — a first-class door, but the same offline constraint Claris has, not the daily loop. (Accounts, privilege sets, custom menus and security stay a human's job in every lane.) When Claris ships publicly, their patch improvements become a swappable backend under our agents, not a replacement for the harness.
 
 ## 5. The plugin
 

@@ -87,8 +87,8 @@ EDITS = [
      "Lay down the DataCraft project structure without adopting a file.",
      "Lay down the standard project structure without adopting a file."),
     ("README.md",
-     "Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). v0.6.0 opened the **hosted-file lane**: the `fm-admin` server door (Admin API download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships the remote-export toolbelt + numbered runbooks. Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and the rest of Phase 4 (`/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.",
-     "Tools are vendored and tested, agents and commands are live, and the skill pack is organized as **one verb per skill**. v0.6.0 opened the **hosted-file lane**: the `fm-admin` server door (Admin API download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships the remote-export toolbelt + numbered runbooks. Planned next: a deterministic `genobj` shape compiler, a fuller docs cache, and a `/fm-client-kit` generator."),
+     "Phases 0–2 of [SCOPE.md](SCOPE.md) are built (tools vendored + tested, agents + commands live). The v0.4.0 skill refactor split the pack into **one verb per skill** (see [`docs/superpowers/plans/2026-07-09-skill-refactor.md`](docs/superpowers/plans/2026-07-09-skill-refactor.md)). v0.6.0 opened the **hosted-file lane** — its headline is reading a *live hosted file's whole design over the wire* (Save-as-XML pulled through OData, file never down), plus the `fm-admin` server door (Admin API close/download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships that remote-export toolbelt + numbered runbooks. Next: Phase 3 (deterministic `genobj` shape compiler, fuller docs cache, prompt battery) and the rest of Phase 4 (`/fm-client-kit` generator, schema-builder agent) — see SCOPE §9.",
+     "Tools are vendored and tested, agents and commands are live, and the skill pack is organized as **one verb per skill**. v0.6.0 opened the **hosted-file lane** — its headline is reading a *live hosted file's whole design over the wire* (Save-as-XML pulled through OData, file never down), plus the `fm-admin` server door (Admin API close/download), the `xml_to_fmp12` XML→file converter, and a scaffold that ships that remote-export toolbelt + numbered runbooks. Planned next: a deterministic `genobj` shape compiler, a fuller docs cache, and a `/fm-client-kit` generator."),
 
     # Plugin dev guide: drop SCOPE refs, de-brand clean-room rule, repoint marketplace
     ("CLAUDE.md",
@@ -103,6 +103,10 @@ EDITS = [
     ("CLAUDE.md",
      "This plugin ships from the `dc-plugins` marketplace (`dc-plugins/fm-dc/`).",
      "This plugin ships from the `FMTrainingTV-AI/rcc-fm` marketplace (plugin folder `fm-rcc/`)."),
+    # model-selection rationale lives in docs/ (stripped from the fork) — drop the dangling link, keep the rule
+    ("CLAUDE.md",
+     " Rationale + the ladder: [docs/design-notes/model-selection.md](docs/design-notes/model-selection.md).",
+     ""),
 
     # Commands: company-as-methodology phrases -> neutral
     ("commands/fm-init.md",
