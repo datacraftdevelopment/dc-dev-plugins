@@ -37,6 +37,8 @@ _The fixed walls. Budget, timeline, capacity, regulatory constraints. Things tha
 - Constraint A
 - Constraint B
 
+_Hard constraints only. Preferences — choices that may bend when evidence supports it — live in the Intent block or a task's Why, not here. Don't let a taste call ossify into a wall, and never quietly soften a wall into a taste call._
+
 ---
 
 ## Quick test for any candidate story

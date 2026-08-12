@@ -10,6 +10,7 @@ The `_` prefix groups this folder visually at the top of the directory listing a
 |---|---|
 | `skeleton.md` | The macro why — Wei Hao's 5-step structure. Project's planning artifact. Always populated, even if just a paragraph. |
 | `TASKS.md` | Current / Next / Waiting on / Backlog. Current items carry one-line Why + Done-when. |
+| `context-map.md` | Available-context map — sources with authority, freshness, and load-when. **Available ≠ active:** agents load the smallest sufficient set and keep a path back to the rest. Update when a source changes, not on a schedule. |
 | `sessions/` | Per-day files capturing what shipped AND the thinking behind it. Replaces the older `changelog/` pattern. |
 | `decisions/` | Opt-in ADRs for durable choices retrievable by topic. Most projects skip this. |
 | `milestones/` | Opt-in expansion when path to skeleton is long. Empty unless sprouted. |
@@ -21,10 +22,11 @@ The `_` prefix groups this folder visually at the top of the directory listing a
 
 ## How agents use `_pm/`
 
-The two project-local skills in `.claude/skills/` read and write here:
+The three pm-plugin skills read and write here:
 
-- **`whats-next`** (start of day) reads `_pm/skeleton.md`, `_pm/sessions/`, `_pm/TASKS.md`, `_pm/decisions/`. Drafts today's Intent block into today's session file.
-- **`stepping-away`** (end of day) reads the same set plus the conversation. Updates `_pm/TASKS.md` and writes today's `_pm/sessions/YYYY-MM-DD.md` with Shipped / Tried-Learned-Decided / Intent-vs-outcome.
+- **`whats-next`** (start of day) reads `_pm/skeleton.md`, `_pm/sessions/`, `_pm/TASKS.md`, `_pm/decisions/`, and the active rows of `_pm/context-map.md`. Drafts today's Intent block into today's session file.
+- **`checkpoint`** (mid-session, at a consequential result — agents on long-running work run it unprompted) adds a dated re-aim under today's Intent, pushes the change into `_pm/TASKS.md`, archives superseded decisions, and touches `context-map.md` only if a source changed.
+- **`stepping-away`** (end of day) reads the same set plus the conversation. Updates `_pm/TASKS.md` and writes today's `_pm/sessions/YYYY-MM-DD.md` with Shipped / Tried-Learned-Decided / Intent-vs-outcome (compared against the latest re-aim, if any).
 
 For the active-intent loop and the broader conventions, see the root `CLAUDE.md`.
 

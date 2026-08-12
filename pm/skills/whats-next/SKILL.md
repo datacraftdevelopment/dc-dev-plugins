@@ -16,6 +16,7 @@ Morning open. The user is starting a session — could be future-them four days 
 - Last 1–3 session files in `_pm/sessions/` (most recent first) — especially Open threads
 - `_pm/TASKS.md` — Current (with Why / Done-when), Next, Waiting on
 - Most recent `_pm/decisions/` (if any)
+- `_pm/context-map.md` — skim the **active** rows so you know what's authoritative before proposing; don't load on-demand sources yet.
 - `knowledge/index.md` — only if a knowledge bundle exists. Skim for orientation; don't crawl the bundle.
 
 **2. Propose.** Output:

@@ -8,6 +8,8 @@ _Example:_ Pushing on the search filter UI today — Sandy's manual workaround i
 
 _Skip for quick fixes._
 
+_Mid-day pivots: leave this block as written — the `checkpoint` skill adds a dated **Re-aimed HH:MM** line beneath it (replacing any earlier re-aim from today). The latest re-aim is the live aim; the original stays as the record of where the day started._
+
 ## Shipped
 
 - _Tight bullets. Files touched by path. Link commits if relevant. Omit if nothing shipped._

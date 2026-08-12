@@ -79,10 +79,13 @@ Four temporal layers cover project context:
 |---|---|---|
 | Macro why | `_pm/skeleton.md` | Outcome, journey, capabilities |
 | What | `_pm/TASKS.md` | Current items WITH `Why` + `Done-when` |
+| Available what | `_pm/context-map.md` | Sources with authority + freshness + load-when. **Available ≠ active** |
 | **Active why** | `_pm/sessions/YYYY-MM-DD.md` `## Intent` | Today's push, why, done-for-today, not in scope |
 | Past why | `_pm/sessions/YYYY-MM-DD.md` `## Intent vs. outcome` | Intended vs. shipped (drift check) |
 
 **Why this matters:** agents nail the *what* and quietly let the *why* go. The Intent block (2–3 sentences of prose, set at session start by `whats-next`, checked at session end by `stepping-away`) is the anchor the agent reads on every tool call. Skip it for quick fixes; set it for substantive work.
+
+**Mid-session checkpoints:** a brief that was right this morning can be the wrong instruction by afternoon. When a consequential result lands — evidence overturns an assumption, the direction changes, a milestone completes — refresh the state *before* continuing: the `checkpoint` skill adds a dated **re-aim** under the Intent (the original stays as the drift record), pushes the change into `TASKS.md`, and archives superseded decisions instead of deleting them. Agents on long-running work run it **unprompted** — the correction must reach the work that hasn't happened yet.
 
 ## Milestones — opt-in
 
@@ -103,14 +106,15 @@ When it exists, it is an [OKF](https://github.com/GoogleCloudPlatform/knowledge-
 
 The daily skills are knowledge-aware only when the bundle exists: `whats-next` skims `knowledge/index.md` on cold start; `stepping-away` appends `log.md` when concepts changed.
 
-## The two skills
+## The three skills
 
 | Skill | When | Reads | Writes |
 |---|---|---|---|
-| `whats-next` | Start of day / cold-start | Last sessions, TASKS, skeleton; `knowledge/index.md` if sprouted | Today's Intent block |
-| `stepping-away` | End of day | TASKS, today's session, git log, conversation | Session entry, updated TASKS, optional decision, `knowledge/log.md` if bundle changed |
+| `whats-next` | Start of day / cold-start | Last sessions, TASKS, skeleton, context-map (active rows); `knowledge/index.md` if sprouted | Today's Intent block |
+| `checkpoint` | Mid-session, at a consequential result (agents on long runs: unprompted) | Today's Intent, TASKS | Dated re-aim under the Intent, updated TASKS, superseded-decision entry; `context-map.md` only if a source changed |
+| `stepping-away` | End of day | TASKS, today's session (incl. re-aims), git log, conversation | Session entry, updated TASKS, optional decision, `knowledge/log.md` if bundle changed |
 
-These two skills ship globally with the `pm` plugin (they're no longer copied into each project), so they're available in every session without living in this repo. Joe's other cross-project skills live in `~/.claude/skills/`.
+These skills ship globally with the `pm` plugin (they're no longer copied into each project), so they're available in every session without living in this repo. Joe's other cross-project skills live in `~/.claude/skills/`.
 
 ## Code surfaces — underscore containers
 

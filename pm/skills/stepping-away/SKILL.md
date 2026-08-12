@@ -20,9 +20,9 @@ End-of-day ritual. Capture what happened, compare it to the Intent set this morn
 
 - **Shipped** — tight bullets. Files touched by path. Omit if nothing shipped.
 - **Tried / Learned / Decided** — narrative. Candid about dead-ends. "Tried X, abandoned because Y" beats silence.
-- **Intent vs. outcome** — the drift-catching section. Did we hit the Done-for-today bar? Did we stay inside "Not in scope"? If we crossed it: was that a deliberate pivot or unnoticed drift, and what was the cause? If no Intent was set: note that, suggest setting one tomorrow.
+- **Intent vs. outcome** — the drift-catching section. Did we hit the Done-for-today bar? Did we stay inside "Not in scope"? If we crossed it: was that a deliberate pivot or unnoticed drift, and what was the cause? If a `checkpoint` **re-aim** exists, compare against the *latest re-aim* and treat the pivot as deliberate — the re-aim line is its record; note "original → re-aimed" in one clause. If no Intent was set: note that, suggest setting one tomorrow.
 
-**3. Update `_pm/TASKS.md`.** Move shipped items OUT of Current (they live in the session entry now). Promote Next → Current as warranted (add Why + Done-when). Flag anything in Waiting on that's over a week old.
+**3. Update `_pm/TASKS.md`.** Move shipped items OUT of Current (they live in the session entry now). Promote Next → Current as warranted (add Why + Done-when). Flag anything in Waiting on that's over a week old. Same pass: if a source's authority, freshness, or exclusion changed today (a new client doc arrived, a spec got debunked), update `_pm/context-map.md` — most days it didn't.
 
 **4. Knowledge log — only if the bundle changed.** If `knowledge/` exists and concepts changed today, append a dated entry to the bundle's `log.md`. Skip if the bundle doesn't keep one — flat one-screen bundles usually don't. Format per the `okf` skill.
 
