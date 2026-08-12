@@ -5,9 +5,9 @@ Claude Code plugin that packages Joe's project-management starter. Provides:
 - **`/pm:pm-scaffold <name>`** — stands up a project from the starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal project (`self HomeLab` → plain `HomeLab/`), or `here` to add `_pm/` to an existing folder. Renames the placeholder and runs the skeleton interview either way.
 - **`whats-next`** skill — morning open: reads project memory, proposes a pick-up, drafts the day's Intent block.
 - **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS.
-- **`design-handoff`** skill — writes a lean brief for pasting into Claude Design (data-driven or concept-driven).
-- **`html-artifacts`** skill — produces rich editorial HTML artifacts (plans, brainstorms, status reports) instead of long markdown.
 - **`okf`** skill — reference card for the opt-in `knowledge/` bundle: OKF format conventions, sprout tripwires, boundaries.
+
+> `design-handoff` and `html-artifacts` moved to the **design-dc** plugin (this marketplace) in pm 0.5.0 — install `design-dc@dc-plugins` alongside pm to keep them.
 
 ## Install
 
@@ -39,8 +39,6 @@ pm/
 ├── skills/
 │   ├── whats-next/
 │   ├── stepping-away/
-│   ├── design-handoff/
-│   ├── html-artifacts/
 │   └── okf/
 └── template/                ← the starter /pm:pm-scaffold copies — mirrored from DC-Project-Builder
 ```

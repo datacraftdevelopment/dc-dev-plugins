@@ -8,7 +8,12 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "Project-management scaffold + session and delivery skills. /pm:scaffold starts a client engagement; whats-next, stepping-away, design-handoff, and html-artifacts support the work; okf holds the knowledge-bundle conventions."
+      "description": "Project-management scaffold + session skills. /pm:pm-scaffold starts a client engagement; whats-next, checkpoint, and stepping-away run the day; okf holds the knowledge-bundle conventions."
+    },
+    {
+      "name": "design-dc",
+      "source": "./design-dc",
+      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
     },
     {
       "name": "fm-dc",
