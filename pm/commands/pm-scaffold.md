@@ -69,8 +69,16 @@ Also set the `README.md` title to the project name.
 
 Write the answers into the new folder's `_pm/skeleton.md` (in-place: `./_pm/skeleton.md`) in that 5-step structure. If the user says it's a small job, collapse it to a single tight paragraph rather than five headings — the artifact scales with content.
 
-## 5. Sign off
+## 5. Seed the context map
 
-Confirm what you did in 3–4 lines: what was created (new folder or in-place `_pm/`), renames done, skeleton captured. Then point at the next step: *"Drop discovery artifacts in `_pm/artifacts/`, add tasks to `_pm/TASKS.md`, and run `whats-next` when you start a working session."*
+`_pm/context-map.md` ships with example rows — replace them:
+
+- Add a row per real source the interview surfaced (a transcript already in hand, a client spec on the way, a legacy system to inspect).
+- If the machine's global instructions (`~/.claude/CLAUDE.md`) name shared knowledge libraries (a domain wiki, a craft library), add **one standing row per library** — authority `supporting`, state `on demand`, load-when tied to its domain. **Available ≠ active:** the rows record the path back; don't load the libraries now.
+- No sources yet and no libraries named: leave the examples as guidance and move on.
+
+## 6. Sign off
+
+Confirm what you did in 3–4 lines: what was created (new folder or in-place `_pm/`), renames done, skeleton captured, context map seeded. Then point at the next step: *"Drop discovery artifacts in `_pm/artifacts/`, add tasks to `_pm/TASKS.md`, and run `whats-next` when you start a working session."*
 
 Don't start doing project work — scaffolding ends here.

@@ -1,6 +1,6 @@
 {
   "name": "pm",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a client engagement, personal project, or in-place _pm/ from the datacraft starter; whats-next, checkpoint, and stepping-away run the day (morning open · mid-session re-aim · close); the _pm/context-map.md layer maps available sources with authority + freshness; okf holds the knowledge-bundle conventions. Delivery skills (design-handoff, html-artifacts) moved to the design-dc plugin in 0.5.0.",
   "author": {
     "name": "Joe",

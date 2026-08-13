@@ -2,9 +2,10 @@
 
 Claude Code plugin that packages Joe's project-management starter. Provides:
 
-- **`/pm:pm-scaffold <name>`** — stands up a project from the starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal project (`self HomeLab` → plain `HomeLab/`), or `here` to add `_pm/` to an existing folder. Renames the placeholder and runs the skeleton interview either way.
+- **`/pm:pm-scaffold <name>`** — stands up a project from the starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal project (`self HomeLab` → plain `HomeLab/`), or `here` to add `_pm/` to an existing folder. Renames the placeholder, runs the skeleton interview, and seeds `_pm/context-map.md` (including a standing row per shared library the machine's global instructions name) either way.
 - **`whats-next`** skill — morning open: reads project memory, proposes a pick-up, drafts the day's Intent block.
-- **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS.
+- **`checkpoint`** skill — mid-session re-aim at a consequential result: dated re-aim under the Intent, TASKS updated, context map touched only if a source changed.
+- **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS, and routes durable knowledge to any shared libraries the machine's global instructions name.
 - **`okf`** skill — reference card for the opt-in `knowledge/` bundle: OKF format conventions, sprout tripwires, boundaries.
 
 > `design-handoff` and `html-artifacts` moved to the **design-dc** plugin (this marketplace) in pm 0.5.0 — install `design-dc@dc-plugins` alongside pm to keep them.
@@ -38,6 +39,7 @@ pm/
 │   └── pm-scaffold.md       ← /pm:pm-scaffold
 ├── skills/
 │   ├── whats-next/
+│   ├── checkpoint/
 │   ├── stepping-away/
 │   └── okf/
 └── template/                ← the starter /pm:pm-scaffold copies — mirrored from DC-Project-Builder

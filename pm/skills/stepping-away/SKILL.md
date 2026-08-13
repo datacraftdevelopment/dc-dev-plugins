@@ -26,9 +26,11 @@ End-of-day ritual. Capture what happened, compare it to the Intent set this morn
 
 **4. Knowledge log — only if the bundle changed.** If `knowledge/` exists and concepts changed today, append a dated entry to the bundle's `log.md`. Skip if the bundle doesn't keep one — flat one-screen bundles usually don't. Format per the `okf` skill.
 
-**5. Decision entry — only if warranted.** A durable choice retrievable by topic? Draft `_pm/decisions/YYYY-MM-DD-<topic>.md`. Most days, skip. Ask before writing.
+**5. Shared-library check — only if something durable surfaced.** If the machine's global instructions (`~/.claude/CLAUDE.md`) name shared knowledge libraries (a domain wiki, a craft library), ask: did today produce knowledge that belongs *beyond this project*? Route it as those instructions direct — domain facts through the domain library's ingest flow; reusable, client-agnostic craft to the craft library (or its flag mechanism, when this machine can't write to it directly). Project-only knowledge stays here (quirks, sessions, `knowledge/`). Most days nothing travels — skip. No libraries named on this machine: skip.
 
-**6. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
+**6. Decision entry — only if warranted.** A durable choice retrievable by topic? Draft `_pm/decisions/YYYY-MM-DD-<topic>.md`. Most days, skip. Ask before writing.
+
+**7. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
 
 ## What this skill does NOT do
 
