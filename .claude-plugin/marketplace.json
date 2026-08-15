@@ -13,7 +13,7 @@
     {
       "name": "design-dc",
       "source": "./design-dc",
-      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
+      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact → locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
     },
     {
       "name": "fm-dc",
