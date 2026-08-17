@@ -7,6 +7,8 @@ Claude Code plugin that packages Joe's project-management starter. Provides:
 - **`checkpoint`** skill — mid-session re-aim at a consequential result: dated re-aim under the Intent, TASKS updated, context map touched only if a source changed.
 - **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS, and routes durable knowledge to any shared libraries the machine's global instructions name.
 - **`okf`** skill — reference card for the opt-in `knowledge/` bundle: OKF format conventions, sprout tripwires, boundaries.
+- **`brainstorm-lite`** skill — one-session planning for small, low-fog work: short interview, 2-3 approaches, an approved design written to `_pm/decisions/` before any code. Foggy multi-session work routes to a wayfinder map instead; composes with Matt Pocock's `/grilling`, `/tdd`, `/implement`. Replaces superpowers brainstorming in a Matt-primary stack (added in 0.6.0).
+- **`verify-before-done`** skill — evidence before claims: run the verification fresh, read the output, report claim + evidence together. Gates "done"/"fixed"/"passing", task completion, and checkpoint / stepping-away entries (added in 0.6.0).
 
 > `design-handoff` and `html-artifacts` moved to the **design-dc** plugin (this marketplace) in pm 0.5.0 — install `design-dc@dc-plugins` alongside pm to keep them.
 
@@ -41,7 +43,9 @@ pm/
 │   ├── whats-next/
 │   ├── checkpoint/
 │   ├── stepping-away/
-│   └── okf/
+│   ├── okf/
+│   ├── brainstorm-lite/
+│   └── verify-before-done/
 └── template/                ← the starter /pm:pm-scaffold copies — mirrored from DC-Project-Builder
 ```
 
