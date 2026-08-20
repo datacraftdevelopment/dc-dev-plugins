@@ -30,7 +30,9 @@ End-of-day ritual. Capture what happened, compare it to the Intent set this morn
 
 **6. Decision entry — only if warranted.** A durable choice retrievable by topic? Draft `_pm/decisions/YYYY-MM-DD-<topic>.md`. Most days, skip. Ask before writing.
 
-**7. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
+**7. Refresh the dashboard.** If `_pm/dashboard.html` exists (or the `dashboard` skill is available), regenerate it per that skill — the close is exactly when tomorrow-you wants an accurate page. Silent; skip if the project has no dashboard.
+
+**8. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued, anything to surface tomorrow.
 
 ## What this skill does NOT do
 

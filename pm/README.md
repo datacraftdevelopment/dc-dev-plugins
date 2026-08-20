@@ -6,6 +6,7 @@ Claude Code plugin that packages Joe's project-management starter. Provides:
 - **`whats-next`** skill — morning open: reads project memory, proposes a pick-up, drafts the day's Intent block.
 - **`checkpoint`** skill — mid-session re-aim at a consequential result: dated re-aim under the Intent, TASKS updated, context map touched only if a source changed.
 - **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS, and routes durable knowledge to any shared libraries the machine's global instructions name.
+- **`dashboard`** skill — renders `_pm/dashboard.html`, a self-contained visual status page (today's Intent, wayfinder map with frontier/blocked/fog, tasks, milestones, recent sessions and decisions). Strictly a render of the sources, never a source itself; the template ships in the skill and only its JSON data island gets rewritten. whats-next / checkpoint / stepping-away refresh it automatically, and a staleness badge announces when no ritual has run (added in 0.7.0).
 - **`okf`** skill — reference card for the opt-in `knowledge/` bundle: OKF format conventions, sprout tripwires, boundaries.
 - **`brainstorm-lite`** skill — one-session planning for small, low-fog work: short interview, 2-3 approaches, an approved design written to `_pm/decisions/` before any code. Foggy multi-session work routes to a wayfinder map instead; composes with Matt Pocock's `/grilling`, `/tdd`, `/implement`. Replaces superpowers brainstorming in a Matt-primary stack (added in 0.6.0).
 - **`verify-before-done`** skill — evidence before claims: run the verification fresh, read the output, report claim + evidence together. Gates "done"/"fixed"/"passing", task completion, and checkpoint / stepping-away entries (added in 0.6.0).
@@ -43,6 +44,7 @@ pm/
 │   ├── whats-next/
 │   ├── checkpoint/
 │   ├── stepping-away/
+│   ├── dashboard/           ← SKILL.md + dashboard-template.html (stamped into _pm/ at runtime)
 │   ├── okf/
 │   ├── brainstorm-lite/
 │   └── verify-before-done/

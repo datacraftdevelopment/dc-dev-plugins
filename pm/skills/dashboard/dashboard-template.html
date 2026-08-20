@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-template-version="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project dashboard</title>
+<style>
+  :root {
+    --bg: #F4ECE0; --ink: #2D241B; --muted: #8B7B68;
+    --accent: #C04D2E; --rule: #D9CFC0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, system-ui, sans-serif;
+    max-width: 72ch; margin: 3.5rem auto 4rem; padding: 0 2rem;
+  }
+  a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+  h1 {
+    font-family: Charter, Georgia, serif;
+    font-size: 2.4rem; line-height: 1.15; margin: 0 0 0.4rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.6rem;
+  }
+  .oneliner { font-size: 1.05rem; color: var(--ink); margin: 0 0 0.9rem; }
+  .stamp { font-size: 0.85rem; color: var(--muted); margin-bottom: 2.5rem; }
+  .stamp .stale {
+    color: var(--accent); font-weight: 600;
+  }
+  section.card { border-top: 1px solid var(--rule); padding: 1.8rem 0; }
+  section.card > h2 {
+    font-family: Charter, Georgia, serif;
+    font-size: 1.35rem; margin: 0 0 0.9rem; line-height: 1.25;
+  }
+  section.card > h2 a { text-decoration: none; }
+  section.card > h2 a:hover { text-decoration: underline; text-decoration-color: var(--accent); }
+  .label {
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-size: 0.68rem; color: var(--muted); padding-top: 0.25rem;
+  }
+  .row {
+    display: grid; grid-template-columns: 7.5rem 1fr;
+    gap: 1rem; font-size: 0.92rem; margin-top: 0.45rem;
+  }
+  .grouphead {
+    text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem;
+    color: var(--muted); margin: 1.4rem 0 0.5rem;
+  }
+  .grouphead:first-child { margin-top: 0; }
+  .lede {
+    font-family: Charter, Georgia, serif; font-style: italic;
+    font-size: 1.08rem; line-height: 1.5; margin: 0 0 1rem;
+  }
+  .tk { padding: 0.45rem 0 0.45rem 0.9rem; font-size: 0.95rem; }
+  .tk.frontier { border-left: 2px solid var(--accent); }
+  .tk.insession { border-left: 2px solid var(--rule); }
+  .tk.blocked { border-left: 2px solid transparent; color: var(--muted); }
+  .tk .tag {
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem;
+    color: var(--accent); margin-left: 0.55rem; white-space: nowrap;
+  }
+  .tk.blocked .tag { color: var(--muted); }
+  .tk .sub { display: block; font-size: 0.83rem; color: var(--muted); font-style: italic; }
+  .fog { font-style: italic; color: var(--muted); font-size: 0.93rem; padding: 0.25rem 0 0.25rem 0.9rem; }
+  .bar { height: 4px; background: var(--rule); border-radius: 2px; margin: 0.5rem 0 0.35rem; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--accent); border-radius: 2px; }
+  .barlabel { font-size: 0.83rem; color: var(--muted); margin-bottom: 0.4rem; }
+  .item { padding: 0.85rem 0; border-top: 1px solid var(--rule); }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item .t { font-weight: 600; }
+  .item .d { color: var(--muted); font-size: 0.85rem; margin-right: 0.6rem; font-variant-numeric: tabular-nums; }
+  .item p.g { margin: 0.25rem 0 0; font-size: 0.92rem; }
+  ul.plain { list-style: none; margin: 0; padding: 0; }
+  ul.plain li { padding: 0.3rem 0; font-size: 0.95rem; }
+  ul.plain li .note { color: var(--muted); font-size: 0.87rem; }
+  details { margin-top: 0.9rem; }
+  details summary {
+    cursor: pointer; font-size: 0.8rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  details[open] summary { margin-bottom: 0.5rem; }
+  .state {
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem;
+    color: var(--muted); margin-left: 0.55rem;
+  }
+  .state.active { color: var(--accent); }
+  .empty { color: var(--muted); font-style: italic; font-size: 0.93rem; }
+  footer {
+    border-top: 1px solid var(--rule); margin-top: 1rem; padding-top: 1.2rem;
+    font-size: 0.8rem; color: var(--muted); line-height: 1.7;
+  }
+  .err {
+    border: 1px solid var(--accent); border-radius: 4px; padding: 1rem 1.2rem;
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<!-- ============================================================
+  DATA ISLAND — the ONLY part of this file a generator rewrites.
+  Everything above and below is the template; replace the JSON
+  between these script tags wholesale on every refresh.
+  Schema: see the pm `dashboard` skill (SKILL.md).
+============================================================ -->
+<script type="application/json" id="pm-data">
+{"schema": 1}
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- helpers ------------------------------------------------
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null && text !== "") n.textContent = text;
+    return n;
+  }
+  function link(text, href) {
+    if (!href) return document.createTextNode(text || "");
+    var a = el("a", null, text || href);
+    a.href = href;
+    return a;
+  }
+  function card(title, titleHref) {
+    var s = el("section", "card");
+    var h = el("h2");
+    h.appendChild(titleHref ? link(title, titleHref) : document.createTextNode(title));
+    s.appendChild(h);
+    return s;
+  }
+  function rowInto(parent, label, node) {
+    var r = el("div", "row");
+    r.appendChild(el("div", "label", label));
+    var v = el("div");
+    if (typeof node === "string") v.textContent = node; else v.appendChild(node);
+    r.appendChild(v);
+    parent.appendChild(r);
+  }
+  function relTime(iso) {
+    var t = Date.parse(iso);
+    if (isNaN(t)) return null;
+    var h = (Date.now() - t) / 36e5;
+    if (h < 1) return { text: "generated just now", stale: false };
+    if (h < 24) return { text: "generated " + Math.round(h) + "h ago", stale: false };
+    var d = Math.round(h / 24);
+    if (d <= 2) return { text: "generated " + (d === 1 ? "yesterday" : d + " days ago"), stale: false };
+    return { text: "⚠ stale — " + d + " days old · rerun the dashboard skill", stale: true };
+  }
+  function nonEmpty(a) { return Array.isArray(a) && a.length > 0; }
+
+  // ---- data ---------------------------------------------------
+  var app = document.getElementById("app");
+  var data;
+  try {
+    data = JSON.parse(document.getElementById("pm-data").textContent);
+  } catch (e) {
+    var err = el("div", "err",
+      "The data island in this file is not valid JSON — regenerate the dashboard (pm dashboard skill). " + e.message);
+    app.appendChild(err);
+    return;
+  }
+  data = data || {};
+  var proj = data.project || {};
+
+  // ---- header -------------------------------------------------
+  app.appendChild(el("div", "eyebrow", "Project dashboard"));
+  var name = proj.name || "Untitled project";
+  document.title = name + " — dashboard";
+  app.appendChild(el("h1", null, name));
+  if (proj.oneLiner) app.appendChild(el("p", "oneliner", proj.oneLiner));
+
+  var stamp = el("p", "stamp");
+  if (data.generatedAt) {
+    var abs = data.generatedAt.replace("T", " ").slice(0, 16);
+    var r = relTime(data.generatedAt);
+    stamp.appendChild(document.createTextNode(abs + " · "));
+    stamp.appendChild(el("span", r && r.stale ? "stale" : null, r ? r.text : ""));
+  } else {
+    stamp.appendChild(el("span", "empty",
+      "No data yet — run the pm dashboard skill to populate this page."));
+  }
+  app.appendChild(stamp);
+
+  // ---- intent -------------------------------------------------
+  if (data.intent && (data.intent.text || data.intent.reAim)) {
+    var s = card("Today’s intent" + (data.intent.date ? " — " + data.intent.date : ""));
+    if (data.intent.text) s.appendChild(el("p", "lede", data.intent.text));
+    if (data.intent.reAim) rowInto(s, "Re-aimed", data.intent.reAim + " (the re-aim is the live aim)");
+    app.appendChild(s);
+  }
+
+  // ---- wayfinder maps ----------------------------------------
+  var wf = data.wayfinder || {};
+  (wf.maps || []).forEach(function (m) {
+    var s = card("Map — " + (m.title || "wayfinder"), m.url);
+    if (m.destination) s.appendChild(el("p", "lede", "“" + m.destination + "”"));
+
+    var closed = m.closedCount || 0;
+    var open = m.openCount || 0;
+    var total = closed + open;
+    if (total > 0) {
+      var bar = el("div", "bar");
+      var fill = el("div");
+      fill.style.width = Math.round((closed / total) * 100) + "%";
+      bar.appendChild(fill);
+      s.appendChild(bar);
+      s.appendChild(el("div", "barlabel", closed + " of " + total + " tickets decided · " + open + " open"));
+    }
+
+    function ticketList(items, cls, group) {
+      if (!nonEmpty(items)) return;
+      s.appendChild(el("div", "grouphead", group));
+      items.forEach(function (t) {
+        var d = el("div", "tk " + cls);
+        d.appendChild(link(t.title, t.url));
+        if (t.type) d.appendChild(el("span", "tag", t.type));
+        if (t.claimedBy) d.appendChild(el("span", "sub", "in session — " + t.claimedBy));
+        if (nonEmpty(t.blockedBy)) d.appendChild(el("span", "sub", "blocked by: " + t.blockedBy.join(" · ")));
+        s.appendChild(d);
+      });
+    }
+    ticketList(m.inProgress, "insession", "In session");
+    ticketList(m.frontier, "frontier", "Frontier — takeable now");
+    ticketList(m.blocked, "blocked", "Blocked");
+
+    if (nonEmpty(m.fog)) {
+      s.appendChild(el("div", "grouphead", "Not yet specified — fog"));
+      m.fog.forEach(function (f) { s.appendChild(el("div", "fog", f)); });
+    }
+
+    if (nonEmpty(m.decisions)) {
+      var det = el("details");
+      det.appendChild(el("summary", null, "Decisions so far (" + m.decisions.length + ")"));
+      m.decisions.forEach(function (dcs) {
+        var d = el("div", "tk");
+        d.appendChild(link(dcs.title, dcs.url));
+        if (dcs.gist) d.appendChild(el("span", "sub", dcs.gist));
+        det.appendChild(d);
+      });
+      s.appendChild(det);
+    }
+    if (nonEmpty(m.outOfScope)) {
+      var det2 = el("details");
+      det2.appendChild(el("summary", null, "Out of scope (" + m.outOfScope.length + ")"));
+      m.outOfScope.forEach(function (o) { det2.appendChild(el("div", "fog", o)); });
+      s.appendChild(det2);
+    }
+    app.appendChild(s);
+  });
+  if (wf.available === false && wf.note) {
+    var ws = card("Wayfinder");
+    ws.appendChild(el("p", "empty", wf.note));
+    app.appendChild(ws);
+  }
+
+  // ---- tasks --------------------------------------------------
+  var tasks = data.tasks || {};
+  if (nonEmpty(tasks.current) || nonEmpty(tasks.next) || nonEmpty(tasks.waiting) || nonEmpty(tasks.backlog)) {
+    var ts = card("Tasks");
+
+    if (nonEmpty(tasks.current)) {
+      ts.appendChild(el("div", "grouphead", "Current"));
+      tasks.current.forEach(function (t) {
+        var d = el("div", "item");
+        d.appendChild(el("span", "t", t.title));
+        if (t.why) rowInto(d, "Why", t.why);
+        if (t.doneWhen) rowInto(d, "Done when", t.doneWhen);
+        if (t.note) rowInto(d, "Note", t.note);
+        ts.appendChild(d);
+      });
+    }
+    function plainList(items, group, fmt) {
+      if (!nonEmpty(items)) return null;
+      ts.appendChild(el("div", "grouphead", group));
+      var ul = el("ul", "plain");
+      items.forEach(function (t) {
+        var li = el("li");
+        li.appendChild(document.createTextNode(t.title || ""));
+        var extra = fmt ? fmt(t) : (t.note || null);
+        if (extra) {
+          li.appendChild(document.createTextNode(" "));
+          li.appendChild(el("span", "note", "— " + extra));
+        }
+        ul.appendChild(li);
+      });
+      ts.appendChild(ul);
+      return ul;
+    }
+    plainList(tasks.next, "Next");
+    plainList(tasks.waiting, "Waiting on", function (t) {
+      return [t.since ? "since " + t.since : null, t.note || null].filter(Boolean).join(" · ") || null;
+    });
+    if (nonEmpty(tasks.backlog)) {
+      var det3 = el("details");
+      det3.appendChild(el("summary", null, "Backlog (" + tasks.backlog.length + ")"));
+      var ul = el("ul", "plain");
+      tasks.backlog.forEach(function (t) { ul.appendChild(el("li", null, t.title)); });
+      det3.appendChild(ul);
+      ts.appendChild(det3);
+    }
+    app.appendChild(ts);
+  }
+
+  // ---- milestones --------------------------------------------
+  if (nonEmpty(data.milestones)) {
+    var ms = card("Milestones");
+    data.milestones.forEach(function (m) {
+      var d = el("div", "item");
+      d.appendChild(el("span", "t", m.name));
+      if (m.state) d.appendChild(el("span", "state " + (m.state === "active" ? "active" : ""), m.state));
+      if (m.note) d.appendChild(el("p", "g", m.note));
+      ms.appendChild(d);
+    });
+    app.appendChild(ms);
+  }
+
+  // ---- sessions ----------------------------------------------
+  if (nonEmpty(data.sessions)) {
+    var ss = card("Recent sessions");
+    data.sessions.forEach(function (x) {
+      var d = el("div", "item");
+      d.appendChild(el("span", "d", x.date));
+      d.appendChild(document.createTextNode(x.gist || ""));
+      ss.appendChild(d);
+    });
+    app.appendChild(ss);
+  }
+
+  // ---- decisions ---------------------------------------------
+  if (nonEmpty(data.decisions)) {
+    var ds = card("Recent decisions");
+    data.decisions.forEach(function (x) {
+      var d = el("div", "item");
+      d.appendChild(el("span", "d", x.date));
+      d.appendChild(link(x.title, x.path));
+      if (x.gist) d.appendChild(el("p", "g", x.gist));
+      ds.appendChild(d);
+    });
+    app.appendChild(ds);
+  }
+
+  // ---- footer -------------------------------------------------
+  var f = el("footer");
+  f.appendChild(document.createTextNode(
+    "Derived file — regenerated by the pm dashboard skill; whats-next, checkpoint, and stepping-away refresh it automatically. " +
+    "Canonical state lives in _pm/*.md and the tracker; edits here are lost on the next refresh."));
+  f.appendChild(document.createElement("br"));
+  var srcs = nonEmpty(data.sources) ? "Sources: " + data.sources.join(" · ") + ". " : "";
+  f.appendChild(document.createTextNode(srcs + "Template v1."));
+  app.appendChild(f);
+})();
+</script>
+</body>
+</html>

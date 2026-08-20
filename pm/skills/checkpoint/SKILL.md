@@ -27,6 +27,8 @@ The latest re-aim is the live aim; the morning Intent stays as the record of whe
 
 **6. Show before writing.** Short before/after of the re-aim and any TASKS lines. Then write.
 
+**7. Refresh the dashboard.** The re-aim just changed the live state — if `_pm/dashboard.html` exists (or the `dashboard` skill is available), regenerate it so the page shows the re-aim. Silent; skip if the project has no dashboard.
+
 ## What this skill does NOT do
 
 - Doesn't open the day (`whats-next`) or close it (`stepping-away`).

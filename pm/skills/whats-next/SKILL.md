@@ -37,6 +37,8 @@ Watch-outs: <Waiting on items rotting; open threads worth surfacing>.
 
 **5. Write.** Once approved, write the Intent block into today's `_pm/sessions/YYYY-MM-DD.md` (create from `_pm/sessions/_template.md` if needed). Shipped / Tried-Learned-Decided sections stay empty until end-of-day.
 
+**6. Refresh the dashboard.** If `_pm/dashboard.html` exists (or the `dashboard` skill is available), regenerate it per that skill so the page opens on today's Intent. Silent step — the dashboard is derived; no approval needed.
+
 ## When the project has no history
 
 Brand-new project: propose drafting the skeleton (if still placeholder) or distilling the most recent transcript in `_pm/artifacts/transcripts/` into user stories. Still draft an Intent block — the push that day IS "draft the skeleton" or "distill the discovery call."
