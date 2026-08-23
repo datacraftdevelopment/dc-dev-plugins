@@ -34,7 +34,7 @@ A stage is defined by **which artifact exists** — never by a status someone up
 | Shared? | Yes — collaborators and clients read it | Per-person (`_pm/sessions/YYYY-MM-DD-<name>.md`), append-only |
 | Written by | `discovery`, `/domain-modeling`, `/grilling`, `setup-matt-pocock-skills` | `whats-next`, `checkpoint`, `stepping-away` |
 
-Decisions go to `docs/adr/` (Matt's home), not `_pm/`. Work items live on the tracker (GitHub Issues in a team; local markdown for solo/plugin repos), not in a task file. `_pm/` records *what I did and what I'm doing* — never *what is true*.
+Decisions go to `docs/adr/` (Matt's home), not `_pm/`. Projects from pm ≤ 0.7 carrying `TASKS.md` / `_pm/decisions/` / `context-map.md`: see `MIGRATION-0.8.md`. Work items live on the tracker (GitHub Issues in a team; local markdown for solo/plugin repos), not in a task file. `_pm/` records *what I did and what I'm doing* — never *what is true*.
 
 ## Team model
 

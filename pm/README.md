@@ -5,13 +5,15 @@ Claude Code plugin that packages Joe's project-management starter. **Read [`WORK
 Provides:
 
 - **`/pm:pm-scaffold <name>`** — stands up a project from the starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal project (`self HomeLab` → plain `HomeLab/`), or `here` to add `_pm/` to an existing folder. Renames the placeholder, runs the skeleton interview, and seeds `_pm/context-map.md` (including a standing row per shared library the machine's global instructions name) either way.
-- **`whats-next`** skill — morning open: reads project memory, proposes a pick-up, drafts the day's Intent block.
-- **`checkpoint`** skill — mid-session re-aim at a consequential result: dated re-aim under the Intent, TASKS updated, context map touched only if a source changed.
-- **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, updates TASKS, and routes durable knowledge to any shared libraries the machine's global instructions name.
-- **`dashboard`** skill — renders `_pm/dashboard.html`, a self-contained visual status page (today's Intent, wayfinder map with frontier/blocked/fog, tasks, milestones, recent sessions and decisions). Strictly a render of the sources, never a source itself; the template ships in the skill and only its JSON data island gets rewritten. whats-next / checkpoint / stepping-away refresh it automatically, and a staleness badge announces when no ritual has run (added in 0.7.0).
+- **`whats-next`** skill — morning open: reads intents, the tracker frontier, and recent sessions; proposes a pick-up; drafts the day's Intent block into a per-person session file; claims the ticket.
+- **`checkpoint`** skill — mid-session re-aim at a consequential result: dated re-aim under the Intent, the change pushed into the affected tickets, superseded decisions archived to `docs/adr/`.
+- **`stepping-away`** skill — end-of-day close: compares Intent to what shipped, writes the session entry, settles the tracker (close / comment / unclaim), routes durable knowledge to shared libraries, offers to push the log.
+- **`dashboard`** skill — renders `_pm/dashboard.html`, a **local-only stage board**: one stream per `docs/intent/` entry with its stage (Discover → Chart → Spec → Ticket → Build → Verify → Ship → Learn) derived entirely from artifacts — intent status, wayfinder map, spec and tickets on the tracker, merges — plus today's Intent and recent sessions. No human-maintained fields; gitignored; on probation (unused → deleted). whats-next / checkpoint / stepping-away refresh it (stage board in 0.8.0; first version 0.7.0).
 - **`okf`** skill — reference card for the opt-in `knowledge/` bundle: OKF format conventions, sprout tripwires, boundaries.
 - **`discovery`** skill — the stage before planning: a loose conversational riff to find the shape and intent of a piece of work, written to `docs/intent/<slug>.md` with a size call (one session → build it; multi-session → `/wayfinder` with the intent attached). Exists because wayfinder's opening grill goes far better fed a shaped intent. Replaces `brainstorm-lite` (0.8.0).
 - **`verify-before-done`** skill — evidence before claims: run the verification fresh, read the output, report claim + evidence together. Gates "done"/"fixed"/"passing", task completion, and checkpoint / stepping-away entries (added in 0.6.0).
+
+> Upgrading a project from pm ≤ 0.7? See [`MIGRATION-0.8.md`](./MIGRATION-0.8.md) — `TASKS.md`, `_pm/decisions/`, and `context-map.md` are no longer sources of truth.
 
 > `design-handoff` and `html-artifacts` moved to the **design-dc** plugin (this marketplace) in pm 0.5.0 — install `design-dc@dc-plugins` alongside pm to keep them.
 

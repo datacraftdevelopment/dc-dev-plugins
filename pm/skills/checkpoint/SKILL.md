@@ -13,21 +13,19 @@ Agents on long-running or multi-session work: run this **unprompted** whenever a
 
 **1. Name what changed.** One sentence: which assumption, direction, or result made the current state stale. **If nothing consequential changed, say so and stop** — this ritual run on noise is how state files rot.
 
-**2. Re-aim the Intent — don't overwrite it.** In today's `_pm/sessions/YYYY-MM-DD.md`, leave the original Intent block as written (stepping-away's drift check needs it) and add a dated re-aim line beneath it, replacing any earlier re-aim from today:
+**2. Re-aim the Intent — don't overwrite it.** In today's `_pm/sessions/YYYY-MM-DD-<name>.md`, leave the original Intent block as written (stepping-away's drift check needs it) and add a dated re-aim line beneath it, replacing any earlier re-aim from today:
 
 > **Re-aimed 14:30:** evidence X replaces the buyer assumption — done-for-today is now Y; Z drops out of scope.
 
 The latest re-aim is the live aim; the morning Intent stays as the record of where the day started.
 
-**3. Push the change into unfinished work.** `_pm/TASKS.md`: update any Current item whose Why / Done-when the change invalidates; demote or rewrite Next items now aimed at the wrong thing. Name what you touched.
+**3. Push the change into unfinished work — on the tracker.** The change may invalidate an open ticket's premise, graduate a patch of fog into a ticket, or re-scope the map. Comment on the affected tickets (or update the local `.scratch/` map) so the next session inherits the correction; if the intent itself changed, edit `docs/intent/<slug>.md` and say so. Name what you touched. (Legacy `_pm/TASKS.md`: don't maintain it — move anything live to the tracker.)
 
-**4. Archive, don't delete.** A replaced decision that still explains the project gets a `_pm/decisions/` entry (status: superseded, linked both ways) or a line in today's Tried / Learned / Decided. Preserve hard constraints exactly; don't let a preference quietly harden into a rule — or a rule soften into a preference.
+**4. Archive, don't delete.** A replaced decision that still explains the project gets a `docs/adr/` entry (status: superseded, linked both ways — `/domain-modeling` owns the format) or a line in today's Tried / Learned / Decided. Preserve hard constraints exactly; don't let a preference quietly harden into a rule — or a rule soften into a preference.
 
-**5. Map only if sources changed.** Touch `_pm/context-map.md` only when a source's authority, freshness, exclusion, or load-trigger actually changed. Most checkpoints don't.
+**5. Show before writing.** Short before/after of the re-aim and any ticket comments. Then write.
 
-**6. Show before writing.** Short before/after of the re-aim and any TASKS lines. Then write.
-
-**7. Refresh the dashboard.** The re-aim just changed the live state — if `_pm/dashboard.html` exists (or the `dashboard` skill is available), regenerate it so the page shows the re-aim. Silent; skip if the project has no dashboard.
+**6. Refresh the board.** The re-aim just changed the live state — if the `dashboard` skill is available, regenerate `_pm/dashboard.html`. Silent.
 
 ## What this skill does NOT do
 

@@ -11,22 +11,23 @@ Morning open. The user is starting a session — could be future-them four days 
 
 ## Checklist
 
-**1. Read.**
-- `_pm/skeleton.md` — the macro why of the project
-- Last 1–3 session files in `_pm/sessions/` (most recent first) — especially Open threads
-- `_pm/TASKS.md` — Current (with Why / Done-when), Next, Waiting on
-- Most recent `_pm/decisions/` (if any)
-- `_pm/context-map.md` — skim the **active** rows so you know what's authoritative before proposing; don't load on-demand sources yet.
-- `knowledge/index.md` — only if a knowledge bundle exists. Skim for orientation; don't crawl the bundle.
+**1. Read.** Shared record first, personal log second (`WORKFLOW.md`: `docs/` is truth, `_pm/` is log).
+- `docs/intent/*.md` — every open intent (status draft/accepted): these are the streams of work. Note each one's size call.
+- **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/`. Unreachable → say so, go on with local artifacts.
+- `docs/adr/` newest entries, `CONTEXT.md` if present — what's been decided.
+- `_pm/skeleton.md` — the macro why of the project.
+- Last 1–3 session files in `_pm/sessions/` (any author, most recent first) — especially Open threads and yesterday's Intent-vs-outcome.
+- `knowledge/index.md` — only if a knowledge bundle exists. Skim; don't crawl.
+- **Legacy (pre-0.8 projects only):** if `_pm/TASKS.md` exists, read it as a hint, not a source of truth — anything on it that matters belongs on the tracker. Don't grow it. See `MIGRATION-0.8.md`.
 
 **2. Propose.** Output:
 
 ```
-Where we are: <one sentence>.
-Active: <Current items if any, with their Why>.
-Recommended pick-up: <one specific thing> — because <reason tied to context>.
+Where we are: <one sentence — which streams exist and what stage each is at>.
+Frontier: <takeable tickets, or "nothing charted yet">.
+Recommended pick-up: <one specific ticket / next stage step> — because <reason tied to context>.
 Also worth: <maybe one more>.
-Watch-outs: <Waiting on items rotting; open threads worth surfacing>.
+Watch-outs: <claimed tickets gone quiet; open threads worth surfacing; an intent still in draft>.
 ```
 
 **3. Draft the Intent block** for the most likely pick-up. Two or three sentences of plain prose — what we're pushing on, why it matters, what done-for-today looks like, anything explicitly not in scope. Example:
@@ -35,13 +36,13 @@ Watch-outs: <Waiting on items rotting; open threads worth surfacing>.
 
 **4. Wait.** Don't start the work. The user picks AND confirms (or amends) the Intent. It's their commitment for the day.
 
-**5. Write.** Once approved, write the Intent block into today's `_pm/sessions/YYYY-MM-DD.md` (create from `_pm/sessions/_template.md` if needed). Shipped / Tried-Learned-Decided sections stay empty until end-of-day.
+**5. Write.** Once approved, write the Intent block into today's session file: `_pm/sessions/YYYY-MM-DD-<name>.md` — per person, so two people on the same day never collide (`<name>` = the user's short handle; ask once if unknown, then remember it in the project `CLAUDE.md`). Create from `_pm/sessions/_template.md` if needed. Shipped / Tried-Learned-Decided sections stay empty until end-of-day. If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim.
 
-**6. Refresh the dashboard.** If `_pm/dashboard.html` exists (or the `dashboard` skill is available), regenerate it per that skill so the page opens on today's Intent. Silent step — the dashboard is derived; no approval needed.
+**6. Refresh the board.** If the `dashboard` skill is available, regenerate `_pm/dashboard.html` per that skill so the stage board opens on today's Intent. Silent — derived; no approval needed.
 
 ## When the project has no history
 
-Brand-new project: propose drafting the skeleton (if still placeholder) or distilling the most recent transcript in `_pm/artifacts/transcripts/` into user stories. Still draft an Intent block — the push that day IS "draft the skeleton" or "distill the discovery call."
+Brand-new project: propose drafting the skeleton (if still placeholder), or running `discovery` on the first piece of work so there's an intent to stand on. Still draft an Intent block — the push that day IS "draft the skeleton" or "discover the first stream."
 
 ## Why this skill matters
 

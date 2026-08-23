@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-template-version="1">
+<html lang="en" data-template-version="2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -96,6 +96,17 @@
     border: 1px solid var(--accent); border-radius: 4px; padding: 1rem 1.2rem;
     font-size: 0.95rem;
   }
+  .strip { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.6rem 0 0.9rem; }
+  .strip .st {
+    font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.22rem 0.55rem; border: 1px solid var(--rule); border-radius: 3px; color: var(--muted);
+  }
+  .strip .st.done { background: var(--rule); color: var(--ink); }
+  .strip .st.now { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .strip .st.skip { opacity: 0.45; text-decoration: line-through; }
+  .meta { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.6rem; }
+  .next { font-size: 0.95rem; margin: 0.6rem 0 0; }
+  .next b { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -170,7 +181,7 @@
   var proj = data.project || {};
 
   // ---- header -------------------------------------------------
-  app.appendChild(el("div", "eyebrow", "Project dashboard"));
+  app.appendChild(el("div", "eyebrow", "Stage board"));
   var name = proj.name || "Untitled project";
   document.title = name + " — dashboard";
   app.appendChild(el("h1", null, name));
@@ -196,24 +207,24 @@
     app.appendChild(s);
   }
 
-  // ---- wayfinder maps ----------------------------------------
-  var wf = data.wayfinder || {};
-  (wf.maps || []).forEach(function (m) {
-    var s = card("Map — " + (m.title || "wayfinder"), m.url);
-    if (m.destination) s.appendChild(el("p", "lede", "“" + m.destination + "”"));
+  // ---- streams: one per intent, stage derived from artifacts ----
+  var STAGES = ["discover","chart","spec","ticket","build","verify","ship","learn"];
+  var SMALL_SKIPS = { chart: 1, spec: 1, ticket: 1 };
 
-    var closed = m.closedCount || 0;
-    var open = m.openCount || 0;
-    var total = closed + open;
+  function renderMap(s, m) {
+    if (!m) return;
+    var head = el("div", "grouphead");
+    head.appendChild(document.createTextNode("Map — "));
+    head.appendChild(link(m.title || "wayfinder", m.url));
+    s.appendChild(head);
+    if (m.destination) s.appendChild(el("p", "lede", "\u201c" + m.destination + "\u201d"));
+    var closed = m.closedCount || 0, open = m.openCount || 0, total = closed + open;
     if (total > 0) {
-      var bar = el("div", "bar");
-      var fill = el("div");
+      var bar = el("div", "bar"); var fill = el("div");
       fill.style.width = Math.round((closed / total) * 100) + "%";
-      bar.appendChild(fill);
-      s.appendChild(bar);
-      s.appendChild(el("div", "barlabel", closed + " of " + total + " tickets decided · " + open + " open"));
+      bar.appendChild(fill); s.appendChild(bar);
+      s.appendChild(el("div", "barlabel", closed + " of " + total + " decided · " + open + " open"));
     }
-
     function ticketList(items, cls, group) {
       if (!nonEmpty(items)) return;
       s.appendChild(el("div", "grouphead", group));
@@ -229,18 +240,15 @@
     ticketList(m.inProgress, "insession", "In session");
     ticketList(m.frontier, "frontier", "Frontier — takeable now");
     ticketList(m.blocked, "blocked", "Blocked");
-
     if (nonEmpty(m.fog)) {
       s.appendChild(el("div", "grouphead", "Not yet specified — fog"));
       m.fog.forEach(function (f) { s.appendChild(el("div", "fog", f)); });
     }
-
     if (nonEmpty(m.decisions)) {
       var det = el("details");
       det.appendChild(el("summary", null, "Decisions so far (" + m.decisions.length + ")"));
       m.decisions.forEach(function (dcs) {
-        var d = el("div", "tk");
-        d.appendChild(link(dcs.title, dcs.url));
+        var d = el("div", "tk"); d.appendChild(link(dcs.title, dcs.url));
         if (dcs.gist) d.appendChild(el("span", "sub", dcs.gist));
         det.appendChild(d);
       });
@@ -252,73 +260,69 @@
       m.outOfScope.forEach(function (o) { det2.appendChild(el("div", "fog", o)); });
       s.appendChild(det2);
     }
+  }
+
+  function renderTickets(s, tk) {
+    if (!tk) return;
+    var closed = tk.closedCount || 0, open = tk.openCount || 0, total = closed + open;
+    if (total > 0) {
+      s.appendChild(el("div", "grouphead", "Implementation tickets"));
+      var bar = el("div", "bar"); var fill = el("div");
+      fill.style.width = Math.round((closed / total) * 100) + "%";
+      bar.appendChild(fill); s.appendChild(bar);
+      s.appendChild(el("div", "barlabel", closed + " of " + total + " closed"));
+    }
+    (tk.open || []).forEach(function (t) {
+      var d = el("div", "tk " + (t.claimedBy ? "insession" : "frontier"));
+      d.appendChild(link(t.title, t.url));
+      if (t.claimedBy) d.appendChild(el("span", "sub", "in session — " + t.claimedBy));
+      if (nonEmpty(t.blockedBy)) d.appendChild(el("span", "sub", "blocked by: " + t.blockedBy.join(" · ")));
+      s.appendChild(d);
+    });
+  }
+
+  (data.streams || []).forEach(function (st) {
+    var s = card(st.title || st.slug || "Untitled intent", st.intentPath);
+    var meta = [];
+    if (st.status) meta.push("intent " + st.status);
+    if (st.size) meta.push(st.size);
+    if (st.owner) meta.push(st.owner);
+    if (meta.length) s.appendChild(el("p", "meta", meta.join(" · ")));
+
+    var strip = el("div", "strip");
+    var idx = STAGES.indexOf(st.stage);
+    STAGES.forEach(function (name, i) {
+      var cls = "st";
+      var skipped = st.size === "one-session" && SMALL_SKIPS[name];
+      if (skipped) cls += " skip";
+      else if (i < idx) cls += " done";
+      else if (i === idx) cls += " now";
+      strip.appendChild(el("span", cls, name));
+    });
+    s.appendChild(strip);
+
+    if (st.spec && st.spec.title) {
+      var sp = el("div", "grouphead"); sp.appendChild(document.createTextNode("Spec — "));
+      sp.appendChild(link(st.spec.title, st.spec.url)); s.appendChild(sp);
+    }
+    renderMap(s, st.map);
+    renderTickets(s, st.tickets);
+    if (st.next) {
+      var nx = el("p", "next"); nx.appendChild(el("b", null, "Next: "));
+      nx.appendChild(document.createTextNode(st.next)); s.appendChild(nx);
+    }
     app.appendChild(s);
   });
+  if (!nonEmpty(data.streams)) {
+    var es = card("No intents yet");
+    es.appendChild(el("p", "empty", "Nothing in docs/intent/. Start with the discovery skill."));
+    app.appendChild(es);
+  }
+  var wf = data.wayfinder || {};
   if (wf.available === false && wf.note) {
-    var ws = card("Wayfinder");
+    var ws = card("Tracker");
     ws.appendChild(el("p", "empty", wf.note));
     app.appendChild(ws);
-  }
-
-  // ---- tasks --------------------------------------------------
-  var tasks = data.tasks || {};
-  if (nonEmpty(tasks.current) || nonEmpty(tasks.next) || nonEmpty(tasks.waiting) || nonEmpty(tasks.backlog)) {
-    var ts = card("Tasks");
-
-    if (nonEmpty(tasks.current)) {
-      ts.appendChild(el("div", "grouphead", "Current"));
-      tasks.current.forEach(function (t) {
-        var d = el("div", "item");
-        d.appendChild(el("span", "t", t.title));
-        if (t.why) rowInto(d, "Why", t.why);
-        if (t.doneWhen) rowInto(d, "Done when", t.doneWhen);
-        if (t.note) rowInto(d, "Note", t.note);
-        ts.appendChild(d);
-      });
-    }
-    function plainList(items, group, fmt) {
-      if (!nonEmpty(items)) return null;
-      ts.appendChild(el("div", "grouphead", group));
-      var ul = el("ul", "plain");
-      items.forEach(function (t) {
-        var li = el("li");
-        li.appendChild(document.createTextNode(t.title || ""));
-        var extra = fmt ? fmt(t) : (t.note || null);
-        if (extra) {
-          li.appendChild(document.createTextNode(" "));
-          li.appendChild(el("span", "note", "— " + extra));
-        }
-        ul.appendChild(li);
-      });
-      ts.appendChild(ul);
-      return ul;
-    }
-    plainList(tasks.next, "Next");
-    plainList(tasks.waiting, "Waiting on", function (t) {
-      return [t.since ? "since " + t.since : null, t.note || null].filter(Boolean).join(" · ") || null;
-    });
-    if (nonEmpty(tasks.backlog)) {
-      var det3 = el("details");
-      det3.appendChild(el("summary", null, "Backlog (" + tasks.backlog.length + ")"));
-      var ul = el("ul", "plain");
-      tasks.backlog.forEach(function (t) { ul.appendChild(el("li", null, t.title)); });
-      det3.appendChild(ul);
-      ts.appendChild(det3);
-    }
-    app.appendChild(ts);
-  }
-
-  // ---- milestones --------------------------------------------
-  if (nonEmpty(data.milestones)) {
-    var ms = card("Milestones");
-    data.milestones.forEach(function (m) {
-      var d = el("div", "item");
-      d.appendChild(el("span", "t", m.name));
-      if (m.state) d.appendChild(el("span", "state " + (m.state === "active" ? "active" : ""), m.state));
-      if (m.note) d.appendChild(el("p", "g", m.note));
-      ms.appendChild(d);
-    });
-    app.appendChild(ms);
   }
 
   // ---- sessions ----------------------------------------------
@@ -326,7 +330,7 @@
     var ss = card("Recent sessions");
     data.sessions.forEach(function (x) {
       var d = el("div", "item");
-      d.appendChild(el("span", "d", x.date));
+      d.appendChild(el("span", "d", x.date + (x.by ? " · " + x.by : "")));
       d.appendChild(document.createTextNode(x.gist || ""));
       ss.appendChild(d);
     });
@@ -335,7 +339,7 @@
 
   // ---- decisions ---------------------------------------------
   if (nonEmpty(data.decisions)) {
-    var ds = card("Recent decisions");
+    var ds = card("Recent decisions (docs/adr)");
     data.decisions.forEach(function (x) {
       var d = el("div", "item");
       d.appendChild(el("span", "d", x.date));
@@ -350,10 +354,10 @@
   var f = el("footer");
   f.appendChild(document.createTextNode(
     "Derived file — regenerated by the pm dashboard skill; whats-next, checkpoint, and stepping-away refresh it automatically. " +
-    "Canonical state lives in _pm/*.md and the tracker; edits here are lost on the next refresh."));
+    "Canonical state lives in docs/intent, the tracker, and docs/adr; _pm/ is the personal log. Edits here are lost on the next refresh."));
   f.appendChild(document.createElement("br"));
   var srcs = nonEmpty(data.sources) ? "Sources: " + data.sources.join(" · ") + ". " : "";
-  f.appendChild(document.createTextNode(srcs + "Template v1."));
+  f.appendChild(document.createTextNode(srcs + "Template v2."));
   app.appendChild(f);
 })();
 </script>

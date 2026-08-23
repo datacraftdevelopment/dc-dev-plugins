@@ -69,16 +69,18 @@ Also set the `README.md` title to the project name.
 
 Write the answers into the new folder's `_pm/skeleton.md` (in-place: `./_pm/skeleton.md`) in that 5-step structure. If the user says it's a small job, collapse it to a single tight paragraph rather than five headings — the artifact scales with content.
 
-## 5. Seed the context map
+## 5. Wire the shared record
 
-`_pm/context-map.md` ships with example rows — replace them:
+The stage chain (`WORKFLOW.md`) needs two things the template doesn't carry:
 
-- Add a row per real source the interview surfaced (a transcript already in hand, a client spec on the way, a legacy system to inspect).
-- If the machine's global instructions (`~/.claude/CLAUDE.md`) name shared knowledge libraries (a domain wiki, a craft library), add **one standing row per library** — authority `supporting`, state `on demand`, load-when tied to its domain. **Available ≠ active:** the rows record the path back; don't load the libraries now.
-- No sources yet and no libraries named: leave the examples as guidance and move on.
+- **`docs/intent/`** — create it (empty, with a one-line `README.md`: "Intents — one per stream of work, written by the `discovery` skill. Shared record; see the pm plugin's WORKFLOW.md"). Also `docs/adr/` if absent — decisions go there, not in `_pm/`.
+- **The tracker.** Matt Pocock's `/setup-matt-pocock-skills` writes `docs/agents/issue-tracker.md` and the `## Agent skills` block in `CLAUDE.md`; `/wayfinder`, `/to-spec`, `/to-tickets` read it. It is user-invoked — you can't run it. So: if `docs/agents/issue-tracker.md` is missing, tell the user plainly that without it wayfinder falls back to local markdown under `.scratch/`, and that the fix is one command: `/setup-matt-pocock-skills` (GitHub Issues for team repos; local markdown is fine for solo/plugin repos). Don't improvise the file yourself.
+- **`.gitignore`** — in a git repo, ensure `_pm/dashboard.html` is ignored (the stage board is local-only).
 
 ## 6. Sign off
 
-Confirm what you did in 3–4 lines: what was created (new folder or in-place `_pm/`), renames done, skeleton captured, context map seeded. Then point at the next step: *"Drop discovery artifacts in `_pm/artifacts/`, add tasks to `_pm/TASKS.md`, and run `whats-next` when you start a working session."*
+Confirm what you did in 3–4 lines: what was created (new folder or in-place `_pm/`), renames done, skeleton captured, `docs/intent/` ready, tracker wired or not. Then point at the next step: *"Run `discovery` on the first piece of work — it writes `docs/intent/<slug>.md` and makes the size call. Then `whats-next` when you start a working session."*
+
+Legacy note: the template still ships `_pm/TASKS.md`, `_pm/context-map.md`, and `_pm/decisions/` until the builder catches up — the 0.8 rituals treat them as read-only. Leave them; don't seed them.
 
 Don't start doing project work — scaffolding ends here.
