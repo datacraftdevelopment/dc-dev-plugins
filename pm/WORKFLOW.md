@@ -25,6 +25,18 @@ A stage is defined by **which artifact exists** — never by a status someone up
 
 **Small work** (fits one session) skips Chart → Ticket: Discover → Build → Verify → Ship. **Trivial edits** skip everything — just do them. **Bugs** → `/diagnosing-bugs` (failing test first), then Verify.
 
+## Gate schedule
+
+Review gates run at stage boundaries, never inside a stage. Discovery and grilling are gate-free — a gate on a half-formed thought produces noise. All three are `cross-review-gate` (library skill; Ringer panel where installed); only the artifact and the framing change.
+
+| Boundary | Default? | Framing in the gate's `brief.md` |
+|---|---|---|
+| **Intent accepted** (end of Discover) | optional — the *pre-mortem* slot | "Assume this shipped and the client wasn't happy. Narrate how." Wrong problem, wrong outcome, wrong size. Correctness can't be judged yet; plausibility of failure can. |
+| **Plan finalized** (grilling done, plan written) | **yes** | Is the plan sound; what's missing; which decision is most likely wrong. |
+| **Chunk of code green** | **yes** | The usual: correctness, spec fidelity, standards. |
+
+No separate pre-mortem skill — the framing sentence is the whole difference, and it belongs in the brief, not in a new skill.
+
 ## The one rule: `docs/` is shared record, `_pm/` is personal log
 
 | | `docs/` | `_pm/` |
@@ -46,7 +58,7 @@ Work → pm records the session → push the branch → the next person pulls an
 - **Start of anything non-trivial** — `discovery`, then the size call decides the road.
 - **Mid-session** — `checkpoint` on a consequential result; `/handoff` when a session outgrows itself.
 - **Any completion claim** — `verify-before-done`: run it fresh, read it, paste it.
-- **Stage boundary** (plan finalized, chunk green, migration drafted) — `cross-review-gate`.
+- **Stage boundary** — `cross-review-gate` per the gate schedule above (optional at intent, default at plan and at green chunks).
 - **Close** — `stepping-away`: Intent vs shipped, session entry, durable knowledge routed to the library.
 
 ## Source

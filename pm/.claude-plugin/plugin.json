@@ -1,6 +1,6 @@
 {
   "name": "pm",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a client engagement, personal project, or in-place _pm/ from the datacraft starter; whats-next, checkpoint, and stepping-away run the day (morning open · mid-session re-aim · close); dashboard renders _pm/dashboard.html — a local-only stage board, one stream per docs/intent entry with its stage derived from artifacts (0.9.0); discovery riffs a piece of work into a committed docs/intent/<slug>.md with a size call — the stage before /wayfinder or plan mode (0.8.0, replaces brainstorm-lite); WORKFLOW.md documents the stage chain and the docs/-vs-_pm/ rule; verify-before-done gates completion claims on fresh evidence (and ships a CLAUDE.md block); the credential-guard hook blocks git add/commit of credential-shaped files; rituals are tracker-first and per-person (0.9.0; MIGRATION-0.8.md covers TASKS/decisions/context-map); okf holds the knowledge-bundle conventions. Delivery skills (design-handoff, html-artifacts) moved to the design-dc plugin in 0.5.0.",
   "author": {
     "name": "Joe",
