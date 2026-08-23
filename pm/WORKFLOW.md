@@ -6,7 +6,7 @@ The engine is Matt Pocock's skill set (`/wayfinder`, `/grilling`, `/domain-model
 2. **The session layer** — `whats-next` · `checkpoint` · `stepping-away`: per-person, append-only logs in `_pm/`. Never authoritative.
 3. **The visibility layer** — `dashboard`: a stage board derived from artifacts. Local-only render.
 
-Anything else in pm has to justify itself or get deleted.
+Plus one deterministic guardrail — the `credential-guard` hook (blocks committing credential-shaped files), because skills advise and hooks enforce. Anything else in pm has to justify itself or get deleted.
 
 ## Stages
 

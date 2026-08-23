@@ -75,7 +75,8 @@ The stage chain (`WORKFLOW.md`) needs two things the template doesn't carry:
 
 - **`docs/intent/`** — create it (empty, with a one-line `README.md`: "Intents — one per stream of work, written by the `discovery` skill. Shared record; see the pm plugin's WORKFLOW.md"). Also `docs/adr/` if absent — decisions go there, not in `_pm/`.
 - **The tracker.** Matt Pocock's `/setup-matt-pocock-skills` writes `docs/agents/issue-tracker.md` and the `## Agent skills` block in `CLAUDE.md`; `/wayfinder`, `/to-spec`, `/to-tickets` read it. It is user-invoked — you can't run it. So: if `docs/agents/issue-tracker.md` is missing, tell the user plainly that without it wayfinder falls back to local markdown under `.scratch/`, and that the fix is one command: `/setup-matt-pocock-skills` (GitHub Issues for team repos; local markdown is fine for solo/plugin repos). Don't improvise the file yourself.
-- **`.gitignore`** — in a git repo, ensure `_pm/dashboard.html` is ignored (the stage board is local-only).
+- **`.gitignore`** — in a git repo, ensure `_pm/dashboard.html` is ignored (the stage board is local-only), and that `account.md` and `.env` are listed (the plugin's `credential-guard` hook blocks staging them, but the ignore is the belt to that brace).
+- **Verification block** — append the contents of `${CLAUDE_PLUGIN_ROOT}/skills/verify-before-done/claude-md-block.md` to the project's `CLAUDE.md` (in-place mode: only if the file exists and has no `## Verifying your work` section already).
 
 ## 6. Sign off
 

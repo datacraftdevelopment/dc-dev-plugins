@@ -31,6 +31,10 @@ Before any completion claim, in order:
 | "It should work" | "Should" is a prediction, not a verification. Run it or say it's a prediction. |
 | "Running the suite takes too long" | Then run the relevant subset and say that's what you ran. Scope the claim to the evidence. |
 
+## The CLAUDE.md block
+
+This skill only fires in sessions with the plugin installed. So the rule also ships as a short `## Verifying your work` block — [claude-md-block.md](./claude-md-block.md) — that `pm-scaffold` stamps into a new project's `CLAUDE.md`, and that any existing project can paste in. The block is the floor (it holds without the plugin); this skill is the trigger (it fires on the *claim*, which a CLAUDE.md line can't).
+
 ## Where it lands in the pm flow
 
 `checkpoint` and `stepping-away` entries record what shipped — a "shipped" line in a session entry is a completion claim and carries evidence like any other. Tasks move to completed only on verified work; blocked or partial stays honestly in progress with the failure named.

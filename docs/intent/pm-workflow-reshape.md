@@ -1,6 +1,7 @@
 # Intent: pm plugin reshape — fit around the Matt-primary workflow
 
-Author: Joe (DataCraft). Status: draft. Date: 2026-08-23.
+Author: Joe (DataCraft). Status: accepted. Date: 2026-08-23.
+Progress: pm 0.8.0 (discovery, WORKFLOW.md) · 0.9.0 (stage-board dashboard, tracker-first rituals, scaffold wiring, MIGRATION-0.8.md) · 0.9.1 (credential-guard hook, verify-before-done CLAUDE.md block). Remaining: `pm/template/` mirror via the builder. Resolved: `okf` stays in pm; hook lives in pm; verify-before-done stays a skill + ships a block.
 Source: discovery session reviewing https://claude.com/blog/the-ai-native-sdlc-playbook against the pm plugin + Matt Pocock's skill set.
 
 ## Problem

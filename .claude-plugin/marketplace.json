@@ -8,7 +8,7 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "Project-management scaffold + session skills. /pm:pm-scaffold starts a client engagement; whats-next, checkpoint, and stepping-away run the day; dashboard renders a local-only stage board derived from intents, the tracker, and merges; discovery riffs work into a committed intent + size call before planning; WORKFLOW.md maps the stage chain; verify-before-done gates completion claims on evidence; okf holds the knowledge-bundle conventions."
+      "description": "Project-management scaffold + session skills. /pm:pm-scaffold starts a client engagement; whats-next, checkpoint, and stepping-away run the day; dashboard renders a local-only stage board derived from intents, the tracker, and merges; discovery riffs work into a committed intent + size call before planning; WORKFLOW.md maps the stage chain; verify-before-done gates completion claims on evidence; credential-guard hook blocks committing credential-shaped files; okf holds the knowledge-bundle conventions."
     },
     {
       "name": "design-dc",
