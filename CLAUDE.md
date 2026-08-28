@@ -51,7 +51,7 @@ A plugin's name drives its command namespace (`/<plugin>:<command>`), but the sa
 
 Develop **in place** in each plugin's subfolder — this repo is the single source of truth (standalone plugin repos were retired). Ship a change: commit + push, then `/plugin marketplace update dc-plugins` on each machine. Add a new plugin: new subfolder + one line in `marketplace.json` — never a new marketplace.
 
-**One exception:** `pm/template/` mirrors the external **DC-Project-Builder** repo (`datacraftdevelopment/dc-project-builder`, in `DC_Code-2026/_Builders/`) — the PM scaffold's design home, whose `docs/_design/` history names client paths and must never ship here (scrubbed once already, pm v0.2.2). Scaffold changes land in the builder first, then get mirrored into `pm/template/` + version-bumped. Only the template's `CLAUDE.md` and `README.md` intentionally differ (stamped-project voice; no `docs/_design/`; no local `.claude/skills/` — the builder's local skill copies are its own working versions and may deliberately diverge from `pm/skills/`). Verify a sync with `diff -rq`.
+`pm/template/` is designed **in place** here too — the DC-Project-Builder mirror was retired 2026-08-28 (`docs/intent/pm-010-lightening.md`); the builder repo (`datacraftdevelopment/dc-project-builder`) is dormant and no longer receives scaffold changes. Its `docs/_design/` history names client paths and must never ship here (scrubbed once already, pm v0.2.2) — that rule outlives the mirror.
 
 Per-plugin dev cruft (`.venv/`, `sandbox/`) is gitignored via each plugin's own nested `.gitignore`, so it never publishes.
 

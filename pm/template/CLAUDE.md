@@ -2,157 +2,91 @@
 
 This file orients Claude Code when working in this repository.
 
-> **This is a STARTER, not a live project.** Rename `datacraft-Project/` → `datacraft-<ClientName>` to start a new engagement. The capital `P` is a fillable placeholder. See `docs/_design/2026-06-06-starter-design.html` for the design rationale.
+> **This is a STARTER, not a live project.** `/pm:pm-scaffold` stamps it and
+> replaces this banner with the project header. The scaffold is designed in
+> the pm plugin (`datacraftdevelopment/dc-plugins`, `pm/template/`); the
+> workflow it serves is that plugin's `WORKFLOW.md`.
 
 ## What this is
 
-A **project-management starter** — the connective tissue around a client engagement. Light by default (a three-hour change request uses it without sprouting structure). Scales up (a six-month fixed-bid uses the same scaffold with `_pm/milestones/` and richer `_pm/requirements/`). One structure either way.
+The **project-management connective tissue** around an engagement — genuinely
+light: the scaffold contains only what every project uses from day one.
+Everything else is *known but not built* — see the taxonomy below. Agnostic to
+codebase: the deliverable might be FileMaker, web, SaaS, or pure consulting.
 
-Agnostic to codebase. The deliverable might be FileMaker, web, SaaS, or pure consulting. Every engagement starts from this scaffold — there are no paired code starters. When the engagement grows code, each surface gets an underscore container at root (`_app/`, `_ws/`) — see "Code surfaces" below. FileMaker-specific scaffolding ships in the fm-dc plugin.
-
-## Repository Layout
+## Day-one layout
 
 ```
-datacraft-Project/
-├── CLAUDE.md                  ← you are here
+<project>/
+├── CLAUDE.md            ← you are here
 ├── README.md
 ├── .gitignore
-├── docs/                      ← meta + ad-hoc Claude-generated catch-all
-│   ├── notes/                 ← scratch, meeting notes, ad-hoc analysis
-│   └── quirks.md              ← technical gotchas
-│
-├── resources/                 ← canonical 4-folder taxonomy (matches siblings)
-│   ├── design-handoff/
-│   ├── design-exploration/
-│   ├── research/
-│   └── history/
-│
-├── knowledge/                 ← OPT-IN, not shipped. Sprouts as an OKF bundle when facts turn entity-shaped
-│
-├── _app/ · _ws/ · …           ← OPT-IN code surfaces — one underscore container per surface
-│
-└── _pm/                       ← project management — everything operational
-    ├── README.md              ← orients agents
-    ├── skeleton.md            ← Wei Hao 5-step. Default planning artifact.
-    ├── TASKS.md               ← Current / Next / Waiting / Backlog
-    ├── sessions/              ← per-day "what + why" log
-    ├── decisions/             ← opt-in ADRs
-    ├── milestones/            ← OPT-IN. Sprout when path is long.
-    ├── requirements/          ← user-stories, personas, parrot-back/
-    ├── artifacts/             ← raw inputs (transcripts, customer-docs, exports)
-    ├── prototypes/            ← HTML mockups for customer validation
-    ├── deliverables/          ← reports, dashboards
-    └── bridges/               ← Claude ↔ ChatGPT PII shuttle
+├── docs/                ← SHARED record — collaborators and clients read it
+│   ├── intent/          ← one intent per stream of work (discovery skill)
+│   ├── adr/             ← decisions (Matt's /domain-modeling format)
+│   └── quirks.md        ← technical gotchas, fast-capture
+└── _pm/                 ← PERSONAL log — per-person, append-only, never authoritative
+    ├── README.md
+    ├── skeleton.md      ← Wei Hao 5-step; the macro why. Always populated.
+    └── sessions/        ← per-day, per-person: YYYY-MM-DD-<name>.md
 ```
 
-**The split:** `_pm/` = operational project management. `docs/` = meta and ad-hoc Claude output that isn't PM workflow. `resources/` = material brought in from outside the Claude-driven workflow. `knowledge/` = curated project knowledge as an OKF bundle — exists only once sprouted.
+**The one rule** (pm `WORKFLOW.md`): `docs/` + the tracker are authoritative;
+`_pm/` records what I did and what I'm doing — never what is true. Decisions
+go to `docs/adr/`, work items to the tracker, never to files in `_pm/`.
 
-## New Project Setup
+## The taxonomy — known folders, created on first write
 
-1. Rename `datacraft-Project/` → `datacraft-<ClientName>/`.
-2. Write `_pm/skeleton.md` — even a paragraph is fine for small jobs.
-3. Drop artifacts as they arrive (`_pm/artifacts/transcripts/`, etc.).
-4. Add tasks to `_pm/TASKS.md`.
-5. End each working day with the `stepping-away` skill.
+**Never pre-create a folder.** Each of these exists the moment something is
+first written into it (`mkdir -p` then write) — presence means it was needed.
 
-That's the light mode. Heavier folders (`_pm/milestones/`, `_pm/requirements/`, `_pm/deliverables/` — and top-level `knowledge/`) sprout as warranted.
+| Folder | Purpose | Sprout when |
+|---|---|---|
+| `docs/notes/` | Scratch, meeting notes, ad-hoc Claude-generated analysis | first ad-hoc doc that isn't PM workflow |
+| `knowledge/` | Curated project knowledge — always an OKF bundle (`okf` skill), never homegrown | facts turn entity-shaped: same tables/systems re-described across sessions, or a second consumer needs them |
+| `resources/` | Material **you bring in** from outside the Claude-driven workflow (`design-handoff/`, `design-exploration/`, `research/`, `history/` as needed) | first external file arrives |
+| `_pm/transcripts/` | Meeting transcripts — client conversations, **gitignored** | first transcript kept (e.g. `granola-transcript` skill) |
+| `_pm/artifacts/` | Other raw inputs — customer docs, exports, recordings | first raw input that isn't a transcript |
+| `_pm/prototypes/` | HTML mockups for customer validation (code prototypes live in their surface container) | first validation mockup |
+| `_pm/deliverables/` | What you hand to the client — reports, dashboards | first deliverable produced |
+| `_app/` · `_ws/` · … | Code surfaces — **one underscore container per surface**, coined as surfaces emerge | the surface becomes real |
+
+Claude-generated docs go in `docs/`; external material goes in `resources/` —
+provenance decides, not file type. FileMaker-specific structure comes from the
+fm-dc plugin, not from sprouting here.
 
 ## The skeleton — default planning artifact
 
-`_pm/skeleton.md` uses Wei Hao's 5-step structure: outcome sentence → critical user journey → minimum capabilities → fundamental enablers → non-negotiables. For a change-request job, a paragraph. For a six-month engagement, a longer doc. **One artifact, scales with content.**
+`_pm/skeleton.md`: outcome sentence → critical user journey → minimum
+capabilities → fundamental enablers → non-negotiables. A paragraph for a
+change-request job, a longer doc for a six-month engagement — one artifact,
+scales with content.
 
-A story belongs in the skeleton only if removing it would break the journey, make the release unusable, or make it untestable.
+## Sessions and the Intent block
 
-## Sessions — per-day what + why
-
-`_pm/sessions/YYYY-MM-DD.md` captures **shipped work AND the thinking behind it** in one file per day. Replaces the older `changelog/` pattern. Single shared log per project (no per-milestone, no per-person).
-
-**Same-commit rule:** when work ships, remove from `_pm/TASKS.md` and add to today's session entry in the same commit.
-
-**Optional `_pm/decisions/`** — for durable choices retrievable by topic. Most projects don't need it.
-
-## The active-intent layer
-
-Four temporal layers cover project context:
-
-| Layer | Where | Captures |
-|---|---|---|
-| Macro why | `_pm/skeleton.md` | Outcome, journey, capabilities |
-| What | `_pm/TASKS.md` | Current items WITH `Why` + `Done-when` |
-| Available what | `_pm/context-map.md` | Sources with authority + freshness + load-when. **Available ≠ active** |
-| **Active why** | `_pm/sessions/YYYY-MM-DD.md` `## Intent` | Today's push, why, done-for-today, not in scope |
-| Past why | `_pm/sessions/YYYY-MM-DD.md` `## Intent vs. outcome` | Intended vs. shipped (drift check) |
-
-**Why this matters:** agents nail the *what* and quietly let the *why* go. The Intent block (2–3 sentences of prose, set at session start by `whats-next`, checked at session end by `stepping-away`) is the anchor the agent reads on every tool call. Skip it for quick fixes; set it for substantive work.
-
-**Mid-session checkpoints:** a brief that was right this morning can be the wrong instruction by afternoon. When a consequential result lands — evidence overturns an assumption, the direction changes, a milestone completes — refresh the state *before* continuing: the `checkpoint` skill adds a dated **re-aim** under the Intent (the original stays as the drift record), pushes the change into `TASKS.md`, and archives superseded decisions instead of deleting them. Agents on long-running work run it **unprompted** — the correction must reach the work that hasn't happened yet.
-
-## Milestones — opt-in
-
-`_pm/milestones/` is empty by default. Sprout `M0-<name>/`, `M1-<name>/` (copy from `_template-milestone/`) when a single TASKS list can't track the path to the skeleton.
-
-**Sessions don't split by milestone.** One unified log per project, always. Per-milestone narrative (if needed) lives in `_pm/milestones/M0-name/retro.md`.
-
-## Knowledge — opt-in folder, fixed format
-
-No `knowledge/` by default; gotchas go to `docs/quirks.md`, narrative to sessions. **Sprout `knowledge/` when facts turn entity-shaped** — the same tables/systems/processes re-described across sessions, a catalog IS the deliverable, or a second consumer (client team, other agents, future-you) needs the facts. A minimal sprout is one file.
-
-When it exists, it is an [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) bundle — never a homegrown structure. Format conventions live in the global `okf` skill (pm plugin); this file only owns the local boundaries:
-
-- `docs/quirks.md` stays the fast-capture inbox; durable quirks get *promoted* into concepts.
-- `resources/research/` and `_pm/artifacts/` hold raw material; concepts cite it (`# Citations`), never absorb it.
-- `_pm/decisions/` stays ADRs — concepts may link to them; they don't become concepts.
-- Craft (reusable, client-agnostic) never lives here — it belongs in the owning starter or domain builder, not a client project.
-
-The daily skills are knowledge-aware only when the bundle exists: `whats-next` skims `knowledge/index.md` on cold start; `stepping-away` appends `log.md` when concepts changed.
-
-## The three skills
-
-| Skill | When | Reads | Writes |
-|---|---|---|---|
-| `whats-next` | Start of day / cold-start | Last sessions, TASKS, skeleton, context-map (active rows); `knowledge/index.md` if sprouted | Today's Intent block |
-| `checkpoint` | Mid-session, at a consequential result (agents on long runs: unprompted) | Today's Intent, TASKS | Dated re-aim under the Intent, updated TASKS, superseded-decision entry; `context-map.md` only if a source changed |
-| `stepping-away` | End of day | TASKS, today's session (incl. re-aims), git log, conversation | Session entry, updated TASKS, optional decision, `knowledge/log.md` if bundle changed |
-
-These skills ship globally with the `pm` plugin (they're no longer copied into each project), so they're available in every session without living in this repo. Joe's other cross-project skills live in `~/.claude/skills/`.
-
-## Code surfaces — underscore containers
-
-Every engagement starts from this scaffold, whatever the deliverable. When the engagement grows a code surface, it gets **one underscore-prefixed container at root** — sprouted when the surface becomes real, never pre-built:
-
-```
-datacraft-Acme/
-├── CLAUDE.md
-├── README.md
-├── docs/                      ← meta + catch-all
-├── resources/                 ← external inputs
-├── _pm/                       ← engagement management
-│
-├── _app/                      ← web app / viewer — sprouted when one exists
-└── _ws/                       ← website — sprouted when one exists
-```
-
-- **One container per surface.** Coin new names by the same pattern as surfaces emerge; the underscore keeps them sorted together and signals *container, not working folder*. The root stays readable no matter how much the engagement grows.
-- **FileMaker-specific structure** comes from the fm-dc plugin (`/fm-dc:fm-scaffold`) — the retired FM starter's job lives there now.
-- `_pm/prototypes/` stays customer-validation HTML only; code prototypes and experiments live inside their surface container.
-
-`_pm/` is **portable** — internal references stay local to the folder; outward references reach `../docs/` and `../resources/`, which exist in every stamped project.
+`_pm/sessions/YYYY-MM-DD-<name>.md` — **per person**, append-only, so two
+people on the same day never collide. Set an Intent block (2–3 sentences:
+push, why, done-for-today, not-in-scope) at the start of substantive work —
+`whats-next` drafts it; `checkpoint` adds dated re-aims when the day pivots;
+`stepping-away` closes with Shipped / Tried-Learned-Decided / Intent-vs-outcome.
+The daily skills ship globally with the pm plugin — they are not copied here.
 
 ## Working conventions
 
-- **Skeleton first** — don't write user stories before the skeleton exists. Even a paragraph is fine.
-- **Stepping away** ends each working session. Don't ramble — the skill handles the checklist.
-- **Set Intent before substantive work.** Two or three sentences in the session entry. The agent reads it before acting.
-- **One in, one out** (Wei Hao) — when a new request shows up under fixed scope, the question is *"if this comes in, what comes out?"*, not "where do we squeeze it." Handle in conversation; document the trade in the session entry or a decision.
-- **Periodic drift check** (Wei Hao's flavor-check) — every month or at milestone boundaries, restate the release goal in one sentence and compare to what's actively being built. If they've drifted apart, either reshape the backlog or rewrite the skeleton. Handle in conversation; document in the session entry.
-- **`docs/` is the catch-all for ad-hoc Claude output.** Drafted emails, technical analyses, one-off summaries that aren't PM-workflow go here. Sprout topic subfolders organically when volume justifies.
-- **Resources is for things YOU bring in.** Claude-generated docs go in `docs/` or `_pm/`.
+- **Skeleton first** — even a paragraph — before user stories or specs.
+- **Anything non-trivial starts with `discovery`** → `docs/intent/<slug>.md`
+  + a size call. Trivial edits: just do them.
+- **One in, one out** (Wei Hao) — new request under fixed scope: "if this
+  comes in, what comes out?" Document the trade in the session entry.
+- **`stepping-away` ends each working day.** Don't ramble — the skill handles
+  the checklist.
 
-## Design history
+## Verifying your work
 
-The design rationale — sources (Charlie Bailey on AI-PM, Wei Hao on scope control, Matt Maher on agent orientation), the decisions made, what was explicitly trimmed — lives at:
+Before reporting any task done, fixed, or passing:
 
-- `docs/_design/2026-06-06-starter-design.html`
-- `docs/_design/2026-06-06-session.md`
+- **Run the check fresh** — after the last edit — and **paste its output**. Tests, build, lint, a real request, a screenshot: whichever would catch the failure you'd most plausibly have caused.
+- The claim is exactly what the output supports. Red → report it verbatim. Partial → say which parts. Nothing runnable → say what *would* verify it and that it wasn't run.
+- Fix the code, not the test. Never skip or delete a failing test to get green.
 
-If you want to change the shape of the starter, write a new design artifact next to those (don't edit history). Re-run the implementation from the new design.
+(Deterministic backing and the full rule: the pm plugin's `verify-before-done` skill.)

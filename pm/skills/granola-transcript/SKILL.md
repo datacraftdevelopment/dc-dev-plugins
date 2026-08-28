@@ -45,9 +45,12 @@ you just have to look it up by search instead of by link.
 
 - If the user just wants to work with it (extract decisions, build an intent,
   draft tickets), keep it in context — no file needed.
-- If they want it kept, write it to `_pm/transcripts/<date>-<slug>.md` (personal
-  log, gitignored) by default. Transcripts are client conversations — never
-  commit one to a shared repo unless the user explicitly says where.
+- If they want it kept, write it to `_pm/transcripts/<date>-<slug>.md` by
+  default (create the folder if needed). Transcripts are client
+  conversations — **verify `_pm/transcripts/` is gitignored before writing**
+  (projects stamped by pm ≥ 0.10 ignore it out of the box; older or foreign
+  repos may not — add the ignore line first). Never commit one to a shared
+  repo unless the user explicitly says where.
 
 ## Don't
 

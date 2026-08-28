@@ -8,10 +8,26 @@ pm 0.8 re-shaped the plugin around Matt Pocock's skills (see `WORKFLOW.md`). Thr
 | `_pm/decisions/` | `docs/adr/` (Matt's `/domain-modeling` format); decisions reached in a wayfinder ticket live on that ticket. | `git mv _pm/decisions docs/adr` — the format is close enough. Add a `status:` line if missing. |
 | `_pm/context-map.md` | Dropped. `CLAUDE.md` names the sources that matter; `docs/agents/domain.md` (from Matt's setup) says how domain docs are read. | If any row carried a rule a session still needs, move it into `CLAUDE.md`. Delete the file. |
 | `_pm/sessions/YYYY-MM-DD.md` | `_pm/sessions/YYYY-MM-DD-<name>.md` — per person, append-only. | Old files stay as they are; new ones get the suffix. |
-| `_pm/dashboard.html` (v1, tasks/milestones) | v2 stage board, local-only. | Add `_pm/dashboard.html` to `.gitignore`; `git rm --cached` it if committed. Re-render — the v2 template is stamped automatically. |
+| `_pm/dashboard.html` (v1, tasks/milestones) | Deleted in 0.10 (see below). | `git rm --cached` it if committed; delete the file. |
 | (nothing) | `docs/intent/<slug>.md` — one per stream, from `discovery`. | Create `docs/intent/`. For work already in flight, a short retroactive intent per stream gives the stage board something to derive from — optional. |
 | (nothing) | Tracker wiring — `docs/agents/issue-tracker.md`. | Run `/setup-matt-pocock-skills` once per repo. |
 
 Skill renames: `brainstorm-lite` → `discovery` (different job: riff to an intent, not plan-small). `verify-before-done`, `okf`, `whats-next`, `checkpoint`, `stepping-away` keep their names.
 
-`pm/template/` (the scaffold) lags this note until the DC-Project-Builder is updated — freshly scaffolded projects get the old `_pm/` files too; treat them per the table.
+## pm 0.10 (2026-08-28)
+
+The template caught up: projects scaffolded by pm ≥ 0.10 are minimal (day-one
+files only; other folders are created on first write per the stamped
+`CLAUDE.md`'s taxonomy) and carry none of the legacy files above. For
+existing projects, two additional notes:
+
+- **`dashboard` was deleted** (probation called). Remove `_pm/dashboard.html`
+  and its `.gitignore` line if present; the rituals no longer refresh it.
+- **Re-aims are append-only now**: `checkpoint` keeps every dated re-aim
+  under the Intent instead of replacing the day's earlier one. No file
+  changes needed — old session files stay as they are.
+
+Projects scaffolded by 0.8–0.9.3 got the old `_pm/` tree despite the new
+doctrine; treat those files per the table above, and delete any never-used
+empty folders (`_pm/bridges/`, `_pm/milestones/`, …) freely — nothing reads
+them.

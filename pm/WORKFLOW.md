@@ -1,12 +1,11 @@
 # WORKFLOW — how pm fits around the Matt-primary stack
 
-The engine is Matt Pocock's skill set (`/wayfinder`, `/grilling`, `/domain-modeling`, `/prototype`, `/research`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`, `/handoff`). **pm fits around its structure, never the reverse.** pm is exactly three things:
+The engine is Matt Pocock's skill set (`/wayfinder`, `/grilling`, `/domain-modeling`, `/prototype`, `/research`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`, `/handoff`). **pm fits around its structure, never the reverse.** pm is exactly two layers:
 
 1. **The on-ramp** — `discovery`: riff until the shape is visible, write `docs/intent/<slug>.md`, make the size call.
-2. **The session layer** — `whats-next` · `checkpoint` · `stepping-away`: per-person, append-only logs in `_pm/`. Never authoritative.
-3. **The visibility layer** — `dashboard`: a stage board derived from artifacts. Local-only render.
+2. **The session layer** — `whats-next` · `checkpoint` · `stepping-away`: per-person, append-only logs in `_pm/`. Never authoritative. `verify-before-done` gates the completion claims those rituals record.
 
-Plus one deterministic guardrail — the `credential-guard` hook (blocks committing credential-shaped files), because skills advise and hooks enforce. Anything else in pm has to justify itself or get deleted.
+Plus one deterministic guardrail — the `credential-guard` hook (blocks committing credential-shaped files), because skills advise and hooks enforce. And two **utility skills outside the stage chain**, kept because the projects this plugin stamps need them at hand: `okf` (the format contract for the opt-in `knowledge/` bundle the rituals are aware of) and `granola-transcript` (meeting transcripts land safely in `_pm/transcripts/`, gitignored). Anything else in pm has to justify itself or get deleted — the `dashboard` stage board failed that test and was deleted in 0.10.
 
 ## Stages
 
@@ -63,4 +62,4 @@ Work → pm records the session → push the branch → the next person pulls an
 
 ## Source
 
-This doc is the workflow of record for DataCraft repos; the global `Agentic/CLAUDE.md` routing section points here. Intent behind the shape: `docs/intent/pm-workflow-reshape.md` in the dc-plugins repo (derived from Anthropic's *AI-Native SDLC Playbook* reviewed against the stack on 2026-08-23).
+This doc is the workflow of record for DataCraft repos; the global `Agentic/CLAUDE.md` routing section points here. Intent behind the shape: `docs/intent/pm-workflow-reshape.md` in the dc-plugins repo (derived from Anthropic's *AI-Native SDLC Playbook* reviewed against the stack on 2026-08-23); the 0.10 lightening: `docs/intent/pm-010-lightening.md` (cross-review 2026-08-28).

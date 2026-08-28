@@ -30,11 +30,9 @@ End-of-day ritual. Capture what happened, compare it to the Intent set this morn
 
 **6. ADR — only if warranted.** A durable choice retrievable by topic, not already recorded on a closed wayfinder ticket? Draft it in `docs/adr/` (Matt's `/domain-modeling` format). Most days, skip. Ask before writing.
 
-**7. Refresh the board.** If the `dashboard` skill is available, regenerate `_pm/dashboard.html` — the close is exactly when tomorrow-you wants an accurate stage board. Silent.
+**7. Push the log.** In a team repo, the session file is how the next person sees today: offer to commit `_pm/sessions/YYYY-MM-DD-<name>.md` (and any `docs/` edits) and push the branch. Solo: offer, don't insist.
 
-**8. Push the log.** In a team repo, the session file is how the next person sees today: offer to commit `_pm/sessions/YYYY-MM-DD-<name>.md` (and any `docs/` edits) and push the branch. Solo: offer, don't insist.
-
-**9. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued on the tracker, anything to surface tomorrow.
+**8. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued on the tracker, anything to surface tomorrow.
 
 ## What this skill does NOT do
 

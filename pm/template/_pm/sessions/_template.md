@@ -1,14 +1,14 @@
-# YYYY-MM-DD
+# YYYY-MM-DD — <name>
 
 ## Intent
 
 _Set at the start of substantive work, before executing. Two or three sentences: what we're pushing on, why it matters, what done-for-today looks like, anything explicitly not in scope. The agent reads this on every tool call._
 
-_Example:_ Pushing on the search filter UI today — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done-for-today is the prototype validated by Sandy via parrot-back. Not touching filter persistence or multi-category yet.
+_Example:_ Pushing on the search filter UI today — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done-for-today is the prototype validated by Sandy. Not touching filter persistence or multi-category yet.
 
 _Skip for quick fixes._
 
-_Mid-day pivots: leave this block as written — the `checkpoint` skill adds a dated **Re-aimed HH:MM** line beneath it (replacing any earlier re-aim from today). The latest re-aim is the live aim; the original stays as the record of where the day started._
+_Mid-day pivots: leave this block as written — the `checkpoint` skill appends a dated **Re-aimed HH:MM** line beneath it (earlier re-aims stay; the file is append-only). The latest re-aim is the live aim; everything above it is the record of how the day moved._
 
 ## Shipped
 

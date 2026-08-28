@@ -32,13 +32,11 @@ Watch-outs: <claimed tickets gone quiet; open threads worth surfacing; an intent
 
 **3. Draft the Intent block** for the most likely pick-up. Two or three sentences of plain prose — what we're pushing on, why it matters, what done-for-today looks like, anything explicitly not in scope. Example:
 
-> Pushing on the search filter UI today — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done-for-today is the prototype validated by Sandy via parrot-back. Not touching filter persistence or multi-category yet.
+> Pushing on the search filter UI today — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done-for-today is the prototype validated by Sandy. Not touching filter persistence or multi-category yet.
 
 **4. Wait.** Don't start the work. The user picks AND confirms (or amends) the Intent. It's their commitment for the day.
 
 **5. Write.** Once approved, write the Intent block into today's session file: `_pm/sessions/YYYY-MM-DD-<name>.md` — per person, so two people on the same day never collide (`<name>` = the user's short handle; ask once if unknown, then remember it in the project `CLAUDE.md`). Create from `_pm/sessions/_template.md` if needed. Shipped / Tried-Learned-Decided sections stay empty until end-of-day. If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim.
-
-**6. Refresh the board.** If the `dashboard` skill is available, regenerate `_pm/dashboard.html` per that skill so the stage board opens on today's Intent. Silent — derived; no approval needed.
 
 ## When the project has no history
 
