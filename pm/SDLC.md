@@ -54,6 +54,22 @@ Gates run at stage **boundaries**, never inside a stage. A gate on half-formed w
 
 **What a gate must produce:** a written disposition for every finding — applied, held, refuted, or out of scope — with the reason. A finding that vanishes without a disposition is the single most common way a record becomes a lie.
 
+## Who adjudicates
+
+**The worker does not get to declare its own work done.**
+
+Not because it lies. Because "done" is a judgment made from inside the context that produced the work, where every gap is already filled in by intent. A person who just built something believes it works — they are not being dishonest, they are reading their own intention as if it were the artifact. An agent does exactly the same thing, for the same reason. The belief is sincere and it is unreliable, and no amount of instructing the worker to be careful converts one into the other.
+
+So completion is adjudicated by something that **wasn't there**: a separate evaluator, reading the acceptance criteria cold and executing them against the artifact. It is never asked *"did you finish?"* — it is handed the criteria and it checks.
+
+Three consequences, and they shape everything upstream:
+
+- **The criteria must be written for a stranger.** If executing a check requires knowing what was discussed in the session, it cannot be executed by the only party qualified to execute it. This is the real reason they're written at Discover — *before* the context that would contaminate them exists.
+- **Self-reported verification is a floor, not the mechanism.** A discipline of "never claim without fresh evidence" genuinely improves the worker's claims. It does not make them adjudicative. Both are needed; only one of them decides.
+- **"Done" is a verdict, not a status.** It is produced by an executed check, by a party that didn't do the work. Nobody sets it, including the human — the human decides what happens next.
+
+This is the same argument that makes a fresh-context reviewer worth its seat at a review gate, applied one stage later. If a second reader is worth having for *is this correct*, it is worth having for *is this finished* — that question is strictly easier to get wrong from the inside.
+
 ## What must be proven, and when
 
 The stage that gets skipped is Verify→Ship, so the spec is explicit about it.

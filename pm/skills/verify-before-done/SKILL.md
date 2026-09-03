@@ -35,6 +35,12 @@ Before any completion claim, in order:
 
 This skill only fires in sessions with the plugin installed. So the rule also ships as a short `## Verifying your work` block — [claude-md-block.md](./claude-md-block.md) — that `pm-scaffold` stamps into a new project's `CLAUDE.md`, and that any existing project can paste in. The block is the floor (it holds without the plugin); this skill is the trigger (it fires on the *claim*, which a CLAUDE.md line can't).
 
+## The ceiling of this skill
+
+This is a **self-report discipline, and self-report is a floor.** It makes the working agent's claims markedly better; it does not make them adjudicative. The reason is structural, not moral: "done" judged from inside the context that produced the work reads intention as if it were the artifact. That misreading is sincere, and running the check yourself doesn't remove it — you still chose which check to run, and you chose it knowing what you meant to build.
+
+So: use this for every completion claim, and don't mistake a passed one for a verdict. **A verdict comes from a party that wasn't there**, executing acceptance criteria written before the work started. See `SDLC.md` § Who adjudicates. This skill's job is to stop the cheap failures — stale evidence, unread output, rounded-up partials — so the adjudicator's time is spent on real questions.
+
 ## Where it lands in the pm flow
 
 `checkpoint` and `stepping-away` entries record what shipped — a "shipped" line in a session entry is a completion claim and carries evidence like any other. Tasks move to completed only on verified work; blocked or partial stays honestly in progress with the failure named.

@@ -28,11 +28,19 @@ Decisions go to `docs/adr/` (Matt's home), never `_pm/`. Work items live on the 
 
 ## The open gap: Ship
 
-`SDLC.md` requires three things at Ship that nothing here currently owns: **acceptance checks written at Discover**, **run against the real thing locally and again in production**, and **a terminating artifact** recording both. Today the chain ends at diffs.
+`SDLC.md` requires three things at Ship. One is now bound, two aren't.
 
-Two known holes feeding it: `docs/intent/`'s template has no Acceptance section, so nothing is ever written down that could be re-run; and `verify-before-done` is deliberately a *disposition* ("never claim without fresh evidence"), not a prescription of what to run — right rule, wrong altitude for "did a human click it and did it work."
+- ✅ **Acceptance checks written at Discover** — as of 0.13.0 the intent template carries an **Acceptance** section and `discovery` treats it as non-optional. Observable checks, three or four, written before anything is built.
+- ❌ **Run against the real thing locally, and again in production.** Nothing runs them. `verify-before-done` is deliberately a *disposition* ("never claim without fresh evidence"), not a prescription of what to run — the right rule at the wrong altitude for "did a human click it and did it work."
+- ❌ **A terminating artifact.** The chain still ends at diffs. Proposed: `docs/shipped/<slug>.md` carrying the intent link, the acceptance checks, local and production evidence, review dispositions, and who approved.
 
-Intent for closing this: `sdlc/RIFF.md` in this repo. **Left unbound on purpose rather than papered over** — an unowned row in this table is visible; a vague sentence pretending to own it is not.
+What's left is an **adjudicator, not a self-check** (`SDLC.md` § Who adjudicates). It reads the Acceptance block cold, exercises the real thing for *this* stack (browser for a web app, ADT Helper for FileMaker, curl for an API), and returns a verdict per check. It is never asked whether the work is finished — it is handed the criteria and it checks. The working agent doesn't run it on itself; `verify-before-done` is that agent's floor, and a floor isn't a verdict.
+
+Then it stops for the human to deploy — **Claude never touches production** — and re-runs the same checks against prod after.
+
+This is the Ringer principle applied to *done* rather than to *correct*: the worker never self-reports, the criteria are stated up front, and a separate seat executes them. It's the same argument already paying for the fresh-context seat at the review gates below.
+
+Riff: `sdlc/RIFF.md`. **The remaining two stay unbound rather than papered over** — an unowned row is visible; a vague sentence pretending to own it is not.
 
 ## Gates
 

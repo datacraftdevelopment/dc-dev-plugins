@@ -1,6 +1,11 @@
 # Intents
 
 One per stream of work, written by the `discovery` skill (pm plugin) —
-problem, proposed outcome, constraints, open questions, size call. Shared
-record: the next stage (`/wayfinder`, plan mode) reads it. See the pm
-plugin's `WORKFLOW.md`.
+problem, proposed outcome, **acceptance**, affected users and systems,
+constraints, open questions, size call. Shared record: the next stage
+(`/wayfinder`, plan mode) reads it.
+
+**Acceptance** is how we'd know it worked, in observable terms, written
+before anything is built — and re-run twice: against the local article
+before shipping, and against production after. See the pm plugin's
+`WORKFLOW.md`.

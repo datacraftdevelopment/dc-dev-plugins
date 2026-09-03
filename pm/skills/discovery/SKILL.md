@@ -22,8 +22,11 @@ Why it exists: Matt Pocock's `/wayfinder` opens with a breadth-first grill becau
 One file, committed, in the shared record:
 
 - `docs/intent/<slug>.md` — this is **shared** engineering record (the next stage reads it; a collaborator or client can read it), so it lives in `docs/`, never in `_pm/`.
-- Template: [intent-template.md](./intent-template.md). Sections: Problem · Proposed outcome · Affected users and systems · Constraints · Open questions · Size call. Header carries author, status, date, and a source line (what prompted this — a conversation, an article, an incident).
+- Template: [intent-template.md](./intent-template.md). Sections: Problem · Proposed outcome · **Acceptance** · Affected users and systems · Constraints · Open questions · Size call. Header carries author, status, date, and a source line (what prompted this — a conversation, an article, an incident).
 - Write it in the user's terms. Open questions are the fog — things you can tell are coming but can't phrase sharply yet. Don't resolve them here; that's what the next stage is for.
+- **Acceptance is not optional and not a test plan.** Ask it as a shape question — *"how would we know this worked?"* — and write the answers as observable checks: what you'd do, what should happen. Three or four. They get run twice later (locally, then against production), so write them so they survive being re-read cold. If the user can't answer, the Proposed outcome isn't concrete enough yet — say so and sharpen it rather than writing a vague line. Where nothing automatable can prove a check, name the manual version; where nothing can prove it at all, record that as a known gap.
+
+  Guard against the obvious failure: acceptance is **shape** (an observable outcome), not **detail** (which assertion in which test file). "Uploading a 20 MB file finishes and the row appears in the list" is acceptance. "`test_upload_large` asserts 201" is planning — park it.
 - Show it before committing. The user corrects misunderstandings; you commit the intent **on its own** as the first artifact in the chain. (Never batch it with code.)
 
 ## The size call — last section of the intent, and the handoff
