@@ -4,6 +4,8 @@ This repo is a **Claude Code plugin marketplace** (`datacraftdevelopment/dc-plug
 
 Current plugins: **`pm`** (project-management scaffold + session/delivery skills) and **`fm-dc`** (agentic FileMaker development).
 
+**This repo is PRIVATE** (2026-09-03). `/plugin marketplace add` still works unchanged, but each machine needs an authenticated `gh`/git credential helper for `datacraftdevelopment`. It went private so pm can hard-wire tools that aren't public — `WORKFLOW.md` assumes Ringer, which lives in the private `datacraftdevelopment/desk` — and so nothing here is written for strangers. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally and is unaffected.
+
 ## ⚠️ Pre-flight: adding or copying a plugin/skill INTO this repo
 
 These plugins are **shared across machines via git**. A file that works locally can silently break on another machine. Before adding a plugin or skill — and before claiming it works — run every check below. Each one is a gotcha we have actually hit.
