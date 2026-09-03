@@ -56,20 +56,11 @@ All three gates are `cross-review-gate` (library skill). Only the artifact and t
 
 ### The panel
 
-Ringer where installed — Ringside on screen, raw worker logs, run JSON, and an executed check that fails off-brief or evidence-free reviews before they cost a triage pass. The `codex-companion.mjs` path is the fallback, and it's a dark background task: temp-dir state, task output the only record. Save it immediately.
+Owned by `cross-review-gate`, and it stays in `_Core/library/skills/agent-operations/` next to `ringer` — it dispatches through Ringer, so it lives with its transport. **That skill is canonical for how a gate runs**: the two seats and why each earns its place, the Fable escalation for live-data boundaries, the consensus rule and its two hard edges, the triage buckets, freeze-while-in-flight, and offer-at-boundary / dispatch-on-yes. Don't restate any of it here — one statement, or it forks.
 
-Two seats, two diversity axes:
+What this file owns is the schedule above: *when* a gate fires in the stage chain, and the framing sentence that goes in its `brief.md`.
 
-- **`engine: codex`** — cross-vendor detection. In both 2026-07 proving rounds, codex caught something no Anthropic seat did. It doesn't get dropped.
-- **`engine: claude, model: claude-sonnet-5`** — fresh-context detection. Same weights as the orchestrator, zero conversation context: it reads what's on the page, not what I meant. When it flags something I missed, the weights match, so the delta *is* my anchoring — either I hold context that refutes it (cite it under Disagree) or the finding is real. **Escalate to `claude-fable-5` when the boundary touches live data** — migrations, deploys, schema. That operational tail is exactly where Fable was sole finder (4 of 12 findings, 2026-07-27).
-
-**Consensus rule (2026-07-28):** both seats + verified → **Agree, applies under standing consent.** One seat only → **Hold, marked *discuss*** — however well it verified. The sole-finder items *are* the conversation worth having; the proving rounds put every genuinely interesting judgment call in that set.
-
-Two hard edges: consensus never reclassifies the risk tail — a both-seats finding whose fix touches Hold territory still Holds, because it's blast radius not vote count. And a both-seats finding that verification **refutes** is itself a discrepancy: report it, never silent-drop it.
-
-**Freeze the artifact while the panel is in flight.** Applying fixes mid-run contaminates any seat that finishes late (learned 2026-07-27: a retry landed mid-apply and its findings had to be discarded as incomparable).
-
-**Offer at the boundary, dispatch on the yes — never auto-fire.** A dispatch spends real quota and takes minutes.
+Why the panel is shaped the way it is — a reader with no conversation context, judging what's on the page rather than what you meant — is [`SDLC.md` § Who adjudicates](./SDLC.md#who-adjudicates). Same principle the Ship adjudicator will run on.
 
 ## `docs/` is shared record, `_pm/` is personal log
 
