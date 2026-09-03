@@ -21,15 +21,16 @@ Provides:
   riff to find the shape and intent of a piece of work, written to
   `docs/intent/<slug>.md` with a size call (one session → build it;
   multi-session → `/wayfinder` with the intent attached).
-- **`whats-next`** skill — morning open: reads intents, the tracker frontier,
-  and recent sessions; proposes a pick-up; drafts the day's Intent block into
-  a per-person session file; claims the ticket.
-- **`checkpoint`** skill — mid-session re-aim at a consequential result:
-  appends a dated re-aim under the Intent (append-only — earlier re-aims
-  stay), pushes the change into the affected tickets.
-- **`stepping-away`** skill — end-of-day close: compares Intent to what
-  shipped, writes the session entry, settles the tracker, routes durable
-  knowledge to shared libraries.
+- **`whats-next`** skill — session open: reads intents, the tracker frontier,
+  and recent sessions; proposes a pick-up; drafts this session's Intent block
+  into a per-session, per-person file; claims the ticket.
+- **`stepping-away`** skill — session close: compares Intent to what shipped,
+  writes the session entry, settles the tracker, routes durable knowledge to
+  shared libraries.
+- **`checkpoint`** skill — mid-session re-aim, for sessions too long or too
+  costly to close and reopen: appends a dated re-aim under the Intent
+  (append-only — earlier re-aims stay), pushes the change into the affected
+  tickets. Short sessions don't need it — the session boundary is the re-aim.
 - **`verify-before-done`** skill — evidence before claims: run the
   verification fresh, read the output, report claim + evidence together.
   Ships the `## Verifying your work` block the template carries (and
@@ -98,7 +99,7 @@ pm/
 **This repo is the design home** — the DC-Project-Builder mirror was retired
 2026-08-28 (`docs/intent/pm-010-lightening.md`); edit `template/` directly.
 Edit `commands/pm-scaffold.md` to change what the command does; edit
-`skills/` to change the day-to-day workflow. Bump `version` in
+`skills/` to change the session workflow. Bump `version` in
 `plugin.json`, commit, push — machines pick it up on
 `/plugin marketplace update dc-plugins`. Run
 `bash hooks/test-credential-guard.sh` after touching the hook.

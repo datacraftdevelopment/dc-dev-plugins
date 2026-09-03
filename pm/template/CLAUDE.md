@@ -28,7 +28,7 @@ codebase: the deliverable might be FileMaker, web, SaaS, or pure consulting.
 └── _pm/                 ← PERSONAL log — per-person, append-only, never authoritative
     ├── README.md
     ├── skeleton.md      ← Wei Hao 5-step; the macro why. Always populated.
-    └── sessions/        ← per-day, per-person: YYYY-MM-DD-<name>.md
+    └── sessions/        ← per-session, per-person: YYYY-MM-DD-<name>[-N].md
 ```
 
 **The one rule** (pm `WORKFLOW.md`): `docs/` + the tracker are authoritative;
@@ -64,12 +64,15 @@ scales with content.
 
 ## Sessions and the Intent block
 
-`_pm/sessions/YYYY-MM-DD-<name>.md` — **per person**, append-only, so two
-people on the same day never collide. Set an Intent block (2–3 sentences:
-push, why, done-for-today, not-in-scope) at the start of substantive work —
-`whats-next` drafts it; `checkpoint` adds dated re-aims when the day pivots;
-`stepping-away` closes with Shipped / Tried-Learned-Decided / Intent-vs-outcome.
-The daily skills ship globally with the pm plugin — they are not copied here.
+`_pm/sessions/YYYY-MM-DD-<name>.md` — **one file per session, per person**,
+append-only. Later sessions the same day take an ordinal (`-2`, `-3`), so two
+people never collide and each session keeps its own Intent. Set an Intent block
+(2–3 sentences: push, why, done-for-this-session, not-in-scope) at the session
+open — `whats-next` drafts it; `stepping-away` closes with Shipped /
+Tried-Learned-Decided / Intent-vs-outcome. A mid-session pivot is normally a
+new session; `checkpoint` appends a dated re-aim only when the session can't be
+broken. The session skills ship globally with the pm plugin — they are not
+copied here.
 
 ## Working conventions
 
@@ -78,8 +81,9 @@ The daily skills ship globally with the pm plugin — they are not copied here.
   + a size call. Trivial edits: just do them.
 - **One in, one out** (Wei Hao) — new request under fixed scope: "if this
   comes in, what comes out?" Document the trade in the session entry.
-- **`stepping-away` ends each working day.** Don't ramble — the skill handles
-  the checklist.
+- **`whats-next` opens each session, `stepping-away` closes it.** The unit is
+  the session, not the day — several a day is normal. Don't ramble; the skills
+  handle the checklists.
 
 ## Verifying your work
 

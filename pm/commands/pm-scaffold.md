@@ -47,7 +47,7 @@ cp -R "${CLAUDE_PLUGIN_ROOT}/template/_pm" "./_pm"
 find "./_pm" -name .DS_Store -delete
 ```
 
-The daily skills (`whats-next`, `checkpoint`, `stepping-away`, …) ship
+The session skills (`whats-next`, `stepping-away`, `checkpoint`, …) ship
 globally with this plugin — never copy them into the project.
 
 **Never pre-create taxonomy folders** (`_pm/transcripts/`, `resources/`,

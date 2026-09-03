@@ -9,7 +9,7 @@ lives in `CLAUDE.md`).
 1. `_pm/skeleton.md` holds the outcome, journey, and non-negotiables —
    written at scaffold time; keep it current as scope moves.
 2. Start anything non-trivial with the `discovery` skill → `docs/intent/<slug>.md`.
-3. Start working days with `whats-next`; end them with `stepping-away`.
+3. Open each session with `whats-next`; close it with `stepping-away`.
 4. Decisions go to `docs/adr/`; work items live on the tracker.
 
 Stamped by the pm plugin's `/pm:pm-scaffold` (`datacraftdevelopment/dc-plugins`).

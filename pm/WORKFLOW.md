@@ -3,7 +3,7 @@
 The engine is Matt Pocock's skill set (`/wayfinder`, `/grilling`, `/domain-modeling`, `/prototype`, `/research`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`, `/handoff`). **pm fits around its structure, never the reverse.** pm is exactly two layers:
 
 1. **The on-ramp** — `discovery`: riff until the shape is visible, write `docs/intent/<slug>.md`, make the size call.
-2. **The session layer** — `whats-next` · `checkpoint` · `stepping-away`: per-person, append-only logs in `_pm/`. Never authoritative. `verify-before-done` gates the completion claims those rituals record.
+2. **The session layer** — `whats-next` · `stepping-away` (· `checkpoint`): per-session, per-person append-only logs in `_pm/`. Never authoritative. `verify-before-done` gates the completion claims those rituals record. The unit is the **session**, not the day — sessions are kept short, and several a day is the normal shape.
 
 Plus one deterministic guardrail — the `credential-guard` hook (blocks committing credential-shaped files), because skills advise and hooks enforce. And two **utility skills outside the stage chain**, kept because the projects this plugin stamps need them at hand: `okf` (the format contract for the opt-in `knowledge/` bundle the rituals are aware of) and `granola-transcript` (meeting transcripts land safely in `_pm/transcripts/`, gitignored). Anything else in pm has to justify itself or get deleted — the `dashboard` stage board failed that test and was deleted in 0.10.
 
@@ -40,9 +40,9 @@ No separate pre-mortem skill — the framing sentence is the whole difference, a
 
 | | `docs/` | `_pm/` |
 |---|---|---|
-| Holds | intent, ADRs, `CONTEXT.md`, agent config (`docs/agents/`) | Intent-of-the-day, session entries, what I'm picking up |
+| Holds | intent, ADRs, `CONTEXT.md`, agent config (`docs/agents/`) | Intent-of-the-session, session entries, what I'm picking up |
 | Authoritative? | **Yes** — with the tracker | **No** — a log; if it disagrees with the tracker, the tracker wins |
-| Shared? | Yes — collaborators and clients read it | Per-person (`_pm/sessions/YYYY-MM-DD-<name>.md`), append-only |
+| Shared? | Yes — collaborators and clients read it | Per-session, per-person (`_pm/sessions/YYYY-MM-DD-<name>[-N].md`), append-only |
 | Written by | `discovery`, `/domain-modeling`, `/grilling`, `setup-matt-pocock-skills` | `whats-next`, `checkpoint`, `stepping-away` |
 
 Decisions go to `docs/adr/` (Matt's home), not `_pm/`. Projects from pm ≤ 0.7 carrying `TASKS.md` / `_pm/decisions/` / `context-map.md`: see `MIGRATION-0.8.md`. Work items live on the tracker (GitHub Issues in a team; local markdown for solo/plugin repos), not in a task file. `_pm/` records *what I did and what I'm doing* — never *what is true*.
@@ -51,14 +51,14 @@ Decisions go to `docs/adr/` (Matt's home), not `_pm/`. Projects from pm ≤ 0.7 
 
 Work → pm records the session → push the branch → the next person pulls and merges. Works because `_pm/` files are per-person and append-only (no conflicts) and nothing in `_pm/` is a state store. Trackers and `docs/` carry the shared truth across people and machines.
 
-## Day shape
+## Session shape
 
-- **Morning** — `whats-next`: reads the tracker frontier + yesterday's session, proposes a pick-up, drafts today's Intent block.
+- **Session open** — `whats-next`: reads the tracker frontier + the last session or two, proposes a pick-up, drafts this session's Intent block.
 - **Start of anything non-trivial** — `discovery`, then the size call decides the road.
-- **Mid-session** — `checkpoint` on a consequential result; `/handoff` when a session outgrows itself.
+- **Mid-session** — normally, close and reopen: a new session with a fresh Intent is the cleanest re-aim, and keeps the thread short. `checkpoint` only when the session can't be broken; `/handoff` when a session outgrows itself.
 - **Any completion claim** — `verify-before-done`: run it fresh, read it, paste it.
 - **Stage boundary** — `cross-review-gate` per the gate schedule above (optional at intent, default at plan and at green chunks).
-- **Close** — `stepping-away`: Intent vs shipped, session entry, durable knowledge routed to the library.
+- **Session close** — `stepping-away`: Intent vs shipped, session entry, durable knowledge routed to the library. Then open the next one.
 
 ## Source
 
