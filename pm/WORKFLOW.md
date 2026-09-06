@@ -57,6 +57,8 @@ This is the Ringer principle applied to *done* rather than to *correct*: the wor
 
 Riff: `sdlc/RIFF.md`. **The remaining two stay unbound rather than papered over** — an unowned row is visible; a vague sentence pretending to own it is not.
 
+A candidate binding already researched and live-verified, from the parked dc-loop tool (`_Tools/dc-loop/.scratch/dc-loop-plugin/research/server-side-gate-pattern.md`, 2026-08-28): CI runs on the pushed SHA; a ruleset lets `main` move only on green plus a PR (GitHub Pro on private personal repos; a `needs:`-chained CI→deploy workflow is the Free-plan degrade); deploy is a `main`-push workflow in a serialized concurrency group, keyed by SHA and idempotent; the human's gate is the merge. That answers "run against the real thing" for a web repo with CI and makes the PR the terminating artifact. It is not bound because no repo has run it yet — the same proving rule as everything else in 0.14.
+
 ## Gates
 
 Gates run at stage boundaries, never inside one. Discovery and grilling are gate-free — a gate on a half-formed thought produces noise. (The fast-grill seat inside a grilling round is not a gate; see above.)
