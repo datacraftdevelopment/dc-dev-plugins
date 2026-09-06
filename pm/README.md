@@ -21,6 +21,16 @@ Provides:
   riff to find the shape and intent of a piece of work, written to
   `docs/intent/<slug>.md` with a size call (one session → build it;
   multi-session → `/wayfinder` with the intent attached).
+- **`fast-grill`** skill *(0.14, the pace rule)* — sits between the frontier
+  `/grilling` computes and the round the user sees. Technical questions go,
+  with their recommended answers, to one Ringer task on the Astra seat
+  (`Agent/Ringer/local/templates/grill-review/`) and come back `agree` (a
+  ruling), `disagree` (a seat-split question), or `taste` (a question). The
+  user answers only taste, one-way doors, user challenges, and splits. Every
+  ruling is one ledger line — decided · why · cost if wrong · who agreed —
+  on the ticket, the map, or the plan; reversing one is a reply. Default at
+  Chart, in grilling tickets, and at `/to-tickets`' approval step; the map's
+  `## Notes` carries `Seat: on | off` and *Taste for this effort*.
 - **`whats-next`** skill — session open: reads intents, the tracker frontier,
   and recent sessions; proposes a pick-up; drafts this session's Intent block
   into a per-session, per-person file; claims the ticket.

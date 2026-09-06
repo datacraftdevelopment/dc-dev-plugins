@@ -34,7 +34,7 @@ One file, committed, in the shared record:
 Count unknowns, not files. Two answers:
 
 - **Fits one session** → no map. Hand off directly: Claude Code plan mode, or `/implement` / `/tdd` for disciplined execution, with the intent as the brief. Record "Size: one session" in the intent.
-- **Multi-session / foggy** → `/wayfinder`, with the intent attached and the destination taken from the intent's *Proposed outcome*. Record "Size: multi-session → wayfinder" plus the destination sentence. `/wayfinder` is user-invoked — tell the user the command, don't try to run it.
+- **Multi-session / foggy** → `/wayfinder`, with the intent attached and the destination taken from the intent's *Proposed outcome*. Record "Size: multi-session → wayfinder" plus the destination sentence. `/wayfinder` is user-invoked — tell the user the command, don't try to run it. Charting runs under `fast-grill` by default (pm's pace rule): when you hand off, also hand the user the map Notes line from that skill, with *Taste for this effort* filled from what the riff showed they care about deciding personally, so the map carries it from its first session.
 
 A third case: if the riff reveals the work is trivial (rename, config flip, one-liner), say so and don't write an intent at all. Discovery shouldn't ceremonialize small things any more than it should rush big ones.
 

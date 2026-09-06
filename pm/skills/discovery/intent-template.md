@@ -41,3 +41,5 @@ The fog — decisions you can see coming but can't phrase sharply yet. Leave the
 ## Size call
 
 One session → build it (plan mode / `/implement`). Multi-session → `/wayfinder`, destination: "<one sentence from Proposed outcome>".
+
+Map Notes for charting (fast grill, seat on): Taste for this effort: <the two or three things the originator wants to decide personally; blank means almost everything technical runs silent>.

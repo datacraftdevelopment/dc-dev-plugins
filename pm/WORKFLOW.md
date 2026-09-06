@@ -2,10 +2,11 @@
 
 **Joe's binding of [SDLC.md](./SDLC.md).** The spec says what the stages are and where a human has to stand. This says how *this stack* executes them. It names tools on purpose and assumes they're installed — Ringer, an authenticated Codex CLI, Matt Pocock's skills, the `_Core/library` skills. **This is not a generic workflow and shouldn't be written as one.** Anyone reading it who doesn't have that stack wants `SDLC.md`, not this file.
 
-The engine is Matt Pocock's skill set. **pm fits around it, never the reverse.** pm is exactly two layers, plus one hook:
+The engine is Matt Pocock's skill set. **pm fits around it, never the reverse.** pm is exactly two layers, plus one pace rule, plus one hook:
 
 1. **The on-ramp** — `discovery`: riff until the shape is visible, write `docs/intent/<slug>.md`, make the size call.
 2. **The session layer** — `whats-next` · `stepping-away` (· `checkpoint`): per-session, per-person append-only logs in `_pm/`. Never authoritative. `verify-before-done` gates the completion claims those rituals record. The unit is the **session**, not the day — sessions are kept short, several a day is the normal shape.
+3. **The pace rule** — `fast-grill` (0.14): technical questions in a grilling round go to a second-vendor seat with their recommended answers and come back as rulings; the human answers only taste, one-way doors, and splits. It is what makes the heavy stack affordable to run on every project.
 
 Plus the `credential-guard` hook, because [skills advise and hooks enforce](./SDLC.md#the-three-steering-layers). And two utility skills outside the stage chain: `okf` (format contract for the opt-in `knowledge/` bundle) and `granola-transcript` (transcripts into gitignored `_pm/transcripts/`). Anything else in pm justifies itself or gets deleted — the `dashboard` stage board failed that test and was deleted in 0.10.
 
@@ -14,17 +15,31 @@ Plus the `credential-guard` hook, because [skills advise and hooks enforce](./SD
 | Stage | Artifact, concretely | Owned by |
 |---|---|---|
 | **Discover** | `docs/intent/<slug>.md` committed, on its own | `discovery` (pm) |
-| **Chart** | wayfinder map open → cleared | `/wayfinder` → `/grilling` + `/domain-modeling`, `/prototype`, `/research` |
+| **Chart** | wayfinder map open → cleared | `/wayfinder` → `/grilling` + `/domain-modeling`, `/prototype`, `/research` — every grilling round under `fast-grill` (pm) |
 | **Spec** | spec on the tracker | `/to-spec` |
-| **Ticket** | tickets with blocking edges | `/to-tickets` |
-| **Build** | diffs, tests | `/implement` + `/tdd`; plan mode for one-session work |
+| **Ticket** | tickets with blocking edges | `/to-tickets` — the approval step under `fast-grill` |
+| **Build** | diffs, tests | one ticket or one-session work: `/implement` + `/tdd`, or plan mode · **two or more independent tickets on the frontier: `build-swarm`** (library skill, dispatches through Ringer) |
 | **Verify** | fresh test output pasted; triaged findings | `verify-before-done` (pm) · `/code-review` · `cross-review-gate` |
 | **Ship** | — **not bound yet, see below** | — |
-| **Learn** | incident → a new `docs/intent/` entry | feeds back to Discover |
+| **Learn** | incident → a new `docs/intent/` entry; durable craft → the library, under the bar in `stepping-away` | feeds back to Discover |
 
 **Small work** (fits one session) skips Chart → Ticket: Discover → Build → Verify → Ship. **Trivial edits** skip everything. **Bugs** → `/diagnosing-bugs` (failing test first), then Verify.
 
 Decisions go to `docs/adr/` (Matt's home), never `_pm/`. Work items live on the tracker — GitHub Issues in a team, local markdown for solo repos — never in a task file. Projects from pm ≤ 0.7 carrying `TASKS.md` / `_pm/decisions/` / `context-map.md`: see `MIGRATION-0.8.md`.
+
+## Fast grill — the pace rule
+
+`/grilling` prints a recommended answer under every question, and on technical questions Joe is deferring to the model anyway. So the technical bucket of each round is not shown to him: it goes, with the recommendations, to one Ringer task on the **Astra seat** (`engine: codex, model: gpt-6-astra` — kit `Agent/Ringer/local/templates/grill-review/`), and comes back as `agree` (→ a ruling), `disagree` (→ a seat-split question for Joe, both positions shown), or `taste` (→ a question for Joe). Taste, one-way doors, and user challenges never go to the seat. Every ruling is one ledger line — decided · why · cost if wrong · who agreed — in the ticket's resolution comment, the map body, or the plan, and reversing one is a reply naming it.
+
+**`fast-grill` (pm) is canonical for the buckets, the seat, the round, and the ledger.** What this file owns is the schedule: fast grill is the **default** for every grilling round at Chart (both charting grills, the destination question itself excepted), inside every grilling ticket, at `/to-tickets`' approval step, and on a plan being grilled in plan mode. It is off for discovery (no frontier to sort) and prototype tickets (the reaction is the ticket). A map carries the switch in its `## Notes` (`Seat: on | off`, plus *Taste for this effort*); `discovery` hands that line over with the intent. No seat available → rulings are taken directly and marked `(unseated)`, said out loud.
+
+This is not a gate. The seat here judges a recommendation before it becomes a ruling; the gates below judge an artifact at a stage boundary. Both are the same principle — a model never approves its own answer — at different altitudes.
+
+## Build-swarm — Build when tickets exist
+
+`/to-tickets` emits a DAG: tracer-bullet slices with acceptance criteria and blocking edges. When the frontier holds two or more independent tickets, `build-swarm` (library, next to `ringer` and `cross-review-gate`, because it dispatches through Ringer) turns the layer into one Ringer worktrees wave: one task per ticket, the ticket inlined as the spec, its runnable acceptance criteria plus the repo's real test command as the executed check, patches exported outside the worktree. The orchestrator applies patches in dependency order, runs the full suite on the integrated tree, commits one ticket per commit, closes each ticket with its evidence, and takes the next layer. Chunk green → the gate below, unchanged.
+
+What this file owns: the trigger (two or more independent frontier tickets) and three preconditions. A **committed baseline** — worktrees are cut from `HEAD`. A **workdir outside the repo and outside Dropbox** — Ringer creates every worktree inside the workdir, so that path alone decides whether worktrees sync to the cloud. At least one **acceptance criterion a script can run** per ticket; criteria nothing can run are listed on the ticket as *Unproven by check* and carried into the gate brief. The loop, the parallel safety check, and the manifest kit are the skill's. Not yet proven in a recorded run (2026-09-06); the first real wave is the proving run.
 
 ## The open gap: Ship
 
@@ -44,7 +59,7 @@ Riff: `sdlc/RIFF.md`. **The remaining two stay unbound rather than papered over*
 
 ## Gates
 
-Gates run at stage boundaries, never inside one. Discovery and grilling are gate-free — a gate on a half-formed thought produces noise.
+Gates run at stage boundaries, never inside one. Discovery and grilling are gate-free — a gate on a half-formed thought produces noise. (The fast-grill seat inside a grilling round is not a gate; see above.)
 
 All three gates are `cross-review-gate` (library skill). Only the artifact and the framing sentence change; there is no separate pre-mortem skill because the framing *is* the whole difference and it belongs in the brief.
 
@@ -71,16 +86,18 @@ Why the panel is shaped the way it is — a reader with no conversation context,
 | Shared? | Yes — collaborators and clients read it | Per-session, per-person (`_pm/sessions/YYYY-MM-DD-<name>[-N].md`), append-only |
 | Written by | `discovery`, `/domain-modeling`, `/grilling`, `setup-matt-pocock-skills` | `whats-next`, `checkpoint`, `stepping-away` |
 
-`_pm/` records *what I did and what I'm doing* — never *what is true*.
+`_pm/` records *what I did and what I'm doing* — never *what is true*. Rulings from `fast-grill` are decisions, so they live with the tracker (ticket comments, the map body), never in `_pm/`.
 
 ## Session shape
 
 - **Open** — `whats-next`: tracker frontier + the last session or two, propose a pick-up, draft this session's Intent block.
-- **Anything non-trivial** — `discovery`, then the size call picks the road: one session → plan mode or `/implement`; multi-session or foggy → `/wayfinder` with the intent attached.
+- **Anything non-trivial** — `discovery`, then the size call picks the road: one session → plan mode or `/implement`; multi-session or foggy → `/wayfinder` with the intent attached and the fast-grill Notes line for the map.
+- **Any grilling round** — `fast-grill`: technical bucket to the seat, the rest to the human, rulings ledgered.
+- **Frontier of two or more independent tickets** — `build-swarm`, from a committed baseline, workdir outside Dropbox. One ticket → `/implement` + `/tdd`.
 - **Mid-session** — normally close and reopen; a fresh Intent is the cleanest re-aim and keeps the thread short. `checkpoint` only when the session can't be broken. `/handoff` when a session outgrows itself.
 - **Any completion claim** — `verify-before-done`: run it fresh, read it, paste it.
 - **Stage boundary** — the gate schedule above.
-- **Close** — `stepping-away`: Intent vs shipped, session entry, durable knowledge routed to the library. Then open the next one.
+- **Close** — `stepping-away`: Intent vs shipped, session entry, durable knowledge routed to the library under the bar (would the next engineer, without this note, repeat the mistake?). Then open the next one.
 
 ## Team model
 
@@ -88,4 +105,4 @@ Work → pm records the session → push the branch → the next person pulls an
 
 ## Source
 
-Workflow of record for DataCraft repos; the global `Agentic/CLAUDE.md` routing section points here. Doctrine: [SDLC.md](./SDLC.md). Shape history: `docs/intent/pm-workflow-reshape.md`, `docs/intent/pm-010-lightening.md`, and the layer split in `sdlc/RIFF.md` (2026-09-03).
+Workflow of record for DataCraft repos; the global `Agentic/CLAUDE.md` routing section points here. Doctrine: [SDLC.md](./SDLC.md). Shape history: `docs/intent/pm-workflow-reshape.md`, `docs/intent/pm-010-lightening.md`, the layer split in `sdlc/RIFF.md` (2026-09-03), and the 0.14 plan (fast grill, the Astra seat, build-swarm) in this repo's `_pm/2026-09-06-build-swarm-and-fast-grill.html`, which was chosen after reading the candidate plugins from source.

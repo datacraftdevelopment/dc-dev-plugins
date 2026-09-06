@@ -30,6 +30,8 @@ Closing a session is not the same as closing the day. Most sessions end with ano
 
 **5. Shared-library check — only if something durable surfaced.** If the machine's global instructions (`~/.claude/CLAUDE.md`) name shared knowledge libraries (a domain wiki, a craft library), ask: did this session produce knowledge that belongs *beyond this project*? Route it as those instructions direct — domain facts through the domain library's ingest flow; reusable, client-agnostic craft to the craft library (or its flag mechanism, when this machine can't write to it directly). Project-only knowledge stays here (quirks, sessions, `knowledge/`). Most sessions nothing travels — skip. No libraries named on this machine: skip.
 
+   **The bar for "durable":** if this note vanished, would the next engineer reading the finished code, tests, and docs repeat the mistake or redo the investigation? If not, write nothing — the code already carries it. Effort spent and diff size don't qualify a lesson; only non-obvious reasoning that the artifacts don't show does. (Borrowed from Compound Engineering's `ce-compound` counterfactual, 2026-09-06.)
+
 **6. ADR — only if warranted.** A durable choice retrievable by topic, not already recorded on a closed wayfinder ticket? Draft it in `docs/adr/` (Matt's `/domain-modeling` format). Most sessions, skip. Ask before writing.
 
 **7. Push the log.** In a team repo, the session file is how the next person sees this stretch of work: offer to commit `_pm/sessions/YYYY-MM-DD-<name>[-N].md` (and any `docs/` edits) and push the branch. Solo: offer, don't insist.
