@@ -4,8 +4,11 @@ Claude Code plugin that packages Joe's project-management layer. **Read
 [`WORKFLOW.md`](./WORKFLOW.md) first** — it's the stage chain (Discover →
 Chart → Spec → Ticket → Build → Verify → Ship → Learn), which skill owns each
 stage, and the one rule: `docs/` is shared record, `_pm/` is personal log. pm
-fits around Matt Pocock's skill set; it is the discovery on-ramp and the
-session layer, nothing more.
+fits around Matt Pocock's skill set; it is the discovery on-ramp, the pace
+rule for grilling, and the session layer, nothing more. Build itself runs as
+the library's `build-swarm` loop by default when a ticket frontier with
+committed checks exists (0.15): a script works the frontier unattended
+through Ringer, one commit per ticket, parking what fails for a human.
 
 Provides:
 
