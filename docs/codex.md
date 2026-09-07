@@ -244,20 +244,33 @@ no drift. No client database was used.
 
 FileMaker Pro Agent's ADT service is reachable on port 1366, and the generated
 Codex ADT MCP package successfully initializes and lists tools. The final live
-file read is **not yet verified**: `connectedFiles` and open-file suggestions are
-empty. Opening the application through UI automation first produced a FileMaker
-accessibility crash, then timed out on subsequent attempts. The file remains
-readable and provisioned. Open the disposable `.fmp12` in FileMaker Pro, then run:
+file read is **not yet verified**. The disposable file was opened through Finder,
+but ADT's automatic connector start did not complete. `adt doctor --file` reports
+an open, unshared local file (DBError 803 during its script inspection) and no
+completed plugin handshake. The previously completed fresh-process checks prove
+that the required connector scripts are installed.
+
+FileMaker UI inspection crashes or times out. Three installed FileMaker versions
+also share the same application identifier; target Pro Agent by its full path.
+The scratch project's `Start ADT Connector.webloc` attempts Claris's documented
+`fmp26://$/CodexConnectionSmoke?script=Connect%20To%20ADT` URL, but did not establish
+the handshake either. Because both Pro 26 installations register that scheme,
+its destination is not guaranteed to be the Agent application. See
+[Claris's URL documentation](https://help.claris.com/en/pro-help/content/opening-files-url.html).
+
+To finish, run **Connect To ADT** in the open `CodexConnectionSmoke` file in
+FileMaker Pro Agent and leave its connector window open. This manual fallback is
+needed because ADT's automatic start failed. Then run:
 
 ```bash
 cd ~/.ringer/jobs/filemaker-connection-smoke
 ~/plugins/filemaker-agentic-development/bin/adt doctor --json --file CodexConnectionSmoke
 ```
 
-ADT starts the connector script itself once the file is open. Follow with
-`connectedFiles` and a `table_metadata` read for that exact file. Do not treat
-`doctor`'s overall `ready` status alone as proof of the live data path: inspect
-its individual handshake checks. Saved results are in the disposable project's
-`connection-evidence.json`, `components-status.json`, and `doctor-file.json`.
+Follow with `connectedFiles` and a `table_metadata` read for that exact file. Do
+not treat `doctor`'s overall `ready` status alone as proof of the live data path:
+inspect its individual handshake checks. Saved results are in the disposable
+project's `connection-evidence.json`, `components-status.json`, and
+`doctor-file-latest.json`. No database sharing or account privileges were changed.
 
 Claude Design and Granola remain optional, unverified host connections.
