@@ -230,11 +230,34 @@ now points at the bundled executable. Its initialize/tools-list check advertised
 with its configuration preserved. These machine-specific changes have a local
 config backup and are not reapplied by refresh.
 
-The credential guard passed 18 script checks, but Codex reports its persisted trust
-as **untrusted**. Approve it through `/hooks` before relying on runtime enforcement.
+The credential guard passed 18 script checks and was approved individually through
+Codex's `/hooks` review UI. A separate app-server `hooks/list` check confirms
+`pm@personal`, `preToolUse`, matcher `Bash`, `enabled: true`, and `trustStatus: trusted`.
 No hook-trust bypass was enabled. Recheck trust after plugin updates.
 
-Claris doctor reports the CLI, component bundle and plugin installed without load
-conflicts. The local data-service endpoint is offline, and no FileMaker test file
-has been selected. Schema CLI availability is separate from the live MCP data path.
+The disposable FileMaker project is `~/.ringer/jobs/filemaker-connection-smoke/`.
+Its `CodexConnectionSmoke.fmp12` was created with the `fm` CLI, registered in
+`adt.json`, and its `ConnectionSmoke` table reread successfully in a fresh process
+with a closing summary and `rolledBack: false`. ADT provisioning then succeeded;
+a fresh `adt components status` found all 43 components present, no blockers, and
+no drift. No client database was used.
+
+FileMaker Pro Agent's ADT service is reachable on port 1366, and the generated
+Codex ADT MCP package successfully initializes and lists tools. The final live
+file read is **not yet verified**: `connectedFiles` and open-file suggestions are
+empty. Opening the application through UI automation first produced a FileMaker
+accessibility crash, then timed out on subsequent attempts. The file remains
+readable and provisioned. Open the disposable `.fmp12` in FileMaker Pro, then run:
+
+```bash
+cd ~/.ringer/jobs/filemaker-connection-smoke
+~/plugins/filemaker-agentic-development/bin/adt doctor --json --file CodexConnectionSmoke
+```
+
+ADT starts the connector script itself once the file is open. Follow with
+`connectedFiles` and a `table_metadata` read for that exact file. Do not treat
+`doctor`'s overall `ready` status alone as proof of the live data path: inspect
+its individual handshake checks. Saved results are in the disposable project's
+`connection-evidence.json`, `components-status.json`, and `doctor-file.json`.
+
 Claude Design and Granola remain optional, unverified host connections.
