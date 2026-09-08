@@ -13,7 +13,7 @@ This skill is for when you can't take that boundary: a wayfinder charting run mi
 
 **1. Name what changed.** One sentence: which assumption, direction, or result made the current state stale. **If nothing consequential changed, say so and stop** — this ritual run on noise is how state files rot. **If the session could simply close here, say that instead** and hand off to `stepping-away`.
 
-**2. Re-aim the Intent — don't overwrite it.** In this session's file, `_pm/sessions/YYYY-MM-DD-<name>[-N].md`, leave the original Intent block as written (stepping-away's drift check needs it) and **append** a dated re-aim line beneath it — earlier re-aims stay; the session file is append-only:
+**2. Read the bound session file, its Intent and latest re-aim; reconcile against docs and the tracker. Re-aim the Intent — don't overwrite it.** In this session's file, `_pm/sessions/YYYY-MM-DD-<name>[-N].md`, leave the original Intent block as written (stepping-away's drift check needs it) and **append** a dated Re-aimed section at the end — earlier re-aims stay; the session file is append-only:
 
 > **Re-aimed 14:30:** evidence X replaces the buyer assumption — done for this session is now Y; Z drops out of scope.
 
@@ -23,7 +23,13 @@ The latest re-aim is the live aim; the opening Intent and any earlier re-aims st
 
 **4. Archive, don't delete.** A replaced decision that still explains the project gets a `docs/adr/` entry (status: superseded, linked both ways — `/domain-modeling` owns the format) or a line in this session's Tried / Learned / Decided. Preserve hard constraints exactly; don't let a preference quietly harden into a rule — or a rule soften into a preference.
 
-**5. Show before writing.** Short before/after of the re-aim and any ticket comments. Then write.
+**5. Show before writing.** Short before/after of the re-aim and any ticket comments. Then append via the bound path and ID:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root . reaim --session <bound-path> --id <bound-id> --entry-file <reaim-text-file>
+```
+
+A closed session rejects re-aim. A missing binding is recovered from this conversation, never the highest ordinal. For a legacy file explicitly identified by the user, append manually. An already-running unattended loop does not read personal logs: stop it using its documented mechanism, reconcile the tracker/constraints, then restart; do not edit active worker inputs mid-run.
 
 ## What this skill does NOT do
 

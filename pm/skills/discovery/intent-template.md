@@ -1,6 +1,7 @@
 # Intent: <short title>
 
 Author: <name>. Status: draft | accepted | superseded. Date: YYYY-MM-DD.
+Completion: pending (ship-acceptance writes a verified docs/shipped/ link when delivered).
 Source: <what prompted this — conversation, article, incident, client request>
 
 ## Problem
@@ -19,8 +20,8 @@ Each line is a check a person can actually perform: what you do, and what should
 
 **Write them for a stranger.** Whoever adjudicates this will not have been in the room — that is the entire point of adjudication, and it is why these are written now rather than at the end. A check that needs you to explain it can only be executed by the one party disqualified from executing it: the person who did the work.
 
-- [ ] <do this> → <this happens>
-- [ ] <do this> → <this happens>
+- [ ] A1: <do this> → <this happens>
+- [ ] A2: <do this> → <this happens>
 
 Three or four is usually right; a long list means this is really several intents. Where a check can't be automated, say how it's done by hand — a named manual check beats a missing one. Where a check can't be performed at all, say that too; an honest gap here is a decision to make now rather than a surprise at Ship.
 

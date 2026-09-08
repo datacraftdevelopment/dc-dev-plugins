@@ -4,8 +4,8 @@ Claude Code plugin that packages Joe's project-management layer. **Read
 [`WORKFLOW.md`](./WORKFLOW.md) first** — it's the stage chain (Discover →
 Chart → Spec → Ticket → Build → Verify → Ship → Learn), which skill owns each
 stage, and the one rule: `docs/` is shared record, `_pm/` is personal log. pm
-fits around Matt Pocock's skill set; it is the discovery on-ramp, the pace
-rule for grilling, and the session layer, nothing more. Build itself runs as
+fits around Matt Pocock's skill set: discovery, the pace rule for grilling,
+session continuity, and evidence-based delivery acceptance. Build itself runs as
 the library's `build-swarm` loop at `--wave 1` by default when a ticket
 frontier with committed checks exists (0.15.1, after twelve two-seat gate
 rounds): a script works the frontier unattended through Ringer, one commit
@@ -57,11 +57,12 @@ Provides:
   fetches full verbatim Granola meeting transcripts (list-then-match; the
   notes.granola.ai link id is not the meeting id) and lands them in
   gitignored `_pm/transcripts/`.
-- **`credential-guard` hook** — the one deterministic guardrail: a
+- **`ship-acceptance`** — closes the delivery gap with an accepted-intent snapshot, independent checks before and after delivery, exact revisions, human deployment, and a shared `docs/shipped/` record. Missing checks and exceptions stay visible.
+- **Session helpers** — `scripts/session.py` allocates distinct session files and closes by exact path/ID with an explicit closure marker; no newest-file guessing.
+- **`credential-guard` hook** — a bounded filename guard: a
   `PreToolUse` hook on Bash that blocks `git add` / `git stage` /
   `git commit` when a credential-shaped file would be staged or committed —
-  including compound chains, directory operands, and quoted `-C` paths
-  (hardened 0.10.0; regression tests in
+  including literal directory changes, scoped subshells, explicit commit paths, forced adds, and quoted/chained `-C` paths. Removing tracked credentials remains allowed. Relevant inspection failures block with a supported-command explanation; unrelated commands and known nonrepos remain allowed. This protects tool invocations, not arbitrary subprocesses or file contents. Build-swarm uses a versioned policy snapshot at its own commit boundary, checked for parity at release (0.16.0; regression tests in
   [`hooks/test-credential-guard.sh`](./hooks/test-credential-guard.sh)).
   Examples/templates (`*.example`, `*.sample`) pass.
 
@@ -118,3 +119,7 @@ Edit `commands/pm-scaffold.md` to change what the command does; edit
 `plugin.json`, commit, push — machines pick it up on
 `/plugin marketplace update dc-plugins`. Run
 `bash hooks/test-credential-guard.sh` after touching the hook.
+
+## 0.16.0 workflow repair
+
+The Ticket → Build handoff now points to canonical build-swarm preparation and dependency setup. Session identity/closure is executable; intent refresh happens at explicit boundaries. Ship is owned by `ship-acceptance`, with record validation rather than a claim that the validator itself adjudicates. Run `python3 -m unittest discover -s tests -v` from the marketplace root and `bash pm/hooks/test-credential-guard.sh`. Credential policy parity between PM and the build-swarm source is checked with `python3 scripts/sync_pm_policy.py --build-swarm <source-dir> --check`. Stack-specific delivery still needs its own real evidence.

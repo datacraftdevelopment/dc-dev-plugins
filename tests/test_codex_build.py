@@ -68,6 +68,20 @@ class CodexBuildTests(unittest.TestCase):
                                                      'tool_input': {'command': 'git add .env'}}),
                                    capture_output=True, text=True)
             self.assertEqual(guard.returncode, 2, guard.stderr)
+            self.assertIn('credential-guard: BLOCKED', guard.stderr)
+            safe = subprocess.run(['bash', '-c', command], cwd='/',
+                                  env={**os.environ, 'PLUGIN_ROOT': str(pm)},
+                                  input=json.dumps({'cwd': str(fixture),
+                                                    'tool_input': {'command': 'git add safe.txt'}}),
+                                  capture_output=True, text=True)
+            self.assertEqual(safe.returncode, 0, safe.stderr)
+            session = subprocess.run(['python3', str(pm / 'scripts/session.py'),
+                                      '--root', str(fixture), 'open', '--name', 'fixture',
+                                      '--intent', 'Exercise the relocated PM session helper.'],
+                                     cwd='/', capture_output=True, text=True)
+            self.assertEqual(session.returncode, 0, session.stderr)
+            self.assertTrue((fixture / json.loads(session.stdout)['path']).is_file())
+            self.assertTrue((pm / 'skills/ship-acceptance/SKILL.md').is_file())
             # Bundled scripts must work after relocation, from an unrelated cwd.
             probe = subprocess.run(['python3', str(fm / 'skills/fm-dataapi/scripts/fm.py'), '--help'],
                                    cwd='/', capture_output=True, text=True)

@@ -12,7 +12,8 @@ Session open. The user is starting a session — could be the second one today a
 ## Checklist
 
 **1. Read.** Shared record first, personal log second (`WORKFLOW.md`: `docs/` is truth, `_pm/` is log).
-- `docs/intent/*.md` — every open intent (status draft/accepted): these are the streams of work. Note each one's size call.
+- `docs/intent/*.md` — every open intent (status draft/accepted and no verified Completion link; `ship-acceptance` owns completion): these are the streams of work. Note each one's size call.
+- For a Completion link, read the linked delivery record before excluding a `shipped` intent. Surface `released-with-exceptions` with its open tail until the originator accepts it; a missing/broken record stays open.
 - **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/`. Unreachable → say so, go on with local artifacts.
 - `docs/adr/` newest entries, `CONTEXT.md` if present — what's been decided.
 - `_pm/skeleton.md` — the macro why of the project.
@@ -34,13 +35,19 @@ Watch-outs: <claimed tickets gone quiet; open threads worth surfacing; an intent
 
 > Pushing on the search filter UI — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done for this session is the prototype validated by Sandy. Not touching filter persistence or multi-category yet.
 
-**4. Wait.** Don't start the work. The user picks AND confirms (or amends) the Intent. It's their commitment for this session.
+**4. Resolve the pick-up.** If the user already named the work, that is the selection: use it without another approval round. Otherwise wait for their pick and any correction to the drafted Intent.
 
 **5. Write.** Once approved, write the Intent block into this session's file in `_pm/sessions/`:
 
-- **One file per session, per person.** The day's first session is `YYYY-MM-DD-<name>.md`; each later session that day appends an ordinal — `YYYY-MM-DD-<name>-2.md`, `-3.md`, and so on. Check what already exists for today and take the next free number. (`<name>` = the user's short handle; ask once if unknown, then remember it in the project `CLAUDE.md`.)
-- Per person, so two people on the same day never collide; per session, so each Intent gets its own close and its own Intent-vs-outcome.
-- Create from `_pm/sessions/_template.md` if needed. Shipped / Tried-Learned-Decided sections stay empty until the session closes.
+Use the bundled allocator after the user has selected the work (an explicit task already states the selection):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root . open --name <handle> --intent '<session intent>'
+```
+
+Keep the returned `path` and `id` in this conversation and its handoff/compaction summary. They bind this conversation to this session; never select a newer file by ordinal. The allocator creates the next readable date/person filename with exclusive creation and adds `Session-ID` and `Started`. Local concurrent allocations cannot overwrite each other. Offline replicas of a synced folder do not share a lock: use separate project checkouts for simultaneous work across machines and preserve conflicting files for reconciliation.
+
+On resume/context recovery, read that file's opening Intent and latest Re-aimed section, then reconcile with the tracker and shared docs. If the binding was lost and more than one file could belong to this conversation, ask once. Legacy files without an ID remain readable; do not adopt one merely because it is newest. An explicit session path supplied by the user can be continued manually with the same append-only rules.
 
 If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim.
 
@@ -52,4 +59,4 @@ Brand-new project: propose drafting the skeleton (if still placeholder), or runn
 
 > "These systems were built to execute. They nail the *what* and quietly let the *why* go." — Matt Maher
 
-The Intent block is this session's why, written where the agent reads it on every tool call. Without it, the agent has the queue but no orientation.
+The Intent block is this session's why. Reread it at resume/context recovery, before another ticket or manually controlled wave, and at checkpoint. Without it, the agent has the queue but no orientation.

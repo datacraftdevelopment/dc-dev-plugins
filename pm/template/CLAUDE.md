@@ -69,7 +69,7 @@ append-only. Later sessions the same day take an ordinal (`-2`, `-3`), so two
 people never collide and each session keeps its own Intent. Set an Intent block
 (2–3 sentences: push, why, done-for-this-session, not-in-scope) at the session
 open — `whats-next` drafts it; `stepping-away` closes with Shipped /
-Tried-Learned-Decided / Intent-vs-outcome. A mid-session pivot is normally a
+Tried-Learned-Decided / Intent-vs-outcome. Keep the allocator's exact session path and ID in the conversation/handoff; close by that binding, never by the newest filename. Reread the Intent/latest re-aim at resume, checkpoint, and the next ticket. A mid-session pivot is normally a
 new session; `checkpoint` appends a dated re-aim only when the session can't be
 broken. The session skills ship globally with the pm plugin — they are not
 copied here.
@@ -93,4 +93,8 @@ Before reporting any task done, fixed, or passing:
 - The claim is exactly what the output supports. Red → report it verbatim. Partial → say which parts. Nothing runnable → say what *would* verify it and that it wasn't run.
 - Fix the code, not the test. Never skip or delete a failing test to get green.
 
-(Deterministic backing and the full rule: the pm plugin's `verify-before-done` skill.)
+(The full self-report rule: the pm plugin's `verify-before-done` skill.)
+
+## Delivery acceptance
+
+After implementation verification, use pm `ship-acceptance` to record the intent criteria against the actual candidate and delivered revision in `docs/shipped/`. Create the folder on first write. A closed build ticket does not prove the intent was delivered. The human applies production; the record distinguishes ready-for-release, blocked, shipped, and released-with-exceptions.
