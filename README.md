@@ -1,7 +1,7 @@
 # dc-plugins
 
-Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`, and
-`fm-dc/` folders are the shared source. Claude Code installs them from
+Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`,
+`fm-dc/`, and `ui-test/` folders are the shared source. Claude Code installs them from
 `.claude-plugin/marketplace.json`; the Codex builder creates compatible editions
 from the same tracked files. See [Codex installation and compatibility](docs/codex.md).
 
@@ -21,6 +21,9 @@ What assumes it:
 - `build-swarm` loop (Build stage default since pm 0.15) — works a ticket
   frontier through Ringer worktree waves.
 - `cross-review-gate` — the two-seat gate dispatches through Ringer.
+- `ui-test` skill `fm-ui-test` — the FileMaker UI runner (Codex computer-use) and
+  its verifier are both Ringer tasks; also needs a one-time Codex computer-use
+  approval for FileMaker Pro (see `ui-test/README.md`).
 
 Where it lives (none of it ships in this repo):
 

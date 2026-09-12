@@ -19,6 +19,11 @@
       "name": "fm-dc",
       "source": "./fm-dc",
       "description": "Agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit and server-connection doctrine, and project scaffolding. Commands /fm-dc:fm-init, fm-scaffold, fm-status, fm-rollback, fm-docs-sync."
+    },
+    {
+      "name": "ui-test",
+      "source": "./ui-test",
+      "description": "Agent-run UI tests for FileMaker Pro builds: fm-ui-test splits assertions by evidence channel, writes a typed runner instruction, dispatches a Codex computer-use worker under Ringer, validates the returned receipt (screenshots + on-screen reads) with executed checks, and hands a fresh verifier task the verdict. PASS-OBSERVED / FAIL / BLOCKED outcomes; ships the tool matrix observed on this stack."
     }
   ]
 }
