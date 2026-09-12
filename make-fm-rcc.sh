@@ -5,7 +5,8 @@
 # re-cuts the fork. It git-archives the tracked fm-dc set, strips internal docs,
 # applies a deterministic rebrand map (every replacement must hit, or the build
 # aborts — that's how upstream drift surfaces), renames the fm-dc data paths to
-# fm-rcc ones, writes the new marketplace manifests + MIT LICENSE, verifies zero
+# fm-rcc ones, refreshes the fm-rcc marketplace entry + MIT LICENSE (the repo's
+# other plugins — pm — and its root README are left alone), verifies zero
 # brand residue, runs the full test suite from the built tree, and (with --push)
 # commits the result to github.com/FMTrainingTV-AI/rcc-fm.
 #
@@ -34,14 +35,15 @@ UPSTREAM_VERSION="$(python3 -c "import json;print(json.load(open('$SRC/fm-dc/.cl
 
 echo "== fm-rcc build: fm-dc v$UPSTREAM_VERSION @ $UPSTREAM_COMMIT -> $REPO"
 
-# --- 1. clone target, wipe working tree (true rebuild every run) ---------------
+# --- 1. clone target, wipe ONLY fm-rcc/ (true rebuild of the plugin every run;
+#        the repo also carries pm/ and a hand-maintained root README — untouched)
 if [ ! -d "$REPO/.git" ]; then
   git clone "$TARGET_REPO" "$REPO" 2>/dev/null || { mkdir -p "$REPO" && git -C "$REPO" init -b main && git -C "$REPO" remote add origin "$TARGET_REPO"; }
 fi
 git -C "$REPO" config user.name "Joe DaSilva"
 git -C "$REPO" config user.email "digitaljoed@gmail.com"
-git -C "$REPO" rm -rq . 2>/dev/null || true
-git -C "$REPO" clean -fdxq
+git -C "$REPO" rm -rq fm-rcc 2>/dev/null || true
+rm -rf "$PLUGIN"
 
 # --- 2. import the git-tracked fm-dc set (never cp -R: .venv/sandbox stay behind)
 mkdir -p "$PLUGIN"
@@ -224,17 +226,22 @@ readme = plugin / "README.md"
 readme.write_text(readme.read_text().rstrip() + "\n\n---\n\nBuilt by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — MIT licensed, see [LICENSE](LICENSE).\n")
 PYEOF
 
-# --- 5. marketplace manifest, LICENSE, root README, root .gitignore -------------
+# --- 5. marketplace manifest (fm-rcc entry only), LICENSE, root .gitignore ------
 mkdir -p "$REPO/.claude-plugin"
 PLUGIN_DESC="$(python3 -c "import json;print(json.load(open('$PLUGIN/.claude-plugin/plugin.json'))['description'])")"
 python3 - "$REPO/.claude-plugin/marketplace.json" "$PLUGIN_DESC" <<'PYEOF'
-import json, sys
+import json, os, sys
 path, desc = sys.argv[1], sys.argv[2]
-json.dump({
-    "name": "rcc-fm",
-    "owner": {"name": "Joe DaSilva", "email": "digitaljoed@gmail.com"},
-    "plugins": [{"name": "fm-rcc", "source": "./fm-rcc", "description": desc}],
-}, open(path, "w"), indent=2)
+entry = {"name": "fm-rcc", "source": "./fm-rcc", "description": desc}
+if os.path.exists(path):
+    m = json.load(open(path))
+    others = [p for p in m.get("plugins", []) if p.get("name") != "fm-rcc"]
+    m["plugins"] = [entry] + others
+else:
+    m = {"name": "rcc-fm",
+         "owner": {"name": "Joe DaSilva", "email": "digitaljoed@gmail.com"},
+         "plugins": [entry]}
+json.dump(m, open(path, "w"), indent=2)
 open(path, "a").write("\n")
 PYEOF
 
@@ -263,7 +270,7 @@ SOFTWARE.
 EOF
 cp "$REPO/LICENSE" "$PLUGIN/LICENSE"   # travels with the installed plugin
 
-cat > "$REPO/README.md" <<'EOF'
+[ -f "$REPO/README.md" ] || cat > "$REPO/README.md" <<'EOF'
 # rcc-fm — RCC's Claude Code plugin marketplace
 
 Home of **fm-rcc**, a Claude Code plugin for agentic FileMaker development:
@@ -292,7 +299,7 @@ printf '.DS_Store\n/_pm/\n' > "$REPO/.gitignore"   # /_pm/ = local-only personal
 
 # --- 6. verification gate: zero brand/leak residue, valid manifests, no symlinks
 echo "== verify"
-RESIDUE=$(grep -rIlie 'datacraft|data craft|dc-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/' "$PLUGIN" || true)
+RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/' "$PLUGIN" || true)
 [ -z "$RESIDUE" ] || { echo "BRAND/LEAK RESIDUE:"; echo "$RESIDUE"; exit 1; }
 TOKEN=$(grep -rIl 'fm-dc' "$PLUGIN" || true)
 [ -z "$TOKEN" ] || { echo "fm-dc TOKEN RESIDUE:"; echo "$TOKEN"; exit 1; }
@@ -319,7 +326,7 @@ else
 
 Built by make-fm-rcc.sh — do not hand-edit this repo; change upstream and re-run.
 
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   echo "== committed: $(git log --oneline -1)"
 fi
 if [ "$PUSH" = 1 ]; then

@@ -7,3 +7,6 @@
 # Rebuilt Codex packages; Claude plugin folders remain the shared source.
 /.codex-build/
 __pycache__/
+
+# cross-review-gate session artifacts — local-only.
+/.review-gate/
