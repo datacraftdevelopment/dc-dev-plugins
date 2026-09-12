@@ -1,6 +1,6 @@
 # Worked example — the 2026-09-12 capability probe
 
-The first real run of this pattern: one Codex computer-use task under Ringer,
+The first real run of this pattern (FileMaker Pro target; see `targets/filemaker.md`): one Codex computer-use task under Ringer,
 asked to capture the FileMaker Pro window "ProbeFile" and read ten on-screen
 values, checked against values the orchestrator had seen on the same screen.
 

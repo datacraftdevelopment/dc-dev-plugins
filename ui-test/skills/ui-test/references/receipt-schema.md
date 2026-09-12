@@ -9,14 +9,14 @@
   "assertions": {
     "status-rendered": {"expected": "Posted", "type": "rendered"},
     "dialog-text":     {"expected": "Invoice posted", "type": "dialog", "checkpoint": "dialog-shown"},
-    "layout-after":    {"expected": "Invoices", "type": "state"}
+    "view-after":    {"expected": "Invoices", "type": "state"}
   },
   "artifacts_required": ["evidence/invoice-post-before.png", "evidence/invoice-post-dialog.png", "evidence/invoice-post-after.png"],
   "min_png_bytes": 8000,
   "data_assertions": {"Invoices.Status where pk=1042": "Posted"}
 }
 ```
-`data_assertions` are checked by the orchestrator through the Data API, not by the runner.
+`data_assertions` are checked by the orchestrator through the app's non-UI channel (Data API, SQLite, defaults, API), not by the runner, and not by either script — so they may be relational (`> baseline`, `within 2s of now`) where UI `assertions` must be literal strings.
 
 ## receipt.json — written by the runner
 
@@ -32,7 +32,7 @@
   "observations": {
     "status-rendered": {"raw_text": "Posted", "source": "accessibility", "artifact_ref": "a2"},
     "dialog-text":     {"raw_text": "Invoice posted", "source": "accessibility", "artifact_ref": "a1"},
-    "layout-after":    {"raw_text": "Invoices", "source": "accessibility", "artifact_ref": "a2"},
+    "view-after":    {"raw_text": "Invoices", "source": "accessibility", "artifact_ref": "a2"},
     "unreadable-example": {"raw_text": null, "source": "pixels", "reason": "field occluded by dialog", "artifact_ref": "a1"}
   },
   "artifacts": [

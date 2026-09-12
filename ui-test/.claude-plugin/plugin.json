@@ -1,11 +1,21 @@
 {
   "name": "ui-test",
-  "version": "0.1.0",
-  "description": "Agent-driven UI testing for FileMaker Pro builds: Claude writes a typed test instruction, a Codex computer-use worker runs it under Ringer and returns an evidence receipt (screenshots + values read off the screen), executed checks validate the receipt, and a separate verifier issues the verdict. Outcomes are PASS-OBSERVED / FAIL / BLOCKED. Requires Ringer and a one-time Codex computer-use approval for FileMaker Pro.",
+  "version": "0.2.0",
+  "description": "Agent-run UI tests for any macOS app with a window \u2014 native Swift/SwiftUI apps, FileMaker Pro, Electron: Claude writes a typed test instruction, a Codex computer-use worker runs it under Ringer and returns an evidence receipt (screenshots + values read off the screen), executed checks validate the receipt, and a separate verifier issues the verdict. Outcomes PASS-OBSERVED / FAIL / BLOCKED. Per-app target profiles (FileMaker, native macOS) carry the approval, preconditions and non-UI channel. Requires Ringer and a one-time Codex computer-use approval per app.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"
   },
-  "keywords": ["filemaker", "ui-testing", "computer-use", "codex", "ringer", "verification", "screenshots"],
+  "keywords": [
+    "ui-testing",
+    "computer-use",
+    "codex",
+    "ringer",
+    "verification",
+    "screenshots",
+    "macos",
+    "swift",
+    "filemaker"
+  ],
   "license": "MIT"
 }

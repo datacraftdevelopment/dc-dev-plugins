@@ -21,9 +21,9 @@ What assumes it:
 - `build-swarm` loop (Build stage default since pm 0.15) — works a ticket
   frontier through Ringer worktree waves.
 - `cross-review-gate` — the two-seat gate dispatches through Ringer.
-- `ui-test` skill `fm-ui-test` — the FileMaker UI runner (Codex computer-use) and
-  its verifier are both Ringer tasks; also needs a one-time Codex computer-use
-  approval for FileMaker Pro (see `ui-test/README.md`).
+- `ui-test` skill `ui-test` — the UI runner (Codex computer-use) and its
+  verifier are both Ringer tasks; also needs a one-time Codex computer-use
+  approval per target app (see `ui-test/README.md`).
 
 Where it lives (none of it ships in this repo):
 
