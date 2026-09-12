@@ -36,5 +36,6 @@ What ships:
 ## Install
 
 ```
-/plugin install ui-test@dc-plugins
+/plugin marketplace add datacraftdevelopment/dc-dev-plugins
+/plugin install ui-test
 ```
