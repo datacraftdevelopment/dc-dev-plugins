@@ -1,6 +1,6 @@
 {
   "name": "pm",
-  "version": "0.16.1",
+  "version": "0.16.2",
   "description": "DataCraft PM: minimal scaffolding, discovery with acceptance criteria, fast grilling, sessions bound to explicit IDs, ticket preparation through build-swarm, fresh verification, and independent delivery acceptance. Credential filename guards cover supported tool calls; versioned policy parity supports the build-loop commit boundary. WORKFLOW.md binds the stages; SDLC.md states the doctrine.",
   "author": {
     "name": "Joe",

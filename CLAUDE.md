@@ -1,10 +1,10 @@
-# CLAUDE.md — dc-plugins marketplace
+# CLAUDE.md — dc-dev-plugins marketplace
 
-This repo is a **Claude Code plugin marketplace** (`datacraftdevelopment/dc-plugins`). One `.claude-plugin/marketplace.json` lists every plugin; each plugin is a self-contained subfolder with its own `.claude-plugin/plugin.json`. Installed once per machine (`/plugin marketplace add datacraftdevelopment/dc-plugins`), then plugins are installed individually.
+This repo is a **Claude Code plugin marketplace** (`datacraftdevelopment/dc-dev-plugins`). One `.claude-plugin/marketplace.json` lists every plugin; each plugin is a self-contained subfolder with its own `.claude-plugin/plugin.json`. Installed once per machine (`/plugin marketplace add datacraftdevelopment/dc-dev-plugins`), then plugins are installed individually.
 
 Current plugins: **`pm`** (project-management scaffold + session/delivery skills), **`design-dc`** (design workflow), **`fm-dc`** (agentic FileMaker development), and **`ui-test`** (agent-run UI tests for any macOS app: Codex computer-use runner + verifier under Ringer, per-app target profiles).
 
-**This repo is PRIVATE** (2026-09-03). `/plugin marketplace add` still works unchanged, but each machine needs an authenticated `gh`/git credential helper for `datacraftdevelopment`. It went private so pm can hard-wire tools that aren't public — `WORKFLOW.md` assumes Ringer, which lives in the private `datacraftdevelopment/desk` — and so nothing here is written for strangers. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally and is unaffected.
+**This repo is PRIVATE** (2026-09-03; renamed from `dc-plugins` 2026-09-12 — that name now belongs to the PUBLIC marketplace cut by `make-dc-plugins.sh`). `/plugin marketplace add` still works unchanged, but each machine needs an authenticated `gh`/git credential helper for `datacraftdevelopment`. It went private so pm can hard-wire tools that aren't public — `WORKFLOW.md` assumes Ringer, which lives in the private `datacraftdevelopment/desk` — and so nothing here is written for strangers. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally (`make-fm-rcc.sh`) and DataCraft's public `datacraftdevelopment/dc-plugins` is cut from that (`make-dc-plugins.sh`).
 
 ## Ringer is assumed
 
@@ -55,7 +55,7 @@ A plugin's name drives its command namespace (`/<plugin>:<command>`), but the sa
 
 ## Dev workflow
 
-Develop **in place** in each plugin's subfolder — this repo is the single source of truth (standalone plugin repos were retired). Ship a change: commit + push, then `/plugin marketplace update dc-plugins` on each machine. Add a new plugin: new subfolder + one line in `marketplace.json` — never a new marketplace.
+Develop **in place** in each plugin's subfolder — this repo is the single source of truth (standalone plugin repos were retired). Ship a change: commit + push, then `/plugin marketplace update dc-dev-plugins` on each machine. Add a new plugin: new subfolder + one line in `marketplace.json` — never a new marketplace.
 
 `pm/template/` is designed **in place** here too — the DC-Project-Builder mirror was retired 2026-08-28 (`docs/intent/pm-010-lightening.md`); the builder repo (`datacraftdevelopment/dc-project-builder`) is dormant and no longer receives scaffold changes. Its `docs/_design/` history names client paths and must never ship here (scrubbed once already, pm v0.2.2) — that rule outlives the mirror.
 

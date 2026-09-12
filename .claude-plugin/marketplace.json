@@ -1,5 +1,5 @@
 {
-  "name": "dc-plugins",
+  "name": "dc-dev-plugins",
   "owner": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"
@@ -8,12 +8,12 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a minimal starter (day-one files only; other folders are created on first write per the stamped CLAUDE.md taxonomy); discovery riffs work into a committed intent + size call before planning; fast-grill paces every grilling round (technical questions to the Astra seat via Ringer, ledgered as rulings; the human answers taste, one-way doors, and splits); whats-next and stepping-away open and close each working session \u2014 per-session, per-person logs, several a day is normal \u2014 with checkpoint reserved for a session too long to close and reopen; WORKFLOW.md maps the stage chain (Build runs as the library's build-swarm loop by default when a ticket frontier with checks exists, 0.15); verify-before-done gates completion claims on evidence; credential-guard hook blocks committing credential-shaped files; okf and granola-transcript ride along as utility skills."
+      "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a minimal starter (day-one files only; other folders are created on first write per the stamped CLAUDE.md taxonomy); discovery riffs work into a committed intent + size call before planning; fast-grill paces every grilling round (technical questions to the Astra seat via Ringer, ledgered as rulings; the human answers taste, one-way doors, and splits); whats-next and stepping-away open and close each working session — per-session, per-person logs, several a day is normal — with checkpoint reserved for a session too long to close and reopen; WORKFLOW.md maps the stage chain (Build runs as the library's build-swarm loop by default when a ticket frontier with checks exists, 0.15); verify-before-done gates completion claims on evidence; credential-guard hook blocks committing credential-shaped files; okf and granola-transcript ride along as utility skills."
     },
     {
       "name": "design-dc",
       "source": "./design-dc",
-      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact \u2192 locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
+      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact → locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
     },
     {
       "name": "fm-dc",

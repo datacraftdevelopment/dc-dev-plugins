@@ -30,7 +30,7 @@ resources/fmbase.fmp12       scaffold seed file (BASE + ProofKit) for E2E tests
 
 ## Local install for testing
 
-This plugin ships from the `dc-plugins` marketplace (`dc-plugins/fm-dc/`). To test local edits without publishing, point `--plugin-dir` at this folder:
+This plugin ships from the `dc-dev-plugins` marketplace (`dc-dev-plugins/fm-dc/`). To test local edits without publishing, point `--plugin-dir` at this folder:
 
 ```bash
 claude --plugin-dir "$(pwd)"   # run from the fm-dc plugin directory

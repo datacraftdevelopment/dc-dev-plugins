@@ -7,8 +7,8 @@ A Claude Code plugin that turns a session into a competent FileMaker developer. 
 ## Install
 
 ```bash
-# from the dc-plugins marketplace
-/plugin marketplace add datacraftdevelopment/dc-plugins
+# from the dc-dev-plugins marketplace
+/plugin marketplace add datacraftdevelopment/dc-dev-plugins
 /plugin install fm-dc
 
 # one-time per machine — the tools run on system python3, so its deps go there

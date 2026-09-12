@@ -14,6 +14,6 @@ The DataCraft design plugin — the design half of the Code↔Design loop, packa
 Install (this marketplace):
 
 ```
-/plugin marketplace add datacraftdevelopment/dc-plugins
-/plugin install design-dc@dc-plugins
+/plugin marketplace add datacraftdevelopment/dc-dev-plugins
+/plugin install design-dc@dc-dev-plugins
 ```

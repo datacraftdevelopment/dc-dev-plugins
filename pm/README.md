@@ -76,7 +76,7 @@ Provides:
 ## Install
 
 ```
-/plugin marketplace add datacraftdevelopment/dc-plugins
+/plugin marketplace add datacraftdevelopment/dc-dev-plugins
 /plugin install pm
 ```
 
@@ -93,7 +93,7 @@ Creates `datacraft-Acme/` in the current directory, ready to work.
 
 ## Layout
 
-This plugin lives in the `pm/` subfolder of the [`dc-plugins`](../)
+This plugin lives in the `pm/` subfolder of the [`dc-dev-plugins`](../)
 marketplace:
 
 ```
@@ -117,7 +117,7 @@ pm/
 Edit `commands/pm-scaffold.md` to change what the command does; edit
 `skills/` to change the session workflow. Bump `version` in
 `plugin.json`, commit, push — machines pick it up on
-`/plugin marketplace update dc-plugins`. Run
+`/plugin marketplace update dc-dev-plugins`. Run
 `bash hooks/test-credential-guard.sh` after touching the hook.
 
 ## 0.16.0 workflow repair

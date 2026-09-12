@@ -80,10 +80,10 @@ EDITS = [
      "> Why it exists and where it's going: [SCOPE.md](SCOPE.md). Working on the plugin itself: [CLAUDE.md](CLAUDE.md).",
      "> Working on the plugin itself: [CLAUDE.md](CLAUDE.md)."),
     ("README.md",
-     "# from the dc-plugins marketplace",
+     "# from the dc-dev-plugins marketplace",
      "# from the rcc-fm marketplace"),
     ("README.md",
-     "/plugin marketplace add datacraftdevelopment/dc-plugins",
+     "/plugin marketplace add datacraftdevelopment/dc-dev-plugins",
      "/plugin marketplace add FMTrainingTV-AI/rcc-fm"),
     ("README.md",
      "Lay down the DataCraft project structure without adopting a file.",
@@ -103,7 +103,7 @@ EDITS = [
      "- Phase roadmap and open questions live in SCOPE.md §9/§11 — check them before starting new work.\n",
      ""),
     ("CLAUDE.md",
-     "This plugin ships from the `dc-plugins` marketplace (`dc-plugins/fm-dc/`).",
+     "This plugin ships from the `dc-dev-plugins` marketplace (`dc-dev-plugins/fm-dc/`).",
      "This plugin ships from the `FMTrainingTV-AI/rcc-fm` marketplace (plugin folder `fm-rcc/`)."),
     # model-selection rationale lives in docs/ (stripped from the fork) — drop the dangling link, keep the rule
     ("CLAUDE.md",
@@ -299,7 +299,7 @@ printf '.DS_Store\n/_pm/\n' > "$REPO/.gitignore"   # /_pm/ = local-only personal
 
 # --- 6. verification gate: zero brand/leak residue, valid manifests, no symlinks
 echo "== verify"
-RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/' "$PLUGIN" || true)
+RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|dc-dev-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/' "$PLUGIN" || true)
 [ -z "$RESIDUE" ] || { echo "BRAND/LEAK RESIDUE:"; echo "$RESIDUE"; exit 1; }
 TOKEN=$(grep -rIl 'fm-dc' "$PLUGIN" || true)
 [ -z "$TOKEN" ] || { echo "fm-dc TOKEN RESIDUE:"; echo "$TOKEN"; exit 1; }

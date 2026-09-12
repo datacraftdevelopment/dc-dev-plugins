@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# make-dc-public.sh — re-cut dc-public (DataCraft's PUBLIC marketplace) from an
+# make-dc-plugins.sh — re-cut dc-plugins (DataCraft's PUBLIC marketplace) from an
 # rcc-fm checkout.
 #
 # Chain: fm-dc (private, here) --make-fm-rcc.sh--> fm-rcc (RCC-branded, public)
-#        --this script--> dc-public/fm-dc + pm (DataCraft-credited, public).
+#        --this script--> dc-plugins/fm-dc + pm (DataCraft-credited, public).
 #
-# dc-public is never hand-edited. It takes the already-debranded RCC tree
+# dc-plugins (public) is never hand-edited. It takes the already-debranded RCC tree
 # (internal docs stripped, credentials scrubbed, DataCraft-as-methodology prose
 # neutralized) and swaps the credit back: fm-rcc -> fm-dc (namespace AND data
 # paths, the same blanket rename make-fm-rcc.sh does in reverse), RCC/Richard
-# Carlton -> DataCraft Development, FMTrainingTV-AI/rcc-fm -> the dc-public
+# Carlton -> DataCraft Development, FMTrainingTV-AI/rcc-fm -> the dc-plugins
 # marketplace. Every phrase-map entry must hit or the build aborts.
 #
-# Usage: ./make-dc-public.sh [--rcc <rcc-fm checkout>] [--dest <dc-public checkout>]
-#   defaults: ../rcc-plugins and ../dc-public relative to this script.
+# Usage: ./make-dc-plugins.sh [--rcc <rcc-fm checkout>] [--dest <dc-plugins (public) checkout>]
+#   defaults: ../rcc-plugins and ../dc-plugins relative to this script.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RCC="$HERE/../rcc-plugins"
-DEST="$HERE/../dc-public"
+DEST="$HERE/../dc-plugins"
 while [ $# -gt 0 ]; do
   case "$1" in
     --rcc)  RCC="$2"; shift 2 ;;
@@ -32,10 +32,10 @@ RCC="$(cd "$RCC" && pwd)"; DEST="$(cd "$DEST" && pwd)"
 RCC_COMMIT="$(git -C "$RCC" rev-parse --short HEAD)"
 FM_VER="$(python3 -c "import json;print(json.load(open('$RCC/fm-rcc/.claude-plugin/plugin.json'))['version'])")"
 PM_VER="$(python3 -c "import json;print(json.load(open('$RCC/pm/.claude-plugin/plugin.json'))['version'])")"
-echo "== dc-public build: rcc-fm @ $RCC_COMMIT (fm-rcc $FM_VER, pm $PM_VER) -> $DEST"
+echo "== dc-plugins build: rcc-fm @ $RCC_COMMIT (fm-rcc $FM_VER, pm $PM_VER) -> $DEST"
 
 # --- 1. fresh tree from the git-tracked rcc set ---------------------------------
-BUILD="$(mktemp -d "${TMPDIR:-/tmp}/dc-public-build.XXXXXX")"
+BUILD="$(mktemp -d "${TMPDIR:-/tmp}/dc-plugins-build.XXXXXX")"
 git -C "$RCC" archive HEAD | tar -x -C "$BUILD"
 mv "$BUILD/fm-rcc" "$BUILD/fm-dc"
 
@@ -45,7 +45,7 @@ import os, sys, pathlib
 root = pathlib.Path(os.environ["BUILD"])
 CREDIT_MD  = "Built by **Joe DaSilva** / **DataCraft Development**. © 2026 DataCraft Development"
 EDITS = [
-    (".claude-plugin/marketplace.json", '"name": "rcc-fm"', '"name": "dc-plugin"'),
+    (".claude-plugin/marketplace.json", '"name": "rcc-fm"', '"name": "dc-plugins"'),
     (".claude-plugin/marketplace.json",
      '"name": "Joe DaSilva",\n    "email": "digitaljoed@gmail.com"',
      '"name": "Joe DaSilva / DataCraft Development",\n    "email": "joe@datacraftdev.com"'),
@@ -53,11 +53,11 @@ EDITS = [
     (".claude-plugin/marketplace.json", '"name": "fm-rcc"', '"name": "fm-dc"'),
 
     ("README.md", "# rcc-fm — RCC's Claude Code plugin marketplace",
-                  "# dc-plugin — DataCraft's public Claude Code plugin marketplace"),
+                  "# dc-plugins — DataCraft's public Claude Code plugin marketplace"),
     ("README.md", "the project-management layer used in the workshop:",
                   "the project-management layer for agentic work:"),
     ("README.md", "/plugin marketplace add FMTrainingTV-AI/rcc-fm\n/plugin install fm-rcc",
-                  "/plugin marketplace add datacraftdevelopment/dc-plugin\n/plugin install fm-dc"),
+                  "/plugin marketplace add datacraftdevelopment/dc-plugins\n/plugin install fm-dc"),
     ("README.md", "[fm-rcc/README.md](fm-rcc/README.md)", "[fm-dc/README.md](fm-dc/README.md)"),
     ("README.md", "Built by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — [MIT licensed](LICENSE).",
                   CREDIT_MD + " — [MIT licensed](LICENSE)."),
@@ -68,9 +68,9 @@ EDITS = [
     ("pm/.claude-plugin/plugin.json", '"name": "Joe DaSilva and Richard Carlton"',
                                       '"name": "Joe DaSilva / DataCraft Development"'),
     ("pm/README.md", "/plugin marketplace add FMTrainingTV-AI/rcc-fm",
-                     "/plugin marketplace add datacraftdevelopment/dc-plugin"),
-    ("pm/template/CLAUDE.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugin`"),
-    ("pm/template/README.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugin`"),
+                     "/plugin marketplace add datacraftdevelopment/dc-plugins"),
+    ("pm/template/CLAUDE.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
+    ("pm/template/README.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
     ("pm/SDLC.md", "the part the RCC course can render for an audience that has none of those tools.",
                    "the part a course can render for an audience that has none of those tools."),
     ("pm/SDLC.md", "The RCC course's bonus-SDLC page is an independent rendering",
@@ -80,10 +80,10 @@ EDITS = [
                                          '"name": "Joe DaSilva / DataCraft Development"'),
     ("fm-dc/CLAUDE.md",
      "This plugin ships from the `FMTrainingTV-AI/rcc-fm` marketplace (plugin folder `fm-rcc/`).",
-     "This plugin ships from the `datacraftdevelopment/dc-plugin` marketplace (plugin folder `fm-dc/`)."),
+     "This plugin ships from the `datacraftdevelopment/dc-plugins` marketplace (plugin folder `fm-dc/`)."),
     ("fm-dc/README.md", "# fm-rcc — Agentic FileMaker Plugin", "# fm-dc — Agentic FileMaker Plugin"),
     ("fm-dc/README.md", "# from the rcc-fm marketplace\n/plugin marketplace add FMTrainingTV-AI/rcc-fm",
-                        "# from the dc-plugin marketplace\n/plugin marketplace add datacraftdevelopment/dc-plugin"),
+                        "# from the dc-plugins marketplace\n/plugin marketplace add datacraftdevelopment/dc-plugins"),
     ("fm-dc/README.md", "Built by **Joe DaSilva** and **Richard Carlton**. © 2026 RCC — MIT licensed, see [LICENSE](LICENSE).",
                         CREDIT_MD + " — MIT licensed, see [LICENSE](LICENSE)."),
 ]
@@ -96,7 +96,7 @@ for rel, old, new in EDITS:
         continue
     p.write_text(text.replace(old, new))
 if failures:
-    print("REBRAND MAP DRIFT — rcc text changed; update make-dc-public.sh:", file=sys.stderr)
+    print("REBRAND MAP DRIFT — rcc text changed; update make-dc-plugins.sh:", file=sys.stderr)
     print("\n".join(failures), file=sys.stderr)
     sys.exit(1)
 print(f"phrase map: {len(EDITS)} edits applied")
@@ -139,9 +139,9 @@ git add -A
 if git diff --cached --quiet; then
   echo "== no changes; nothing to commit"
 else
-  git -c user.name="Joe DaSilva" -c user.email="joe@datacraftdev.com" commit -q -m "dc-public: fm-dc $FM_VER, pm $PM_VER (from rcc-fm @ $RCC_COMMIT)
+  git -c user.name="Joe DaSilva" -c user.email="joe@datacraftdev.com" commit -q -m "dc-plugins: fm-dc $FM_VER, pm $PM_VER (from rcc-fm @ $RCC_COMMIT)
 
-Built by make-dc-public.sh — do not hand-edit this repo; change dc-plugins,
+Built by make-dc-plugins.sh — do not hand-edit this repo; change dc-plugins,
 re-cut rcc-fm, then re-run.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"

@@ -12,5 +12,5 @@ lives in `CLAUDE.md`).
 3. Open each session with `whats-next`; close it with `stepping-away`.
 4. Decisions go to `docs/adr/`; work items live on the tracker.
 
-Stamped by the pm plugin's `/pm:pm-scaffold` (`datacraftdevelopment/dc-plugins`).
+Stamped by the pm plugin's `/pm:pm-scaffold` (`datacraftdevelopment/dc-dev-plugins`).
 The workflow of record is that plugin's `WORKFLOW.md`.

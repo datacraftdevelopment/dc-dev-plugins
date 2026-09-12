@@ -1,4 +1,4 @@
-# dc-plugins
+# dc-dev-plugins
 
 Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`,
 `fm-dc/`, and `ui-test/` folders are the shared source. Claude Code installs them from
@@ -78,14 +78,14 @@ guide for update behavior and standards-pack selection.
 Add the marketplace once, then install whichever plugins you want:
 
 ```
-/plugin marketplace add datacraftdevelopment/dc-plugins
+/plugin marketplace add datacraftdevelopment/dc-dev-plugins
 /plugin install pm
 ```
 
 Update everything later with:
 
 ```
-/plugin marketplace update dc-plugins
+/plugin marketplace update dc-dev-plugins
 ```
 
 ## Plugins
@@ -101,14 +101,14 @@ Update everything later with:
 1. Create a subfolder `<plugin-name>/` with its own `.claude-plugin/plugin.json`.
 2. Add a line to `.claude-plugin/marketplace.json` pointing `source` at `./<plugin-name>`.
 3. Commit and push.
-4. On each machine: `/plugin marketplace update dc-plugins` then `/plugin install <plugin-name>`.
+4. On each machine: `/plugin marketplace update dc-dev-plugins` then `/plugin install <plugin-name>`.
 
 No new marketplace is ever needed — this repo is the single marketplace for everything.
 
 ## Layout
 
 ```
-dc-plugins/
+dc-dev-plugins/
 ├── .claude-plugin/
 │   └── marketplace.json     ← lists every plugin
 ├── pm/                      ← plugin: project management

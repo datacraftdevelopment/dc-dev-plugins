@@ -1,4 +1,4 @@
-# Working on dc-plugins in Codex
+# Working on dc-dev-plugins in Codex
 
 Read `CLAUDE.md` for shared repository conventions. Develop in place; this checkout
 is the source of truth. For changes inside `fm-dc`, also read `fm-dc/CLAUDE.md`.

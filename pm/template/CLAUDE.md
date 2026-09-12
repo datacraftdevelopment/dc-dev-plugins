@@ -4,7 +4,7 @@ This file orients Claude Code when working in this repository.
 
 > **This is a STARTER, not a live project.** `/pm:pm-scaffold` stamps it and
 > replaces this banner with the project header. The scaffold is designed in
-> the pm plugin (`datacraftdevelopment/dc-plugins`, `pm/template/`); the
+> the pm plugin (`datacraftdevelopment/dc-dev-plugins`, `pm/template/`); the
 > workflow it serves is that plugin's `WORKFLOW.md`.
 
 ## What this is
