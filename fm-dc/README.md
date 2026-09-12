@@ -64,7 +64,8 @@ Skills load automatically when the topic matches. They're organized by what you'
 | **`fm-dataapi`** | **Records** over the Data API — query/create/update/delete/find/count on a hosted file, connecting *directly* with supplied credentials. Ships a ready-to-run zero-dep client. |
 | **`fm-odata`** | The **schema side-door** — connect over OData with credentials and create/alter tables & fields on a live file. SQL-DDL validation baked in (no more `8310`). Ships a ready-to-run client. |
 | **`fm-admin`** | The **server door** — Admin API v2 with console credentials: hosted-file inventory, server status, and **download a hosted `.fmp12`** (close → download → always reopen). Ships a ready-to-run driver. |
-| **`fm-connections`** | The **router** — which method when (MCP vs direct OData vs direct Data API vs Admin API vs offline), and the "arbitrary file → go direct, never the fixed MCP" rule. |
+| **`fm-otto`** | The **OttoFMS door** — the Developer API (`/otto/api`) on servers running Otto: **read server log content** (`Event.log`, script errors — the Admin API has no such endpoint) and **copy a hosted file or clone with zero downtime**, plus deployments, builds and file surgery. Ships a ready-to-run driver. |
+| **`fm-connections`** | The **router** — which method when (MCP vs direct OData vs direct Data API vs Admin API vs OttoFMS vs offline), and the "arbitrary file → go direct, never the fixed MCP" rule. |
 | **`fm-proofkit`** | The **ProofKit bridge** — MCP server (live schema, SQL, CRUD, ERD), React web-viewer apps inside FileMaker, and the ProofGeist TS toolchain for external web apps. |
 
 ### 🧩 Extend — third-party plugins *(unprefixed by design — they're separate products)*
