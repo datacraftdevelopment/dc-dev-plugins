@@ -8,11 +8,16 @@ import sys
 
 def ringer_root():
     configured = os.environ.get('RINGER_ROOT')
-    root = Path(configured).expanduser() if configured else Path.home() / 'Dropbox/Agentic/Agent/Ringer'
-    root = root.resolve()
-    if not (root / 'ringer.py').is_file():
-        raise SystemExit('Ringer not found. Set RINGER_ROOT to the existing clone containing ringer.py.')
-    return root
+    if configured:
+        candidates = [Path(configured).expanduser()]
+    else:
+        candidates = [Path.home() / 'Agentic-Mini/_Core/Ringer',      # home since 2026-09-12
+                      Path.home() / 'Dropbox/Agentic/Agent/Ringer']   # pre-move location
+    for root in candidates:
+        root = root.resolve()
+        if (root / 'ringer.py').is_file():
+            return root
+    raise SystemExit('Ringer not found. Set RINGER_ROOT to the existing clone containing ringer.py.')
 
 
 if __name__ == '__main__':

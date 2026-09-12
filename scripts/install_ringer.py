@@ -30,7 +30,7 @@ RINGER_ROOT="$(python3 "${PLUGIN_ROOT}/scripts/ringer_bridge.py" --print-root)"
 python3 "${PLUGIN_ROOT}/scripts/ringer_bridge.py" --no-self-update --help
 ```
 
-The bridge defaults to `~/Dropbox/Agentic/Agent/Ringer`; set `RINGER_ROOT` in
+The bridge defaults to `~/Agentic-Mini/_Core/Ringer`; set `RINGER_ROOT` in
 the environment if the clone lives elsewhere. All clone-relative paths below
 (`README.md`, `templates/`, `local/`, `docs/`) are under `RINGER_ROOT`, not the
 plugin or the current project. The existing `ringer` command on PATH is also

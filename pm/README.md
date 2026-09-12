@@ -29,7 +29,7 @@ Provides:
 - **`fast-grill`** skill *(0.14, the pace rule)* — sits between the frontier
   `/grilling` computes and the round the user sees. Technical questions go,
   with their recommended answers, to one Ringer task on the Astra seat
-  (`Agent/Ringer/local/templates/grill-review/`) and come back `agree` (a
+  (`_Core/Ringer/local/templates/grill-review/`) and come back `agree` (a
   ruling), `disagree` (a seat-split question), or `taste` (a question). The
   user answers only taste, one-way doors, user challenges, and splits. Every
   ruling is one ledger line — decided · why · cost if wrong · who agreed —

@@ -165,7 +165,7 @@ use `--output <directory>` without `--install` to inspect a build. Re-run the
 installer after editing either canonical skill. Originals are never rewritten.
 
 The bundled `scripts/ringer_bridge.py` launches the existing clone at
-`~/Dropbox/Agentic/Agent/Ringer`; set environment variable `RINGER_ROOT` if it
+`~/Agentic-Mini/_Core/Ringer` (falling back to the old `~/Dropbox/Agentic/Agent/Ringer`); set environment variable `RINGER_ROOT` if it
 moves. It preserves the current working directory and Ringer's normal config
 lookup. Config, credentials, worker shims, logs, and history stay in their
 existing locations. The bridge's `--print-root` resolves template/doc locations;

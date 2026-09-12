@@ -6,6 +6,10 @@ Current plugins: **`pm`** (project-management scaffold + session/delivery skills
 
 **This repo is PRIVATE** (2026-09-03). `/plugin marketplace add` still works unchanged, but each machine needs an authenticated `gh`/git credential helper for `datacraftdevelopment`. It went private so pm can hard-wire tools that aren't public — `WORKFLOW.md` assumes Ringer, which lives in the private `datacraftdevelopment/desk` — and so nothing here is written for strangers. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally and is unaffected.
 
+## Ringer is assumed
+
+Every delegated model call in these plugins goes through **Ringer** (`~/Agentic-Mini/_Core/Ringer`, `ringer` on PATH); the `ringer` / `cross-review-gate` / `build-swarm` skills live in `_Core/library/skills/agent-operations/`, not here. `pm`'s `fast-grill`, the build loop, and the review gate all dispatch through it — never inline Codex. If a skill you are writing needs a second model, route it through Ringer and say so in the skill; the README's "What this repo assumes" section is the one place that dependency is documented, so update it there rather than restating it per skill.
+
 ## ⚠️ Pre-flight: adding or copying a plugin/skill INTO this repo
 
 These plugins are **shared across machines via git**. A file that works locally can silently break on another machine. Before adding a plugin or skill — and before claiming it works — run every check below. Each one is a gotcha we have actually hit.
@@ -59,4 +63,4 @@ Per-plugin dev cruft (`.venv/`, `sandbox/`) is gitignored via each plugin's own 
 
 ## Tracking (`_pm/`, local-only)
 
-Root `_pm/` holds personal dev tracking (skeleton, TASKS, sessions) via the `pm` plugin's `whats-next` / `stepping-away` skills. It is **gitignored** (`/_pm/`, anchored so it doesn't touch `pm/template/_pm/`) — never published. Because this repo lives in Dropbox, `_pm/` still syncs across machines outside of git.
+Root `_pm/` holds personal dev tracking (skeleton, TASKS, sessions) via the `pm` plugin's `whats-next` / `stepping-away` skills. It is **gitignored** (`/_pm/`, anchored so it doesn't touch `pm/template/_pm/`) — never published. This repo moved out of Dropbox to `~/Agentic-Mini` on 2026-09-12 (Dropbox was causing too many issues); `_pm/` no longer syncs between machines on its own, so it rides on whatever backup covers `~/Agentic-Mini`.

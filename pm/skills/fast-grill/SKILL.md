@@ -24,7 +24,7 @@ Sort every frontier question before it is shown.
 
 ## The second seat
 
-The technical bucket for a round is **one Ringer task**, engine `codex`, model `gpt-6-astra` at medium reasoning effort (the house cross-vendor seat; `gpt-5.6-sol` when Astra is quota-blocked). Kit: `Agent/Ringer/local/templates/grill-review/`. The spec inlines every technical question with its number, the options, Claude's recommendation and reason, and the read-only context the seat needs (repo path, the map's Decisions so far, the intent). The seat returns one verdict per question:
+The technical bucket for a round is **one Ringer task**, engine `codex`, model `gpt-6-astra` at medium reasoning effort (the house cross-vendor seat; `gpt-5.6-sol` when Astra is quota-blocked). Kit: `_Core/Ringer/local/templates/grill-review/`. The spec inlines every technical question with its number, the options, Claude's recommendation and reason, and the read-only context the seat needs (repo path, the map's Decisions so far, the intent). The seat returns one verdict per question:
 
 - **agree** — the recommendation stands, with a concrete reference the seat checked (the check refuses a bare "sounds right"). Becomes a ruling.
 - **disagree** — with a reason and an alternative. Becomes a **seat split** question for the user: both positions, one line each, the cost of each being wrong.

@@ -5,6 +5,36 @@ Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`, and
 `.claude-plugin/marketplace.json`; the Codex builder creates compatible editions
 from the same tracked files. See [Codex installation and compatibility](docs/codex.md).
 
+## What this repo assumes: Ringer
+
+These plugins are written for Joe's stack, and that stack runs **Ringer** — the
+verified-swarm delegation tool. Every delegated model call goes through it; none
+of the skills here dispatch Codex or a second Claude inline. It is a hard
+prerequisite for `pm`, and the workflow that drives `fm-dc` and `design-dc`
+sessions inherits it.
+
+What assumes it:
+
+- `pm/WORKFLOW.md` — Joe's binding of the SDLC; names Ringer as installed.
+- `pm` skill `fast-grill` — sends each grilling round's technical bucket to the
+  Astra seat as one Ringer task (kit `_Core/Ringer/local/templates/grill-review/`).
+- `build-swarm` loop (Build stage default since pm 0.15) — works a ticket
+  frontier through Ringer worktree waves.
+- `cross-review-gate` — the two-seat gate dispatches through Ringer.
+
+Where it lives (none of it ships in this repo):
+
+| Piece | Location |
+|---|---|
+| Ringer itself | stock upstream clone at `~/Agentic-Mini/_Core/Ringer` (moved out of Dropbox 2026-09-12); `ringer` on PATH is a shim to its `ringer.py`; `RINGER_ROOT` overrides the path |
+| `ringer`, `cross-review-gate`, `build-swarm` skills | `_Core/library/skills/agent-operations/`, symlinked into `~/.claude/skills/` (that is why they are not plugin skills — they live with their transport) |
+| live config, worker shims, kits | the private `datacraftdevelopment/desk` repo |
+| Codex edition | `python3 scripts/install_ringer.py --install` packages the same skills for Codex (`scripts/ringer_bridge.py` finds the clone) |
+
+A machine without Ringer can still install the plugins, but `fast-grill` runs
+`(unseated)`, the build loop and the review gate cannot dispatch, and
+`WORKFLOW.md` is the wrong document — read `pm/SDLC.md` instead.
+
 ## Install in Codex
 
 From this checkout, with Python 3, Git, and the Codex CLI installed:
