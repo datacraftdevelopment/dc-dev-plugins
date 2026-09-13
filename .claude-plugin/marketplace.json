@@ -8,12 +8,12 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a minimal starter (day-one files only, a preset local-markdown tracker under .scratch/ and a docs/intent/inbox.md for loose asks — 0.17; other folders are created on first write per the stamped CLAUDE.md taxonomy); discovery riffs work into a committed intent + size call before planning; fast-grill paces every grilling round (technical questions to the Astra seat via Ringer, ledgered as rulings; the human answers taste, one-way doors, and splits); whats-next and stepping-away open and close each working session — per-session, per-person logs, several a day is normal — with checkpoint reserved for a session too long to close and reopen; WORKFLOW.md maps the stage chain (Build runs as the library's build-swarm loop by default when a ticket frontier with checks exists, 0.15); verify-before-done gates completion claims on evidence; credential-guard hook blocks committing credential-shaped files; okf and granola-transcript ride along as utility skills."
+      "description": "Project-management scaffold + session skills. /pm:pm-scaffold stands up a minimal starter (day-one files only, a preset local-markdown tracker under .scratch/ and a docs/intent/inbox.md for loose asks \u2014 0.17; other folders are created on first write per the stamped CLAUDE.md taxonomy); discovery riffs work into a committed intent + size call before planning; fast-grill paces every grilling round (technical questions to the Astra seat via Ringer, ledgered as rulings; the human answers taste, one-way doors, and splits); whats-next and stepping-away open and close each working session \u2014 per-session, per-person logs, several a day is normal \u2014 with checkpoint reserved for a session too long to close and reopen; WORKFLOW.md maps the stage chain (Build runs as the library's build-swarm loop by default when a ticket frontier with checks exists, 0.15); verify-before-done gates completion claims on evidence; credential-guard hook blocks committing credential-shaped files; okf and granola-transcript ride along as utility skills."
     },
     {
       "name": "design-dc",
       "source": "./design-dc",
-      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact → locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
+      "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact \u2192 locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
     },
     {
       "name": "fm-dc",
@@ -24,6 +24,11 @@
       "name": "ui-test",
       "source": "./ui-test",
       "description": "Agent-run UI tests for any macOS app with a window (native Swift apps, FileMaker Pro, Electron): ui-test splits assertions by evidence channel, writes a typed runner instruction, dispatches a Codex computer-use worker under Ringer, validates the returned receipt (screenshots + on-screen reads) with executed checks, and hands a fresh verifier task the verdict. PASS-OBSERVED / FAIL / BLOCKED outcomes; per-app target profiles; ships the tool matrix observed on this stack."
+    },
+    {
+      "name": "basecamp-dc",
+      "source": "./basecamp-dc",
+      "description": "Basecamp client-face layer, opt-in per repo via .basecamp/config.json (inert without it; pm never depends on it). bc-client-face carries the conventions \u2014 client's side (New requests, Questions for you) and Joe's side (Shipped / Active / Backlog as the status), Work items as clusters with Ref footers, [bc:<id>] tokens in TASKS.md, plain-English voice, quirk safety rules; bc-close-out ships a task (move to Shipped unchecked, comment, prepend to What shipped without duplicating images); a session-start hook surfaces the project when the config is present. Rides on the official basecamp CLI and its /basecamp skill for mechanics."
     }
   ]
 }

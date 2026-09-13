@@ -95,6 +95,7 @@ Update everything later with:
 | **pm** | `/pm:pm-scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts`, `okf` | Scaffolds a client engagement, personal project, or in-place `_pm/` from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
 | **design-dc** | `design-handoff`, `html-artifacts`, `excalidraw-artifacts`, `design-sync` | Design handoffs and artifacts. Direct DesignSync requires a host that exposes that tool. |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-proofkit`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, ProofKit doctrine, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
+| **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
 
 ## Adding a new plugin
 
@@ -116,13 +117,18 @@ dc-dev-plugins/
 │   ├── commands/            ← /pm:pm-scaffold
 │   ├── skills/              ← whats-next, stepping-away, design-handoff, html-artifacts, okf
 │   └── template/            ← the starter /pm:pm-scaffold copies (mirrored from DC-Project-Builder)
-└── fm-dc/                   ← plugin: agentic FileMaker development
+├── fm-dc/                   ← plugin: agentic FileMaker development
     ├── .claude-plugin/plugin.json
     ├── commands/            ← /fm-init, fm-scaffold, fm-status, ...
     ├── agents/              ← fm-patch-builder, fm-xml-validator
     ├── skills/              ← ddr, fm-patch, fm-xml, fm-connections, ...
     ├── tools/               ← Python tooling (ddr, patch, fmlint, docs)
     └── templates/           ← what /fm-scaffold copies
+└── basecamp-dc/             ← plugin: Basecamp client face (opt-in per repo)
+    ├── .claude-plugin/plugin.json
+    ├── skills/              ← bc-client-face, bc-close-out
+    ├── hooks/               ← session-start (silent without .basecamp/config.json)
+    └── scripts/             ← bc_config.py, doc_roundtrip.py
 ```
 
 ### Complete local Codex refresh
