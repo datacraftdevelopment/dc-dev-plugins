@@ -9,3 +9,7 @@ constraints, open questions, size call. Shared record: the next stage
 before anything is built — and re-run twice: against the local article
 before shipping, and against production after. See the pm plugin's
 `WORKFLOW.md`.
+
+`inbox.md` in this folder is the tier below an intent: one line per loose
+ask or idea, no status. `discovery` pulls a line out of it when the shape is
+found; `whats-next` reads it as the ungroomed list.

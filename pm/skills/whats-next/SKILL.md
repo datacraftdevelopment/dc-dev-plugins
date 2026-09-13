@@ -14,21 +14,23 @@ Session open. The user is starting a session — could be the second one today a
 **1. Read.** Shared record first, personal log second (`WORKFLOW.md`: `docs/` is truth, `_pm/` is log).
 - `docs/intent/*.md` — every open intent (status draft/accepted and no verified Completion link; `ship-acceptance` owns completion): these are the streams of work. Note each one's size call.
 - For a Completion link, read the linked delivery record before excluding a `shipped` intent. Surface `released-with-exceptions` with its open tail until the originator accepts it; a missing/broken record stays open.
-- **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/`. Unreachable → say so, go on with local artifacts.
+- **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/` per `docs/agents/issue-tracker.md`. Unreachable → say so, go on with local artifacts. **Waiting tickets** — any ticket carrying `Waiting on:` (and `Status: needs-human`) — are not frontier: list them under watch-outs with who and since when, never as the pick-up.
+- **`docs/intent/inbox.md`** — the ungroomed list: loose asks and ideas that have not been shaped. Read it after intents and the frontier. A line here is a discovery candidate, not a task. **Review trigger:** if the file holds more than twelve lines, or any line is dated before the last four session files, name those lines in the proposal and ask keep / promote (→ `discovery`) / merge (into an existing intent or ticket) / retire — a retired line is deleted from the file and the reason goes in this session's entry. Otherwise say nothing about age.
 - `docs/adr/` newest entries, `CONTEXT.md` if present — what's been decided.
 - `_pm/skeleton.md` — the macro why of the project.
 - Last 1–3 session files in `_pm/sessions/` (any author, most recent first) — especially Open threads and the previous session's Intent-vs-outcome. The immediately preceding session may be earlier the same day; read it as the live handoff.
 - `knowledge/index.md` — only if a knowledge bundle exists. Skim; don't crawl.
-- **Legacy (pre-0.8 projects only):** if `_pm/TASKS.md` exists, read it as a hint, not a source of truth — anything on it that matters belongs on the tracker. Don't grow it. See `MIGRATION-0.8.md`.
+- **A hand-kept task file** (`_pm/TASKS.md`, `docs/TASKS.md`): if the repo's `CLAUDE.md` names it as the tracker of record, treat its Current and Next sections as the frontier — that repo decided so. Otherwise it is legacy: read it as a hint only, don't grow it, and point at `MIGRATION-0.17.md` for the retirement rubric. A file whose first line says `> Legacy` is skipped entirely.
 
 **2. Propose.** Output:
 
 ```
 Where we are: <one sentence — which streams exist and what stage each is at>.
 Frontier: <takeable tickets, or "nothing charted yet">.
-Recommended pick-up: <one specific ticket / next stage step> — because <reason tied to context>.
+Ungroomed: <inbox lines, or "inbox empty"; stale/excess lines flagged with keep / promote / merge / retire>.
+Recommended pick-up: <one specific ticket / next stage step / "discover <inbox line>"> — because <reason tied to context>.
 Also worth: <maybe one more>.
-Watch-outs: <claimed tickets gone quiet; open threads worth surfacing; an intent still in draft>.
+Watch-outs: <waiting tickets — who, since when; claimed tickets gone quiet; open threads worth surfacing; an intent still in draft>.
 ```
 
 **3. Draft the Intent block** for the most likely pick-up. Two or three sentences of plain prose — what we're pushing on, why it matters, what done-for-this-session looks like, anything explicitly not in scope. Scope it to one session's worth of work, not a whole day's. Example:

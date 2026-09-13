@@ -14,7 +14,7 @@ Why it exists: Matt Pocock's `/wayfinder` opens with a breadth-first grill becau
 - **Riff, don't interrogate.** No one-question-at-a-time, no multiple-choice menus, no five-question budget. Respond to what was said, push back where it's soft, offer a reframe when one is visible, ask the thing you'd actually want to know next. The user leads the pace.
 - **Chase shape, not detail.** The failure mode is nailing down implementation before the outcome is agreed. If the conversation drifts into "which table / which library / which endpoint", pull it back up: "that's a planning question — park it under open questions."
 - **Say what you think.** Discovery is where a wrong premise is cheapest to kill. If the problem as stated isn't the real problem, or the outcome doesn't fix it, say so in a sentence and keep going.
-- **Read before riffing.** If the project has `docs/intent/`, `docs/adr/`, `CONTEXT.md`, or `_pm/skeleton.md`, read them first — the user shouldn't have to re-explain what the repo already records. Check whether an intent for this already exists; if so, you're updating it, not starting over.
+- **Read before riffing.** If the project has `docs/intent/`, `docs/adr/`, `CONTEXT.md`, or `_pm/skeleton.md`, read them first — the user shouldn't have to re-explain what the repo already records. Check whether an intent for this already exists; if so, you're updating it, not starting over. Check `docs/intent/inbox.md` too: if the thing being riffed is already a line there, that line is the seed — quote it, and it comes out of the inbox when the intent is written.
 - **Don't fake convergence.** "Are we clean on the shape?" is a real question. If the user is still circling, keep riffing. If they've said "let's move on" or the last two exchanges added nothing, it's time to write.
 
 ## When the shape holds still — write the intent
@@ -27,6 +27,7 @@ One file, committed, in the shared record:
 - **Acceptance is not optional and not a test plan.** Ask it as a shape question — *"how would we know this worked?"* — and write the answers as observable checks: what you'd do, what should happen. Three or four. They get run twice later (locally, then against production), so write them so they survive being re-read cold. If the user can't answer, the Proposed outcome isn't concrete enough yet — say so and sharpen it rather than writing a vague line. Where nothing automatable can prove a check, name the manual version; where nothing can prove it at all, record that as a known gap.
 
   Guard against the obvious failure: acceptance is **shape** (an observable outcome), not **detail** (which assertion in which test file). "Uploading a 20 MB file finishes and the row appears in the list" is acceptance. "`test_upload_large` asserts 201" is planning — park it.
+- **If the intent came from an inbox line, remove the line** from `docs/intent/inbox.md` in the same commit and cite it in the intent's Source (`Source: inbox 2026-09-12 · client call · "<the line>"`). The inbox is the tier below; an item never lives in two tiers.
 - Show it before committing. The user corrects misunderstandings; you commit the intent **on its own** as the first artifact in the chain. (Never batch it with code.)
 
 ## The size call — last section of the intent, and the handoff

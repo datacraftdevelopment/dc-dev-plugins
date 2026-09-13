@@ -25,7 +25,23 @@ Plus the `credential-guard` hook, because [skills advise and hooks enforce](./SD
 
 **Small work** (fits one session) skips Chart → Ticket: Discover → Build → Verify → Ship. **Trivial edits** skip everything. **Bugs** → `/diagnosing-bugs` (failing test first), then Verify.
 
-Decisions go to `docs/adr/` (Matt's home), never `_pm/`. Work items live on the tracker — GitHub Issues in a team, local markdown for solo repos — never in a task file. Projects from pm ≤ 0.7 carrying `TASKS.md` / `_pm/decisions/` / `context-map.md`: see `MIGRATION-0.8.md`.
+Decisions go to `docs/adr/` (Matt's home), never `_pm/`. Work items live on the tracker — **local markdown under `.scratch/` by default (0.17), preset by the scaffold; GitHub Issues per repo** — never in a task file. Loose asks that aren't work yet live in `docs/intent/inbox.md`. A repo that declared a hand-kept `TASKS.md` its tracker is read as such (`MIGRATION-0.17.md`); older ones carrying `TASKS.md` / `_pm/decisions/` / `context-map.md`: `MIGRATION-0.8.md`, then the 0.17 rubric.
+
+## Three tiers — an item only moves down
+
+```
+docs/intent/inbox.md      loose: one line per ask or idea, dated, sourced. No status.
+docs/intent/<slug>.md     shaped: discovery ran, size call made.
+.scratch/<slug>/issues/   the tracker: implementation tickets, and question tickets
+                          (Matt's research / grilling types) whose answer is the work.
+                          Never a loose idea.
+```
+
+The inbox is a file in `docs/`, client-readable, and **not a state store**: nothing tracks progress on it, it carries no status, and a line leaves only by becoming an intent (`discovery` removes it and cites it), merging into an item that exists, or being retired — deleted, with the reason in the session entry. `whats-next` reads it as the ungroomed list and forces a keep / promote / merge / retire pass when it passes twelve lines or a line is older than four session opens; `stepping-away` matches an ask against inbox, intents and tickets before it adds a line. That match rule is what keeps the two-list problem from coming back in a new shape.
+
+**Waiting is a tracker state, not a label.** A ticket that needs an answer carries `Waiting on:` (who, what, since when) **and** `Status: needs-human` — the seam build-swarm's loop reads sees only `Status:`, so the label alone would leave the ticket dispatchable. The last answer goes under `## Comments` and the status is restored by hand. A pure question with no build behind it is a `Type: research` or `grilling` ticket with `Waiting on:`; its answer resolves it with no work, spawns an implementation ticket, or comments on one.
+
+**The client face is a fourth thing and pm names it by one file.** If `docs/agents/client-face.md` exists, `stepping-away` follows the close-out procedure written there (contract: the skill's `client-face-contract.md`). pm never names a client-facing tool, skill, id or CLI; the tool's own plugin supplies the file. Until one does, this is an unintegrated optional hook — a repo without the file gets silence, not a warning.
 
 ## Fast grill — the pace rule
 
@@ -77,7 +93,7 @@ Why the panel is shaped the way it is — a reader with no conversation context,
 
 | | `docs/` | `_pm/` |
 |---|---|---|
-| Holds | intent, ADRs, `CONTEXT.md`, agent config (`docs/agents/`) | Intent-of-the-session, session entries, what I'm picking up |
+| Holds | inbox, intent, ADRs, `CONTEXT.md`, agent config (`docs/agents/`: tracker, optional client face) | Intent-of-the-session, session entries, what I'm picking up; the append-only reason for every retired inbox line |
 | Authoritative? | **Yes** — with the tracker | **No** — if it disagrees with the tracker, the tracker wins |
 | Shared? | Yes — collaborators and clients read it | Per-session, per-person (`_pm/sessions/YYYY-MM-DD-<name>[-N].md`), append-only |
 | Written by | `discovery`, `/domain-modeling`, `/grilling`, `setup-matt-pocock-skills` | `whats-next`, `checkpoint`, `stepping-away` |

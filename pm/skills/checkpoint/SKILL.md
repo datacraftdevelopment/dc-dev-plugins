@@ -19,7 +19,7 @@ This skill is for when you can't take that boundary: a wayfinder charting run mi
 
 The latest re-aim is the live aim; the opening Intent and any earlier re-aims stay as the record of how the session moved.
 
-**3. Push the change into unfinished work — on the tracker.** The change may invalidate an open ticket's premise, graduate a patch of fog into a ticket, or re-scope the map. Comment on the affected tickets (or update the local `.scratch/` map) so the next session inherits the correction; if the intent itself changed, edit `docs/intent/<slug>.md` and say so. Name what you touched. (Legacy `_pm/TASKS.md`: don't maintain it — move anything live to the tracker.)
+**3. Push the change into unfinished work — on the tracker.** The change may invalidate an open ticket's premise, graduate a patch of fog into a ticket, or re-scope the map. Comment on the affected tickets (or update the local `.scratch/` map) so the next session inherits the correction; if the intent itself changed, edit `docs/intent/<slug>.md` and say so. Name what you touched. (A `TASKS.md` the repo hasn't declared its tracker: don't maintain it — `MIGRATION-0.17.md`.)
 
 **4. Archive, don't delete.** A replaced decision that still explains the project gets a `docs/adr/` entry (status: superseded, linked both ways — `/domain-modeling` owns the format) or a line in this session's Tried / Learned / Decided. Preserve hard constraints exactly; don't let a preference quietly harden into a rule — or a rule soften into a preference.
 

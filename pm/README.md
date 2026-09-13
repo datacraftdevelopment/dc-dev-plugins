@@ -21,7 +21,9 @@ Provides:
   (`CLAUDE.md`, `docs/intent/`, `docs/adr/`, `_pm/` with skeleton and
   sessions); every other folder is documented in the stamped `CLAUDE.md`'s
   taxonomy table and created on first write, never pre-built. Runs the
-  skeleton interview, ensures a git repo, wires the tracker pointer (0.10.0).
+  skeleton interview, ensures a git repo, and presets the tracker to local
+  markdown under `.scratch/` plus an empty `docs/intent/inbox.md` (0.17 —
+  no tracker question; GitHub Issues is one `/setup-matt-pocock-skills` away).
 - **`discovery`** skill — the stage before planning: a loose conversational
   riff to find the shape and intent of a piece of work, written to
   `docs/intent/<slug>.md` with a size call (one session → build it;
@@ -37,11 +39,16 @@ Provides:
   Chart, in grilling tickets, and at `/to-tickets`' approval step; the map's
   `## Notes` carries `Seat: on | off` and *Taste for this effort*.
 - **`whats-next`** skill — session open: reads intents, the tracker frontier,
-  and recent sessions; proposes a pick-up; drafts this session's Intent block
-  into a per-session, per-person file; claims the ticket.
+  the inbox (ungroomed asks — flags stale or excess lines for keep / promote /
+  merge / retire), waiting tickets, and recent sessions; proposes a pick-up;
+  drafts this session's Intent block into a per-session, per-person file;
+  claims the ticket.
 - **`stepping-away`** skill — session close: compares Intent to what shipped,
-  writes the session entry, settles the tracker, routes durable knowledge to
-  shared libraries.
+  writes the session entry, settles the tracker (waiting = `Waiting on:` +
+  `needs-human`), captures loose asks into the inbox after matching them
+  against what exists, follows `docs/agents/client-face.md` if the repo has
+  one (contract in `skills/stepping-away/client-face-contract.md`; pm names
+  no client-facing tool), routes durable knowledge to shared libraries.
 - **`checkpoint`** skill — mid-session re-aim, for sessions too long or too
   costly to close and reopen: appends a dated re-aim under the Intent
   (append-only — earlier re-aims stay), pushes the change into the affected
@@ -66,8 +73,10 @@ Provides:
   [`hooks/test-credential-guard.sh`](./hooks/test-credential-guard.sh)).
   Examples/templates (`*.example`, `*.sample`) pass.
 
-> Upgrading a project scaffolded by pm ≤ 0.9? See
-> [`MIGRATION-0.8.md`](./MIGRATION-0.8.md) — it covers the ≤ 0.7 files
+> Upgrading to 0.17 (tracker preset, inbox, `TASKS.md` retirement rubric,
+> repos that keep `TASKS.md` as their tracker)? See
+> [`MIGRATION-0.17.md`](./MIGRATION-0.17.md). Upgrading a project scaffolded
+> by pm ≤ 0.9? See [`MIGRATION-0.8.md`](./MIGRATION-0.8.md) — it covers the ≤ 0.7 files
 > (`TASKS.md`, `_pm/decisions/`, `context-map.md`) and the 0.10 changes
 > (dashboard removed; template now current). The `dashboard` skill was
 > deleted in 0.10.0; `design-handoff` and `html-artifacts` moved to the
@@ -107,7 +116,9 @@ pm/
 ├── skills/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
 │   ├── verify-before-done/ · okf/ · granola-transcript/
+│   ├── fast-grill/ · ship-acceptance/
 └── template/                ← the minimal starter /pm:pm-scaffold copies
+    └── docs/agents/issue-tracker.md · docs/intent/inbox.md  (new in 0.17)
 ```
 
 ## Updating

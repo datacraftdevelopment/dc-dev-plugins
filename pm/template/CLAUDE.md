@@ -23,7 +23,10 @@ codebase: the deliverable might be FileMaker, web, SaaS, or pure consulting.
 ├── .gitignore
 ├── docs/                ← SHARED record — collaborators and clients read it
 │   ├── intent/          ← one intent per stream of work (discovery skill)
+│   │   └── inbox.md     ← loose asks and ideas, one line each, no status
 │   ├── adr/             ← decisions (Matt's /domain-modeling format)
+│   ├── agents/
+│   │   └── issue-tracker.md ← local markdown tracker under .scratch/ (preset)
 │   └── quirks.md        ← technical gotchas, fast-capture
 └── _pm/                 ← PERSONAL log — per-person, append-only, never authoritative
     ├── README.md
@@ -35,6 +38,12 @@ codebase: the deliverable might be FileMaker, web, SaaS, or pure consulting.
 `_pm/` records what I did and what I'm doing — never what is true. Decisions
 go to `docs/adr/`, work items to the tracker, never to files in `_pm/`.
 
+**Three tiers, an item only moves down:** `docs/intent/inbox.md` (loose, one
+line, no status) → `docs/intent/<slug>.md` (shaped by `discovery`) →
+`.scratch/<slug>/issues/` (tickets — implementation, or a question whose
+answer is the work; never a loose idea). Waiting is a tracker state:
+`Waiting on:` plus `Status: needs-human`.
+
 ## The taxonomy — known folders, created on first write
 
 **Never pre-create a folder.** Each of these exists the moment something is
@@ -45,6 +54,8 @@ first written into it (`mkdir -p` then write) — presence means it was needed.
 | `docs/notes/` | Scratch, meeting notes, ad-hoc Claude-generated analysis | first ad-hoc doc that isn't PM workflow |
 | `knowledge/` | Curated project knowledge — always an OKF bundle (`okf` skill), never homegrown | facts turn entity-shaped: same tables/systems re-described across sessions, or a second consumer needs them |
 | `resources/` | Material **you bring in** from outside the Claude-driven workflow (`design-handoff/`, `design-exploration/`, `research/`, `history/` as needed) | first external file arrives |
+| `.scratch/<effort>/` | The tracker: map, spec, `issues/NN-<slug>.md` — Matt's local-markdown convention (`docs/agents/issue-tracker.md`) | `/wayfinder` or `/to-tickets` writes the first ticket |
+| `docs/agents/client-face.md` | Optional: names a client-facing tracker and its close-out steps; `stepping-away` follows it (contract in the pm `stepping-away` skill) | the client-face tool's own setup writes it |
 | `_pm/transcripts/` | Meeting transcripts — client conversations, **gitignored** | first transcript kept (e.g. `granola-transcript` skill) |
 | `_pm/artifacts/` | Other raw inputs — customer docs, exports, recordings | first raw input that isn't a transcript |
 | `_pm/prototypes/` | HTML mockups for customer validation (code prototypes live in their surface container) | first validation mockup |
