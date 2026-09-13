@@ -81,15 +81,17 @@ docs/intent/<slug>.md     shaped: discovery ran, size call made.
 
 ## Acceptance
 
-- [ ] A1: Scaffold a throwaway project with `/pm:pm-scaffold` → `docs/agents/issue-tracker.md` (local) and `docs/intent/inbox.md` exist; no interactive tracker question was asked.
-- [ ] A2: Put two lines in that inbox and run `whats-next` → both appear under an "ungroomed" heading, after intents and the frontier, and the proposal offers to discover one.
-- [ ] A3: Run `discovery` on one of those lines and write its intent → the line is gone from the inbox and the intent's Source cites it.
-- [ ] A4: Under `.scratch/` add a `ready-for-agent` ticket, then mark it waiting on two questions → `whats-next` lists it under watch-outs, not as the pick-up, **and** build-swarm's `seam.py ready` does not return it. Answer one question → still excluded by both. Answer the second and restore the status → both offer it again.
-- [ ] A5: Add a question ticket with no build behind it → `whats-next` shows it as waiting, distinct from the inbox's ungroomed lines, and does not propose discovery on it.
-- [ ] A6: Run `stepping-away` twice in a scratch repo where the same client ask is raised in both sessions, once with a ticket already covering it → the inbox holds one line at most and that line, or the ticket, carries both dates; no second intent was proposed.
-- [ ] A7: Seed the inbox with fourteen lines, two dated before four earlier session files → `whats-next` names those lines and asks keep / promote / merge / retire; retire one → it is gone from the live file and the reason is in the session entry.
+Local run 2026-09-13 against pm 0.17.0 installed from the marketplace: A1–A7 and A9 pass (A1 and the seam half of A4 by script; the rest by fresh-context agents following each 0.17.0 SKILL.md cold on throwaway fixtures — record in `.review-gate/2026-09-12-pm-017-intent/acceptance-local.md`). A8 is session two. The production run is the same checks on a real repo after `ship-acceptance`.
+
+- [x] A1: Scaffold a throwaway project with `/pm:pm-scaffold` → `docs/agents/issue-tracker.md` (local) and `docs/intent/inbox.md` exist; no interactive tracker question was asked.
+- [x] A2: Put two lines in that inbox and run `whats-next` → both appear under an "ungroomed" heading, after intents and the frontier, and the proposal offers to discover one.
+- [x] A3: Run `discovery` on one of those lines and write its intent → the line is gone from the inbox and the intent's Source cites it.
+- [x] A4: Under `.scratch/` add a `ready-for-agent` ticket, then mark it waiting on two questions → `whats-next` lists it under watch-outs, not as the pick-up, **and** build-swarm's `seam.py ready` does not return it. Answer one question → still excluded by both. Answer the second and restore the status → both offer it again.
+- [x] A5: Add a question ticket with no build behind it → `whats-next` shows it as waiting, distinct from the inbox's ungroomed lines, and does not propose discovery on it.
+- [x] A6: Run `stepping-away` twice in a scratch repo where the same client ask is raised in both sessions, once with a ticket already covering it → the inbox holds one line at most and that line, or the ticket, carries both dates; no second intent was proposed.
+- [x] A7: Seed the inbox with fourteen lines, two dated before four earlier session files → `whats-next` names those lines and asks keep / promote / merge / retire; retire one → it is gone from the live file and the reason is in the session entry.
 - [ ] A8: In this repo after migration → `_pm/TASKS.md` opens with a `> Legacy` line; a table in the session entry maps every one of its ten items to a destination path (inbox line, intent file, ticket file) or to a dated reason it is dead; every destination path exists; a cold `whats-next` in a fresh session surfaces each surviving item without reading TASKS.md or the migration session.
-- [ ] A9: With `docs/agents/client-face.md` present in a scratch repo and written to the contract above, run `stepping-away` after a fully shipped ticket, a partly shipped one, and a ticketless change → it quotes the matching step for each case and offers it; with the file absent it says nothing about a client face. (Manual check; no client tooling is exercised. This proves the hook, not client integration.)
+- [x] A9: With `docs/agents/client-face.md` present in a scratch repo and written to the contract above, run `stepping-away` after a fully shipped ticket, a partly shipped one, and a ticketless change → it quotes the matching step for each case and offers it; with the file absent it says nothing about a client face. (Manual check; no client tooling is exercised. This proves the hook, not client integration.)
 
 ## Affected users and systems
 
