@@ -75,6 +75,7 @@ plugins, not submissions to the public OpenAI plugin store.
 | Bundled tools | `${CLAUDE_PLUGIN_ROOT}` | `PLUGIN_ROOT` resolved from the loaded skill's absolute location |
 | Scaffold instructions | `CLAUDE.md` | `AGENTS.md` in generated templates and scaffold procedures |
 | PM credential guard | Claude `PreToolUse` hook | Codex `Bash` hook, same guard script and event payload |
+| Session succession beta | Capability-checked native session controls | Codex task creation/status/archive guidance, with queued IDs distinguished from running acknowledgement |
 | DesignSync | Requires the native tool | Capability check; local inventory/diff/handoff when unavailable |
 
 Try these in a new Codex task: “Use pm-scaffold here,” “Use whats-next,”
@@ -294,6 +295,15 @@ project's `connection-evidence.json`, `components-status.json`, and
 Claude Design and Granola remain optional, unverified host connections.
 
 ## Local Claude Code installation
+
+PM 0.19 uses one orchestrator and outcome-sized tickets, with up to six bounded
+subagents executing ready nodes of a work graph. `whats-next` reaches the new
+`orchestrate` skill automatically for implementation; worker assignments do not
+become extra tickets. Existing project requirements remain binding. Manual
+`stepping-away` → fresh session → `whats-next` is still the default.
+The optional `session-succession` beta is not enabled by installation. Its tests
+verify local state transitions and recovery; they do not prove click-free native
+startup or memory release. Test those separately on the actual host.
 
 The private shared source and the public `dc-plugins` marketplace are different
 release surfaces. For local development, register this checkout through Claude's

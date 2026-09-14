@@ -1,6 +1,6 @@
 ---
 name: discovery
-description: Pre-planning discovery — a loose, conversational riff to find the SHAPE and INTENT of a piece of work before any planning pipeline runs; ends with a committed docs/intent/<slug>.md and a size call (build it now, or chart it with /wayfinder). Use at the very start of anything non-trivial — "I've been thinking about X", "let's talk through Y", "I want to do something with Z", "what would it take to…", "let's discover/riff/think out loud" — and whenever the user is describing a problem rather than requesting a change. This is the stage BEFORE /wayfinder or plan mode, not a replacement for them; it exists because wayfinder's opening grill is heavy and goes far better when fed a shaped intent. Do NOT use for trivial edits (just do them), for work that already has an intent or spec (go to the next stage), or once the user has said "let's build" (hand off).
+description: "Clarify missing outcome or scope through a conversational riff, then capture the intent. Use when the user asks to discover or think through an unclear problem. A clear request or accepted ticket goes straight to execution; size or number of sessions alone does not require discovery."
 ---
 
 # Discovery
@@ -36,7 +36,11 @@ One file, committed, in the shared record:
 Count unknowns, not files. Two answers:
 
 - **Fits one session** → no map. Hand off directly: Claude Code plan mode, or `/implement` / `/tdd` for disciplined execution, with the intent as the brief. Record "Size: one session" in the intent.
-- **Multi-session / foggy** → `/wayfinder`, with the intent attached and the destination taken from the intent's *Proposed outcome*. Record "Size: multi-session → wayfinder" plus the destination sentence. `/wayfinder` is user-invoked — tell the user the command, don't try to run it. Charting runs under `fast-grill` by default (pm's pace rule): when you hand off, also hand the user the map Notes line from that skill, with *Taste for this effort* filled from what the riff showed they care about deciding personally, so the map carries it from its first session.
+- **Interdependent unknowns** → `/wayfinder` when a map would resolve them; name
+  those unknowns and attach the intent. Use a technical grilling seat only when
+  it answers a concrete uncertainty or the user requests it. Known work that
+  spans several sessions goes to `orchestrate`; duration alone does not need a
+  map. Keep worker assignments under meaningful outcome tickets.
 
 A third case: if the riff reveals the work is trivial (rename, config flip, one-liner), say so and don't write an intent at all. Discovery shouldn't ceremonialize small things any more than it should rush big ones.
 

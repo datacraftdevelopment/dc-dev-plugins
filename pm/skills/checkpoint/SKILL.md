@@ -5,6 +5,13 @@ description: Mid-session re-aim — a long wayfinder charting run, a background 
 
 # Checkpoint
 
+**Opted-in succession chain:** at a completed-ticket or context boundary, use
+[session-succession](../session-succession/SKILL.md) to decide continue, checkpoint
+or rotate. It owns the 150k–200k context target, ticket-count fallback and worker
+quiescence rules. A rotation replaces the orchestrator; autonomous work stays in
+subagents. An ordinary re-aim remains the procedure below. Existing in-scope
+authorization also covers its bookkeeping; do not repeat an approval already given.
+
 A checkpoint re-aims the session in place. Closing and reopening (`stepping-away` → `whats-next`) is a legitimate alternative when the thread is cheap to rebuild — but neither road is required, and this skill never demands the boundary. Re-aim in place whenever that loses less: a wayfinder charting run mid-flight, a long-running task that will continue whether or not you re-aim it, context expensive to rebuild, or simply a direction change worth recording without breaking stride. The opening brief ages while the work teaches you what the job actually is; the correction has to reach the work that hasn't happened yet instead of dying in conversation. Done when the state **describes the present rather than narrating how we got here**.
 
 ## Checklist

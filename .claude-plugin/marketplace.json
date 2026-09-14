@@ -8,7 +8,7 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "DataCraft PM: intent-led planning, AI technical resolution, scoped execution agreements, lightweight session continuity, bounded build-swarm execution, independent cross-review and delivery acceptance with required evidence channels. Existing projects retain their workflow until they opt in. WORKFLOW.md binds the stages; SDLC.md states the doctrine."
+      "description": "DataCraft PM: outcome-sized tickets, one orchestrator, dependency-graph execution with up to six autonomous subagents, proportionate verification and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta. Existing project requirements and permissions remain binding."
     },
     {
       "name": "design-dc",

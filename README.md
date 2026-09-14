@@ -18,9 +18,11 @@ What assumes it:
 - `pm/WORKFLOW.md` — Joe's binding of the SDLC; names Ringer as installed.
 - `pm` skill `fast-grill` — sends each grilling round's technical bucket to the
   Astra seat as one Ringer task (kit `_Core/Ringer/local/templates/grill-review/`).
-- `build-swarm` loop (Build stage default since pm 0.15) — works a ticket
-  frontier through Ringer worktree waves.
-- `cross-review-gate` — the two-seat gate dispatches through Ringer.
+- PM's `orchestrate` — prepares shared setup and dispatches ready worker nodes
+  through Ringer, up to six active subagents under meaningful outcome tickets.
+  `build-swarm` can execute a prepared real ticket frontier in worktree waves.
+- `cross-review-gate` — an explicitly needed two-seat review runs through Ringer;
+  PM's conditional schedule owns when to use it.
 - `ui-test` skill `ui-test` — the UI runner (Codex computer-use) and its
   verifier are both Ringer tasks; also needs a one-time Codex computer-use
   approval per target app (see `ui-test/README.md`).
@@ -92,7 +94,7 @@ Update everything later with:
 
 | Plugin | Command / skills | What it does |
 |---|---|---|
-| **pm** | `/pm:pm-scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts`, `okf` | Scaffolds a client engagement, personal project, or in-place `_pm/` from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
+| **pm** | `/pm:pm-scaffold`, `whats-next`, `orchestrate`, `stepping-away`, `session-succession` (beta), `okf` | Outcome-sized tickets, one orchestrator, up to six subagents working a dependency graph, proportionate verification and concise handoffs. See [`pm/README.md`](pm/README.md). |
 | **design-dc** | `design-handoff`, `html-artifacts`, `excalidraw-artifacts`, `design-sync` | Design handoffs and artifacts. Direct DesignSync requires a host that exposes that tool. |
 | **ui-test** | `ui-test` | macOS UI runner and independent verifier through Ringer, with decoded PNG evidence and explicit PASS/FAIL/BLOCKED outcomes. See [`ui-test/README.md`](ui-test/README.md). |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-proofkit`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, ProofKit doctrine, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |

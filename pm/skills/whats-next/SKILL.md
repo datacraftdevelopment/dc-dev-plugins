@@ -11,6 +11,14 @@ Session open. The user is starting a session — could be the second one today a
 
 **If the user already named the work, there is no selection to make.** Skip the proposal round: read enough context to draft the Intent block for the named work, write it, and start. Don't re-open the pick, don't run the full survey below, and don't ask for approval the naming already gave.
 
+**Succession handoff:** when the startup prompt names a chain and launch attempt,
+read [session-succession](../session-succession/SKILL.md) first. Revalidate its
+named ticket and authorization, then allocate this session's own Intent/binding
+without another selection round. Acknowledge the handoff and wait for retirement;
+only `begin` authorizes taking checkout ownership and dispatching subagents. This
+overrides "write it, and start" above for successors. Ordinary session opens retain
+the checklist below. A handoff is a compact brief, not a transcript to reload.
+
 ## Checklist
 
 **1. Read.** Shared record first, personal log second (`WORKFLOW.md`: `docs/` is truth, `_pm/` is log).
@@ -43,7 +51,11 @@ Watch-outs: <claimed tickets gone quiet; open threads worth surfacing>.
 
 > Pushing on the search filter UI — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done for this session is the prototype validated by Sandy. Not touching filter persistence or multi-category yet.
 
-**4. Resolve the pick-up.** If the user already named the work, that is the selection: use it without another approval round. Otherwise wait for their pick and any correction to the drafted Intent.
+**4. Resolve the pick-up.** Named work or existing authorization to continue the
+ready work within a settled scope is the selection: proceed without another
+approval round. Otherwise present the recommendation and wait for the user's
+selection. A missing outcome or permission is a real question; choosing the next
+ready item in an already authorized scope is routine orchestration.
 
 **5. Write.** Once the selection is settled (named work counts as settled; an accepted `dc-autonomy-v1` Execution agreement covering this scope authorizes the session-file write itself as local bookkeeping), write the Intent block into this session's file in `_pm/sessions/`:
 
@@ -57,7 +69,14 @@ Keep the returned `path` and `id` in this conversation and its handoff/compactio
 
 On resume/context recovery, read that file's opening Intent and latest Re-aimed section, then reconcile with the tracker and shared docs. If the binding was lost and more than one file could belong to this conversation, ask once. Legacy files without an ID remain readable; do not adopt one merely because it is newest. An explicit session path supplied by the user can be continued manually with the same append-only rules.
 
-If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim.
+If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim. For a succession handoff, confirm the chain's existing reservation and transfer it only after `begin`; do not create a competing claim.
+
+**6. Execute.** Use [orchestrate](../orchestrate/SKILL.md) for authorized
+implementation: shared setup, a dependency graph of bounded worker assignments,
+up to six ready subagents, then integration and proportionate verification.
+Worker briefs belong under the existing outcome ticket; do not generate a ticket
+for each little task. Keep human questions on the tracker and surface them
+together in this conversation. A successor reaches this step only after `begin`.
 
 ## When the project has no history
 

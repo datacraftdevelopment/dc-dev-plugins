@@ -41,6 +41,13 @@ class CodexBuildTests(unittest.TestCase):
             self.assertIn('.codex-plugin/plugin.json',
                           (fm / 'skills/fm-scaffold/SKILL.md').read_text())
             pm = out / 'pm'
+            host = (pm / 'skills/session-succession/host.md').read_text()
+            self.assertIn('create_thread', host)
+            self.assertIn('clientThreadId', host)
+            self.assertIn('type: local', host)
+            self.assertNotIn('spawn_task', host)
+            self.assertEqual((pm / 'scripts/succession.py').read_bytes(),
+                             (ROOT / 'pm/scripts/succession.py').read_bytes())
             # This durable contract is shared by hosts after setup; its meaning
             # must not depend on which plugin edition installed it.
             self.assertEqual((ROOT / 'basecamp-dc/templates/client-face.md').read_bytes(),
@@ -87,6 +94,11 @@ class CodexBuildTests(unittest.TestCase):
                                      cwd='/', capture_output=True, text=True)
             self.assertEqual(session.returncode, 0, session.stderr)
             self.assertTrue((fixture / json.loads(session.stdout)['path']).is_file())
+            boundary = subprocess.run(['python3', str(pm / 'scripts/succession.py'),
+                                       'boundary', '--tickets-completed', '2', '--safe-boundary'],
+                                      cwd='/', capture_output=True, text=True)
+            self.assertEqual(boundary.returncode, 0, boundary.stderr)
+            self.assertEqual(json.loads(boundary.stdout)['decision'], 'rotate')
             self.assertTrue((pm / 'skills/ship-acceptance/SKILL.md').is_file())
             # Bundled scripts must work after relocation, from an unrelated cwd.
             probe = subprocess.run(['python3', str(fm / 'skills/fm-dataapi/scripts/fm.py'), '--help'],

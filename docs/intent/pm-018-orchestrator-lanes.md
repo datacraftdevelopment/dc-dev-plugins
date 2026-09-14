@@ -1,5 +1,17 @@
 # Field notes: one orchestrator session, several build lanes
 
+> **Direction corrected by Joe, 2026-09-14:** the objective is completed work
+> without blockers or supervision, with lean orchestrator context (roughly
+> 150k–200k tokens). Six to eight sessions across machines caused a Mini crash,
+> manual reopening and recovery; shipping the work did not establish a net gain.
+> Autonomous ticket work should use subagents, not additional interactive
+> sessions. Automate the usual one-or-two-ticket → stepping-away → fresh-session
+> rhythm. One active orchestrator is the default; at most three sessions across
+> both machines, with extras only for independent work when explicitly warranted.
+> The first beta tests a single chain of three successive orchestrators.
+> [Accepted succession implementation](pm-019-session-succession.md) supersedes
+> the concurrency-first recommendations below; retain these observations as evidence.
+
 Author: Joe (with Opus). Status: **field notes, still collecting**. This is not an intent yet;
 it becomes one once the pattern has run for a few days. Started: 2026-09-14.
 Pilot: the SB-SOS repo (Next.js + Supabase, main-only, auto-deploys on push).

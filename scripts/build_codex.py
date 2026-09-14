@@ -16,7 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '.dc-codex-build.json'
 PLUGINS = {
-    'pm': ('DataCraft PM', 'Project scaffolding, discovery, session notes, and delivery checks.'),
+    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, and delivery checks.'),
     'design-dc': ('DataCraft Design', 'Design handoffs, HTML artifacts, Excalidraw, and design-system workflows.'),
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
     'ui-test': ('DataCraft UI Tests', 'Run macOS UI tests with evidence receipts and independent verification.'),
@@ -63,6 +63,50 @@ calls, assume the separate claude-design bridge is installed, or claim a remote
 sync occurred. If the tool is available, read its current contract before using
 the workflow below.
 
+'''
+
+SUCCESSION_HOST = '''# Host operations — Codex
+
+Use the current Codex app tool contracts. Discover `list_projects`,
+`create_thread`, `list_threads`, `read_thread`, `wait_threads`,
+`send_message_to_thread` and `set_thread_archived` before relying on them.
+CLI-only environments may lack these controls: preserve the prepared handoff and
+report manual startup required. Do not substitute an untracked background CLI.
+
+An explicit user request to continue in fresh sessions authorizes successor
+creation within its stated scope/budget. Installation alone does not. Autonomous
+workers use the existing Ringer/build-swarm path; `create_thread` is only for
+replacing this orchestrator. Never fork the full conversation for succession.
+
+Call `list_projects` and match the recorded checkout. This beta's explicit
+same-checkout opt-in selects the saved project directly (`environment: { type: local }`)
+rather than a fresh worktree. If the user has not authorized that environment,
+resolve it before launch. Preserve the configured model unless the user requests
+another. Use the [successor prompt](prompt.md), including the chain and launch
+attempt. Obtain this task's actual ID from host context; do not guess from recency.
+
+Reserve `launch` first; only `dispatch_allowed: true` permits the one
+`create_thread` call. Set its title to include the attempt marker. Record the
+returned `threadId` with `created`. A `clientThreadId` means queued setup, not a
+usable task ID: preserve launching and reconcile the actual task through host
+status before recording it. Never pass a clientThreadId where threadId is required.
+Emit the app's created-task directive for the actual creation result as required
+by its tool contract. Creation is not the successor's running acknowledgement.
+
+Use bounded `wait_threads` calls and retained cursors for host progress; keep each
+wait at most 60 seconds. Read the helper's status to see acknowledgement. A queued
+result, host completion or a message alone does not grant checkout ownership.
+On an uncertain create, inspect the exact attempt marker via host inventory and
+task content; do not dispatch again until non-creation is actually established.
+
+After the successor acknowledges, verify release of owned workers/servers, then
+record `retire`. If the successor ended its turn while waiting, send it a concise
+continuation on its existing task after retirement; never create a replacement
+just to wake it. Finally use `set_thread_archived` for this predecessor when the
+opt-in authorizes retirement. Archival is separate from process exit/RAM release;
+report the observed facts. Without archive support, leave this task quiescent and
+report closure unconfirmed. If recovery cannot establish the predecessor is
+stopped, keep the successor waiting and present the one unresolved blocker.
 '''
 
 
@@ -210,6 +254,10 @@ def build_one(name, parent):
             path.rename(path.with_name('AGENTS.md'))
         for path in (stage / 'skills').glob('*/SKILL.md'):
             path.write_text(skill_text(path.read_text(), path.parent.name))
+        if name == 'pm':
+            host = stage / 'skills/session-succession/host.md'
+            if host.exists():
+                host.write_text(SUCCESSION_HOST)
         for kind in ('commands', 'agents'):
             for path in (stage / kind).glob('*.md'):
                 target = stage / 'skills' / path.stem / 'SKILL.md'

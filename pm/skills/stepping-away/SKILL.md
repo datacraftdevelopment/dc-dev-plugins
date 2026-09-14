@@ -9,9 +9,24 @@ Session close. Capture what happened, compare it to the Intent set at the open, 
 
 Closing a session is not the same as closing the day. Most sessions end with another one to follow; write the entry so whoever opens next inherits a clean handoff either way.
 
+**Opted-in succession chain:** read
+[session-succession](../session-succession/SKILL.md) for turnover or recovery.
+Complete this close-out before preparing the handoff, then return to that skill
+instead of ending the turn at step 9. Keep the next ticket's chain reservation
+until the successor begins; the unclaim instruction below applies to other work.
+Record the beta measurements and owned worker/server status in this entry.
+Successor creation, acknowledgement and resource release are separate from this
+PM record's `Closed` marker. If the chain is stopping, close normally and record
+its stop reason; do not silently renew its session budget.
+
 Closing a session is also not the same as pausing or continuing background work. **Closing this chat neither stops a running unattended loop nor schedules anything to run later** — never claim it does. A run that is active stays active under its own control: if the user wants it paused, use `build-swarm`'s documented run-status and pause-request mechanism and report it paused only after that mechanism confirms it; where that control isn't available for the run, say what caps actually exist instead. Record in the entry whether each active run was left running, paused (verified), or aborted.
 
-**If the accepted intent carries an approved `dc-autonomy-v1` Execution agreement covering this work, the local bookkeeping below — the session entry, in-scope tracker settles, inbox lines — is already authorized: write it and report what was written, without a draft-approval loop.** Everything outside that scope, anything external-facing (pushes to shared branches, client-visible files, messages), and any tracker the user doesn't own still requires its own specific authorization. Without an agreement, the legacy show-before-writing steps below apply as written.
+**Use existing authorization.** An explicit request to close this session, or an
+approved in-scope `dc-autonomy-v1` agreement, authorizes routine local close-out:
+write the session entry and authorized tracker updates, then report them. The
+show-before-writing steps below apply only where that authorization is missing.
+Shared pushes, client messages, production and trackers the user doesn't own
+still need their own applicable permission; reuse it when already granted.
 
 ## Checklist
 
@@ -22,7 +37,9 @@ Closing a session is also not the same as pausing or continuing background work.
 - The conversation since the last stepping-away
 - `_pm/skeleton.md` if you need to confirm alignment
 
-**2. Draft** (show the user before writing — or, under an approved in-scope agreement, write and show what was written). Update this session's entry with three sections — leave the Intent block from the open untouched:
+**2. Write under existing close-out permission** and report what was written;
+otherwise show the draft first. Update this session's entry with three sections
+— leave the Intent block from the open untouched:
 
 - **Shipped** — tight bullets. Files touched by path. Omit if nothing shipped.
 - **Tried / Learned / Decided** — narrative. Candid about dead-ends. "Tried X, abandoned because Y" beats silence.
@@ -40,7 +57,7 @@ Closing a session is also not the same as pausing or continuing background work.
 
    **The bar for "durable":** if this note vanished, would the next engineer reading the finished code, tests, and docs repeat the mistake or redo the investigation? If not, write nothing — the code already carries it. Effort spent and diff size don't qualify a lesson; only non-obvious reasoning that the artifacts don't show does. (Borrowed from Compound Engineering's `ce-compound` counterfactual, 2026-09-06.)
 
-**6. ADR — only if warranted.** A durable choice retrievable by topic, not already recorded on a closed wayfinder ticket? Draft it in `docs/adr/` (Matt's `/domain-modeling` format). Most sessions, skip. Ask before writing.
+**6. ADR — only if warranted.** A durable choice retrievable by topic, not already recorded on a closed wayfinder ticket? Record it in `docs/adr/` (Matt's `/domain-modeling` format) under existing local documentation permission; otherwise show the draft. Most sessions, skip.
 
 **7. Finish the session record.** Settle authorized tracker updates first; on a partial retry check for existing resolution comments before repeating them. Write the three drafted sections into an entry text file, then close the bound session:
 
@@ -52,13 +69,19 @@ The helper checks identity, locks the file locally, appends the entry, and write
 
 **8. Push the log.** In a team repo, the session file is how the next person sees this stretch of work: offer to commit `_pm/sessions/YYYY-MM-DD-<name>[-N].md` (and any `docs/` edits) and push the branch. Solo: offer, don't insist.
 
+Existing permission for these commits/pushes settles the offer; do not ask again.
+Keep the close concise: outcome, evidence links, essential decisions, real
+blockers and next ready work. Worker steps remain under their parent ticket,
+not new tickets created during bookkeeping. Release owned disposable resources
+and record the state of any durable paused worker before leaving.
+
 **9. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued on the tracker, and the one or two threads the next session should open on.
 
 ## What this skill does NOT do
 
-- Doesn't auto-commit — offers. (An approved agreement listing `local-commit` authorizes in-scope local commits; pushing anywhere shared still gets its own ask.)
+- Commits and shared pushes require applicable authorization; reuse existing permission rather than offering the same action again.
 - Doesn't claim closing the chat pauses, stops, or schedules background work — pause goes through `build-swarm`'s documented control, verified, or is reported as unavailable.
-- Doesn't close or comment tickets on a tracker the user doesn't own without asking.
+- Doesn't close or comment tickets on a tracker the user doesn't own without applicable authorization.
 - Doesn't maintain `_pm/decisions/` or `_pm/context-map.md` (pre-0.8, see `MIGRATION-0.8.md`), and doesn't grow a `TASKS.md` unless the repo declared it the tracker (see `MIGRATION-0.17.md`).
 - Doesn't append an inbox line without matching first, and never appends a status or a checkbox to the inbox — it has none.
 - Doesn't rewrite the Intent to match the outcome — that defeats the purpose. Intent stays as set; outcome is reported honestly against it.

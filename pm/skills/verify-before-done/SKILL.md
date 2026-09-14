@@ -9,6 +9,13 @@ A false "done" costs more than a slow one: the user builds on work that isn't th
 
 ## The rule
 
+Verification is proportionate to the change: choose checks that could expose the
+actual failure and satisfy project requirements. Reuse current evidence when
+the verified artifact has not changed; don't repeat broad suites or add review
+rounds without a new risk, change or requirement. A worker's isolated checks do
+not replace verification after integration. Keep detailed output in the evidence
+record and bring concise results and links into the orchestrator's context.
+
 Before any completion claim, in order:
 
 1. **Name the verification.** What command or check would prove this claim to a skeptic? Tests, build, lint, running the thing, loading the page, calling the endpoint — the check that would catch the failure you'd most plausibly have caused.

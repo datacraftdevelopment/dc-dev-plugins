@@ -1,9 +1,15 @@
 ---
 name: fast-grill
-description: The pace rule for grilling. When /grilling, wayfinder charting, or the /to-tickets approval step is about to put a round of questions to the user, sort them - technical questions go with their recommended answer to a second-vendor seat (Astra via Ringer) and come back as rulings, and only taste, one-way-door, user-challenge, and seat-split questions reach the user. Use whenever a grilling round is about to be shown in a repo bound to pm's WORKFLOW.md or whose wayfinder map Notes say "fast grill", and whenever the user says "fast grill", "take the defaults", "just decide the technical stuff", "only ask me taste questions", "send the technical ones to Astra", "speed through this". Not for discovery (it riffs, it doesn't grill), not for prototype tickets (reacting to the prototype is the point), and never a reason to skip the fact-finding that /grilling already delegates to sub-agents.
+description: "An independent technical grilling seat for a named unresolved decision, an explicit fast-grill request, or a map requiring Seat: on. Technical recommendations go to Astra through Ringer; genuine user decisions return to the orchestrator. Routine authorized technical choices do not trigger a grilling round."
 ---
 
 # Fast grill
+
+Use this when the user requests a technical seat, an existing map requires it,
+or a concrete uncertainty warrants an independent challenge. Name that question
+before dispatch. `WORKFLOW.md` owns the conditional schedule: a plan, ticket
+breakdown or successful build alone does not trigger another round. Once this
+skill is invoked, its bucket, authorization and evidence rules below still apply.
 
 `/grilling` works a design tree in rounds: it computes the frontier, numbers each question, and prints a recommended answer under every one. On Joe's projects the recommendation gets a "yes" about nineteen times in twenty, and on technical questions he is deferring to the model anyway. Fast grill spends those nineteen for him, but not by self-approval: the technical questions and their recommendations go to a **second seat from another vendor** (Astra, through Ringer), and what comes back agreed becomes a ruling he can reverse. He sees only the questions where his answer changes the work, plus the ones the two models split on.
 

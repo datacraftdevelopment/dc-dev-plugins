@@ -1,18 +1,29 @@
 # pm — DataCraft Project-Management Plugin
 
 Claude Code plugin that packages Joe's project-management layer. **Read
-[`WORKFLOW.md`](./WORKFLOW.md) first** — it's the stage chain (Discover →
-Chart → Spec → Ticket → Build → Verify → Ship → Learn), which skill owns each
-stage, and the one rule: `docs/` is shared record, `_pm/` is personal log. pm
-fits around Matt Pocock's skill set: discovery, the pace rule for grilling,
-session continuity, and evidence-based delivery acceptance. Build itself runs as
-the library's `build-swarm` loop at `--wave 1` by default when a ticket
-frontier with committed checks exists (0.15.1, after twelve two-seat gate
-rounds): a script works the frontier unattended through Ringer, one commit
-per ticket, parking what fails for a human; wider waves are the operator's
-call per frontier.
+[`WORKFLOW.md`](./WORKFLOW.md) first** — it gives the default execution path,
+when extra stages help, and the record rule: `docs/` is shared record,
+`_pm/` is personal log. pm
+fits around Matt Pocock's skill set. The default is one orchestrator, meaningful
+outcome tickets and bounded Ringer subagents working a dependency graph (up to
+six active workers when ready and resourced). Worker assignments stay inside
+the parent ticket. Planning and additional review address concrete uncertainty;
+verification remains required and proportional. Manual fresh sessions remain
+normal; automatic succession is an opt-in experiment.
 
 Provides:
+
+- **`orchestrate`** — prepare shared scaffolding, dispatch ready worker nodes,
+  integrate and verify. One outcome may use several subagents without extra
+  tickets. Reuses Ringer and, for prepared real ticket frontiers, build-swarm.
+
+- **`session-succession` beta** — one lean orchestrator, autonomous subagent work,
+  and durable turnover into fresh sessions. Explicit per-project opt-in; default
+  beta is three sequential sessions. Extends `whats-next`, `checkpoint` and
+  `stepping-away`; distinguishes prepared, created, acknowledged and retired.
+  See [the procedure](skills/session-succession/SKILL.md) and
+  [CLI/recovery protocol](skills/session-succession/protocol.md). Host startup and
+  memory release remain live beta checks, not claims made by helper tests.
 
 - **`/pm:pm-scaffold <name>`** — stands up a project from the bundled
   starter: a client engagement (`Acme` → `datacraft-Acme/`), a personal
@@ -26,8 +37,8 @@ Provides:
   no tracker question; GitHub Issues is one `/setup-matt-pocock-skills` away).
 - **`discovery`** skill — the stage before planning: a loose conversational
   riff to find the shape and intent of a piece of work, written to
-  `docs/intent/<slug>.md` with a size call (one session → build it;
-  multi-session → `/wayfinder` with the intent attached).
+  `docs/intent/<slug>.md` when the outcome needs clarification. Known work goes to
+  execution; interdependent unknowns may justify a wayfinder map.
 - **`fast-grill`** skill *(0.14, the pace rule)* — sits between the frontier
   `/grilling` computes and the round the user sees. Technical questions go,
   with their recommended answers, to one Ringer task on the Astra seat
@@ -35,9 +46,9 @@ Provides:
   ruling), `disagree` (a seat-split question), or `taste` (a question). The
   user answers only taste, one-way doors, user challenges, and splits. Every
   ruling is one ledger line — decided · why · cost if wrong · who agreed —
-  on the ticket, the map, or the plan; reversing one is a reply. Default at
-  Chart, in grilling tickets, and at `/to-tickets`' approval step; the map's
-  `## Notes` carries `Seat: on | off` and *Taste for this effort*.
+  on the ticket, the map, or the plan; reversing one is a reply. Use a round for a
+  concrete uncertainty or explicit requirement; the map's `## Notes` carries
+  `Seat: on | off` and *Taste for this effort*.
 - **`whats-next`** skill — session open: reads intents, the tracker frontier,
   the inbox (ungroomed asks — flags stale or excess lines for keep / promote /
   merge / retire), waiting tickets, and recent sessions; proposes a pick-up;

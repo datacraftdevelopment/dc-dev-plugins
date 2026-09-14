@@ -10,6 +10,13 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 
 ## Conventions
 
+**Ticket granularity:** a ticket represents a meaningful outcome, not every
+implementation step. Scaffolding, file edits, tests, repairs and subagent
+assignments stay under their parent ticket as a compact work graph and evidence.
+Create another ticket when work needs a separately useful outcome, owner,
+acceptance boundary or durable unresolved dependency. Do not create tiny tickets
+just to use a build engine. A small direct request may be handled without one.
+
 - One feature per directory: `.scratch/<feature-slug>/`
 - The spec is `.scratch/<feature-slug>/spec.md`
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` — never a single combined tickets file

@@ -85,22 +85,37 @@ new session; `checkpoint` appends a dated re-aim only when the session can't be
 broken. The session skills ship globally with the pm plugin — they are not
 copied here.
 
+For an explicitly authorized fresh-session chain, use `session-succession` at
+startup, task boundaries and recovery. One orchestrator delegates autonomous work
+to subagents; successors replace it when context fills. The skill owns turnover
+and resource-release checks. Installation/scaffolding alone never opts this project in.
+
 ## Working conventions
 
 - **Skeleton first** — even a paragraph — before user stories or specs.
-- **Anything non-trivial starts with `discovery`** → `docs/intent/<slug>.md`
-  + a size call. Trivial edits: just do them.
+- **Outcome-sized tickets.** Use `orchestrate` for authorized work: prepare shared
+  scaffolding, dispatch ready branches of a dependency graph to up to six bounded
+  subagents, then integrate and verify. Worker assignments are not extra tickets.
+  Planning and additional review address named uncertainties, not every stage.
+- **Discover only missing intent.** A clear request or accepted ticket proceeds
+  to execution. Duration across sessions does not itself require a planning map.
 - **Scoped autonomy is opt-in, per intent.** An accepted intent may carry an
   `## Execution agreement` block (`dc-autonomy-v1`; template in the discovery
   skill). Its `approved` field is drafted `false` and records only the user's
   actual authorization — no scaffold, tool, or global setting ever sets it.
   The intent is the one authority; a malformed or unknown agreement fails
-  closed. No agreement means the legacy ask-first behavior throughout.
+  closed. Direct user authorization still applies without an agreement; do not
+  repeat approvals already given. The unattended runtime retains its own schema
+  and budget requirements.
 - **One in, one out** (Wei Hao) — new request under fixed scope: "if this
   comes in, what comes out?" Document the trade in the session entry.
 - **`whats-next` opens each session, `stepping-away` closes it.** The unit is
   the session, not the day — several a day is normal. Don't ramble; the skills
   handle the checklists.
+- **One place for questions.** Worker blockers return to the orchestrator; real
+  human dependencies live on their outcome ticket as `Waiting on:` plus
+  `Status: needs-human`. Present them together and continue independent work.
+  Manual fresh sessions remain the default; automatic succession is experimental.
 
 ## Verifying your work
 
