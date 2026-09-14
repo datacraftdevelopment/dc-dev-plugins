@@ -46,5 +46,8 @@ function surface and channel protocol.
 
 - Claris ADT 0.4.0+ installed (`fm` at `~/.local/bin/fm`; the
   `filemaker-agentic-development` Claude Code plugin)
+- The **`agenticdev` standards pack** (`agenticdev-filemaker-standards`,
+  from the `FM-agent-engineering-standards` repo) installed, and declared in
+  each project's `adt.json` — the `adt-workflow` skill explains why
 - FileMaker Pro 2025 (26.x); hosted files need FileMaker Server ≥ 26
 - Node + pnpm only for web viewer app work

@@ -54,6 +54,23 @@ Lane A needs only that a Pro-opened file be shared per-file (fmnet). Lane B
 additionally needs ADT's components provisioned into the file and a live
 connector handshake — see the `adt-connections` skill before debugging it.
 
+## Standards come from the pack, not from memory
+
+Before naming or changing anything inside a file, run `adt standards` in
+the project and read every path it prints — that is Claris's own
+`filemaker-standards` skill's first step, and it is the only place house
+conventions live. DataCraft projects declare the **`agenticdev`** pack
+(`"standards": { "pack": "agenticdev" }` in `adt.json`; plugin
+`agenticdev-filemaker-standards`, from the `FM-agent-engineering-standards`
+repo's marketplace). It carries text UUID `id`, `idName` foreign keys,
+`g`/`k`/`_unstored`/`_summary` markers, `Anchor__TABLE__key` occurrences,
+entity-first script signatures, the six-line header, and the transaction /
+PSOS / configuration / logging patterns the Claris baseline lacks. A
+project that declares it but shows `(NOT INSTALLED)` gets the baseline —
+say so once, install the pack, carry on. Note: in ADT 0.6.0 the pack's
+`checks.json` fires on `adt layout add`, not on `fm` batches, so the prose
+is what you are held to.
+
 ## THE ROUTING RULE (in-FileMaker capabilities)
 
 For any capability the agent needs from inside FileMaker: use either the normal
