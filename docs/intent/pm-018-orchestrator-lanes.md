@@ -225,8 +225,57 @@ screenshots, anything deferred, client-facing wording for the orchestrator.
 
 ## How it went (fill in at the end of the day)
 
-_To be written after the lanes merge: merge order, conflicts hit, rework, total time vs a
-serial estimate, what broke, and whether the rules held._
+**2026-09-14, first run: three lanes, all shipped the same day.**
+
+| | Lane B (small fixes) | Lane A (closed estates) | DB lane (CM2) |
+|---|---|---|---|
+| Started → ready to merge | ~09:19 → ~13:05 | ~09:19 → ~13:45 | 09:04 → ~13:50 |
+| Shipped to prod | ~13:30 (`cb408ea`) | ~14:00 (`0558735`) | ~14:00 (`0558735`) |
+| Size | 28 files, +708 | 28 files, +1,250 | 31 files, +6,351 (incl. gate trail + samples) |
+| New tests | 3 test files | 48 cases | 1 test file |
+
+**Merge order:** B, then A, then CM2. Pushes: two (B alone, then A + CM2 together).
+**Conflicts:** one shared file (`middleware.ts`, lane A's gate plus CM2's comment), which
+git auto-merged. It was caught ahead of time by the orchestrator's cross-tree sweep,
+not by either lane.
+**Re-verified on the integrated tree** after every merge: vitest 367 → 415 → 448, build,
+lint (81 → 79).
+**Orchestrator time per ship:** ~15 min (scope check, a read of the risky code, merge, green
+on main, Joe's click check, push, deploy-log commit check, prod smoke, Basecamp,
+TASKS/changelog, worktree cleanup).
+**Serial estimate:** three ~4 h builds would have been a two-day run; this was one
+morning plus a crash.
+
+**What broke or nearly broke**
+- **The Mac ran out of memory** (16 GB, three lanes). One lane's build died with exit 137, and Joe
+  restarted. No work was lost, because everything was on disk; rule 9 came out of it.
+- **A lane went dark for ~4 h** because it was sitting on an `AskUserQuestion` to Joe, and every
+  orchestrator message queued behind it. Nobody knew until `list_events` showed the
+  question as its last action. **Idea: when a lane asks Joe something, it also pings the
+  orchestrator, so the ask doesn't sit unseen in a background window.**
+- **Its Codex code gate died mid-run with the restart**; the retry, on Joe's call, went through.
+  A separate gotcha: the gate reviews the *uncommitted* diff, so "commit first, then gate"
+  hands it nothing to review.
+- **Lanes can't log in** (no typing passwords), so Joe's click check stood in for every visual
+  verification, on local, not prod. Prod checks were limited to the deploy-log commit,
+  public pages and signed-out redirects.
+- **Close-outs landing after the merge**: fine when the lane committed before archiving, or
+  when the orchestrator merged the final tip. One stale-looking branch tip (`eceb283`) turned
+  out to be in main already; `merge-base --is-ancestor` is the check to run before deleting a
+  branch.
+
+**Did the rules hold?** Mostly. The DB lane was the only DB writer; its migration was
+additive and its prod backfill had Joe's yes. No lane rotated passwords, pushed or
+deployed. No lane touched the tracker, changelog or Basecamp; the orchestrator did all
+of that. Rule 5 (no shared files) had one miss (the `middleware.ts` comment), which was
+harmless. Rule 7 (report in) worked for two lanes out of three; lane A was blocked on
+Joe, not on the rule.
+
+**Top three for the plugin, in order:**
+1. `pm:merge-lane`, the ship checklist above.
+2. `lane-setup` + a memory-aware `lanes status`.
+3. A report-in channel that isn't `send_message`: status blocks enforced by a hook, plus an
+   "I asked Joe something" ping.
 
 ---
 
