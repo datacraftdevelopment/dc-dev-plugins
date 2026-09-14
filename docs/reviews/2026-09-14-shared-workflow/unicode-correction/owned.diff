@@ -1,0 +1,54 @@
+--- /Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/agreement_contract.py (before)
++++ /Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/agreement_contract.py (after)
+@@ -145,7 +145,7 @@
+     exists and it is exactly `## <heading>`, this raises rather than letting a
+     near-miss select legacy behavior."""
+     masked = mask_fences(text)
+-    label = r'[ \t]+'.join(re.escape(word) for word in heading.split())
++    label = r'[^\S\r\n]+'.join(re.escape(word) for word in heading.split())
+     attempts = list(re.finditer(r'^ {0,3}#{1,6}[ \t]*' + label
+                                 + r'\b[^\n]*$', masked, re.M | re.I))
+     if not attempts:
+--- /Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/test_review_boundary_variants.py (before)
++++ /Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/test_review_boundary_variants.py (after)
+@@ -179,7 +179,8 @@
+ 
+     def test_whitespace_variants_fail_closed(self):
+         import agreement
+-        for heading in ('Execution  agreement', 'Execution\tagreement', 'Execution   agreement'):
++        for heading in ('Execution  agreement', 'Execution\tagreement', 'Execution   agreement',
++                        'Execution\u00a0agreement', 'Execution\u2002agreement', 'Execution\u3000agreement'):
+             with self.subTest(heading=repr(heading)):
+                 self.write_intent(heading)
+                 with self.assertRaises(ValueError):
+--- /Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/pm/scripts/agreement_contract.py (before)
++++ /Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/pm/scripts/agreement_contract.py (after)
+@@ -145,7 +145,7 @@
+     exists and it is exactly `## <heading>`, this raises rather than letting a
+     near-miss select legacy behavior."""
+     masked = mask_fences(text)
+-    label = r'[ \t]+'.join(re.escape(word) for word in heading.split())
++    label = r'[^\S\r\n]+'.join(re.escape(word) for word in heading.split())
+     attempts = list(re.finditer(r'^ {0,3}#{1,6}[ \t]*' + label
+                                 + r'\b[^\n]*$', masked, re.M | re.I))
+     if not attempts:
+--- /Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/tests/test_review_boundary_variants.py (before)
++++ /Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/tests/test_review_boundary_variants.py (after)
+@@ -40,7 +40,7 @@
+         self.assertEqual(json.loads(result.stdout)['status'], 'shipped')
+ 
+     def test_whitespace_inside_agreement_label_fails_closed(self):
+-        for spacing in ('  ', '\t', '   ', ' \t '):
++        for spacing in ('  ', '\t', '   ', ' \t ', '\u00a0', '\u2002', '\u3000'):
+             with self.subTest(spacing=repr(spacing)):
+                 self.setUp()
+                 self.legacy_record()
+@@ -51,7 +51,7 @@
+                 self.assertIn('Execution agreement', result.stdout)
+ 
+     def test_whitespace_inside_requirements_label_fails_closed(self):
+-        for spacing in ('  ', '\t'):
++        for spacing in ('  ', '\t', '\u00a0', '\u2002', '\u3000'):
+             with self.subTest(spacing=repr(spacing)):
+                 self.setUp()
+                 self.legacy_record()

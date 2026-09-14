@@ -1,6 +1,6 @@
 {
   "name": "design-dc",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "DataCraft design workflow: design-handoff writes the crossing brief for claude.ai/design (data-driven or concept-driven); html-artifacts produces rich editorial HTML artifacts instead of long markdown; excalidraw-artifacts converts an HTML artifact into a locked-background Excalidraw canvas for live talk markup and reads the annotations back afterwards; design-sync drives the built-in DesignSync tool to keep a component library in sync with a Claude Design design-system project. Pairs with the claude-design bridge plugin (separate, upstream-tracked) for driving the designer itself.",
   "author": {
     "name": "Joe",

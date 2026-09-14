@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/agreement_contract.py",
+    "snapshot": "before/0",
+    "sha256": "904003275f59f4c46d742adf5bfe4fbad5ba3b912559550d46c25c866e2526e0"
+  },
+  {
+    "path": "/Users/joe/Agentic-Mini/_Core/library/skills/agent-operations/build-swarm/scripts/test_review_boundary_variants.py",
+    "snapshot": "before/1",
+    "sha256": "6e0d42e54dd475d5518c4bb4f203b501923124b0e4ef35b7771c8baa4b853c09"
+  },
+  {
+    "path": "/Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/pm/scripts/agreement_contract.py",
+    "snapshot": "before/2",
+    "sha256": "904003275f59f4c46d742adf5bfe4fbad5ba3b912559550d46c25c866e2526e0"
+  },
+  {
+    "path": "/Users/joe/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/tests/test_review_boundary_variants.py",
+    "snapshot": "before/3",
+    "sha256": "c4bda4ecd0b157857ee2ddf83495e554ffb2c14cad8cb6cf5771f671152a2018"
+  }
+]

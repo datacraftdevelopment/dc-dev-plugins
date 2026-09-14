@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/joe/Documents/Codex/2026-09-13/users-joe-agentic-mini-core-plugins/work/workflow-implementation/unicode-correction/unicode-contract-correction/verify_no_git.py", line 46, in <module>
+    suite.addTests(loader.loadTestsFromTestCase(runtime_boundary.RuntimeHeadingWhitespace))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'test_review_boundary_variants' has no attribute 'RuntimeHeadingWhitespace'

@@ -90,6 +90,12 @@ copied here.
 - **Skeleton first** — even a paragraph — before user stories or specs.
 - **Anything non-trivial starts with `discovery`** → `docs/intent/<slug>.md`
   + a size call. Trivial edits: just do them.
+- **Scoped autonomy is opt-in, per intent.** An accepted intent may carry an
+  `## Execution agreement` block (`dc-autonomy-v1`; template in the discovery
+  skill). Its `approved` field is drafted `false` and records only the user's
+  actual authorization — no scaffold, tool, or global setting ever sets it.
+  The intent is the one authority; a malformed or unknown agreement fails
+  closed. No agreement means the legacy ask-first behavior throughout.
 - **One in, one out** (Wei Hao) — new request under fixed scope: "if this
   comes in, what comes out?" Document the trade in the session entry.
 - **`whats-next` opens each session, `stepping-away` closes it.** The unit is
@@ -109,3 +115,5 @@ Before reporting any task done, fixed, or passing:
 ## Delivery acceptance
 
 After implementation verification, use pm `ship-acceptance` to record the intent criteria against the actual candidate and delivered revision in `docs/shipped/`. Create the folder on first write. A closed build ticket does not prove the intent was delivered. The human applies production; the record distinguishes ready-for-release, blocked, shipped, and released-with-exceptions.
+
+If the intent declares `## Evidence requirements` (criterion → `automated` / `ui` / `state` / `human` channels — required when its Execution agreement is approved), each named channel needs its own independent evidence at the candidate revision; the validator blocks readiness on any missing, failed, or self-evaluated channel. Code-complete is not delivered — UI-bearing criteria need real interactions, independently read captures, and a persistence read that isn't pixels.

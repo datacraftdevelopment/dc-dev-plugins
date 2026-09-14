@@ -292,3 +292,32 @@ project's `connection-evidence.json`, `components-status.json`, and
 `doctor-file-latest.json`. No database sharing or account privileges were changed.
 
 Claude Design and Granola remain optional, unverified host connections.
+
+## Local Claude Code installation
+
+The private shared source and the public `dc-plugins` marketplace are different
+release surfaces. For local development, register this checkout through Claude's
+supported marketplace CLI and install its named private editions:
+
+```bash
+claude plugin marketplace add .
+claude plugin install pm@dc-dev-plugins --scope user
+claude plugin install design-dc@dc-dev-plugins --scope user
+claude plugin install fm-dc@dc-dev-plugins --scope user
+claude plugin install ui-test@dc-dev-plugins --scope user
+claude plugin install basecamp-dc@dc-dev-plugins --scope user
+```
+
+Run this from the source checkout. After later version bumps, use
+`claude plugin marketplace update dc-dev-plugins` and `claude plugin update
+<name>@dc-dev-plugins --scope user`. Verify the installed cache's manifest and
+source contents, then remove any superseded installation of the same named plugin
+from the public marketplace. Preserve the user's enabled/disabled preference.
+Keep the public marketplace if unrelated plugins still use it. Do not hand-edit
+Claude's cache or publish private sources to the public tree. Restart Claude Code
+after a refresh.
+
+Canonical Ringer and build-swarm skills remain in the shared library. Claude's
+existing skill links consume those sources; the Codex refresh packages Ringer's
+tracked skill resources and links build-swarm to its canonical implementation.
+No client project is opted into a new execution policy merely by installation.

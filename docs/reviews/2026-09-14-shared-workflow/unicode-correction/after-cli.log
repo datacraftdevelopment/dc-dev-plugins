@@ -1,0 +1,10 @@
+{"heading": "Execution agreement", "separator": "NBSP", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Execution agreement heading\"}", "stderr": ""}
+{"heading": "Execution agreement", "separator": "EN SPACE", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Execution agreement heading\"}", "stderr": ""}
+{"heading": "Execution agreement", "separator": "IDEOGRAPHIC SPACE", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Execution agreement heading\"}", "stderr": ""}
+{"heading": "Execution agreement", "separator": "DOUBLE ASCII", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Execution agreement heading\"}", "stderr": ""}
+{"heading": "Execution agreement", "separator": "TAB", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Execution agreement heading\"}", "stderr": ""}
+{"heading": "Evidence requirements", "separator": "NBSP", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Evidence requirements heading\"}", "stderr": ""}
+{"heading": "Evidence requirements", "separator": "EN SPACE", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Evidence requirements heading\"}", "stderr": ""}
+{"heading": "Evidence requirements", "separator": "IDEOGRAPHIC SPACE", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Evidence requirements heading\"}", "stderr": ""}
+{"heading": "Evidence requirements", "separator": "DOUBLE ASCII", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Evidence requirements heading\"}", "stderr": ""}
+{"heading": "Evidence requirements", "separator": "TAB", "exit": 2, "stdout": "{\"status\": \"blocked\", \"reason\": \"expected exactly one ## Evidence requirements heading\"}", "stderr": ""}

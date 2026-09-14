@@ -39,6 +39,16 @@ Rules that keep this honest:
 - **Degraded mode, detected and stated out loud.** The seat task's timeout is ten minutes and Ringer retries once. If the task fails and its worker log shows a quota, auth, or model-availability error, do not wait for the retry to burn: switch this map's seat to `gpt-5.6-sol` for the next round and say so. If Sol fails the same way, or the user says "no seat this time", take the recommendation directly and mark each ruling `(unseated)`, said in the round. A ruling made without the seat is still reversible the same way. A packet that fails on format (not on availability) is retried once by Ringer; if it fails again, its questions carry to the next round unsettled rather than being taken.
 - **The seat never sees a one-way door or a user challenge.** Those go to the user regardless.
 
+## Seat splits under an approved Execution agreement
+
+The behavior above — every split goes straight to the user — is the default and remains fully documented legacy behavior. It changes only when the accepted intent carries an **approved** `dc-autonomy-v1` Execution agreement (the intent is the sole authority; a malformed or unknown agreement fails closed and settles nothing). Then a **technical** split earns bounded work before it earns a question:
+
+1. **One targeted investigation.** Both positions name what evidence would decide it; run that one check (read the code, run the probe, consult the stack reference) and hand the result to both seats.
+2. **One focused follow-up.** A single re-ask on the disputed point with the evidence attached — not a new round, not a widened question. Agreement here becomes a ruling like any other, with the investigation cited.
+3. **Still split:** the disagreement stays visible in the ledger — both positions, one line each, the cost of each being wrong. If the choice is **explicitly listed in the agreement's `technical_choices` and reversible**, select one, ledger it as `seat split, selected under agreement` with the dissent preserved, and move on. Anything else — and *always* anything touching product, scope, or a direction the user has stated — goes to the user exactly as legacy behavior does.
+
+Doors, user challenges, and taste never enter this path; the bucket precedence above is untouched by any agreement. `cross-review-gate` owns the corresponding review-side rule (conditional adoption, independent confirmation, standing scoped review authorization); read it there — it is not restated here.
+
 ## The round
 
 Print the round in three parts: what the seat settled, what the seat sent back, then the user's questions in `/grilling`'s own format.

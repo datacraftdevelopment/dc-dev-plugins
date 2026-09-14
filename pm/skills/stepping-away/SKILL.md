@@ -9,6 +9,10 @@ Session close. Capture what happened, compare it to the Intent set at the open, 
 
 Closing a session is not the same as closing the day. Most sessions end with another one to follow; write the entry so whoever opens next inherits a clean handoff either way.
 
+Closing a session is also not the same as pausing or continuing background work. **Closing this chat neither stops a running unattended loop nor schedules anything to run later** — never claim it does. A run that is active stays active under its own control: if the user wants it paused, use `build-swarm`'s documented run-status and pause-request mechanism and report it paused only after that mechanism confirms it; where that control isn't available for the run, say what caps actually exist instead. Record in the entry whether each active run was left running, paused (verified), or aborted.
+
+**If the accepted intent carries an approved `dc-autonomy-v1` Execution agreement covering this work, the local bookkeeping below — the session entry, in-scope tracker settles, inbox lines — is already authorized: write it and report what was written, without a draft-approval loop.** Everything outside that scope, anything external-facing (pushes to shared branches, client-visible files, messages), and any tracker the user doesn't own still requires its own specific authorization. Without an agreement, the legacy show-before-writing steps below apply as written.
+
 ## Checklist
 
 **1. Gather context.** Read:
@@ -18,13 +22,13 @@ Closing a session is not the same as closing the day. Most sessions end with ano
 - The conversation since the last stepping-away
 - `_pm/skeleton.md` if you need to confirm alignment
 
-**2. Draft (show user before writing).** Update this session's entry with three sections — leave the Intent block from the open untouched:
+**2. Draft** (show the user before writing — or, under an approved in-scope agreement, write and show what was written). Update this session's entry with three sections — leave the Intent block from the open untouched:
 
 - **Shipped** — tight bullets. Files touched by path. Omit if nothing shipped.
 - **Tried / Learned / Decided** — narrative. Candid about dead-ends. "Tried X, abandoned because Y" beats silence.
 - **Intent vs. outcome** — the drift-catching section. Did we hit the done-for-this-session bar? Did we stay inside "Not in scope"? If we crossed it: was that a deliberate pivot or unnoticed drift, and what was the cause? If a `checkpoint` **re-aim** exists, compare against the *latest re-aim* and treat the pivot as deliberate — the re-aim line is its record; note "original → re-aimed" in one clause. If no Intent was set: note that, suggest setting one at the next open.
 
-**3. Settle the tracker.** A wayfinder ticket resolved this session: post the resolution comment, close it, add its line to the map's *Decisions so far* (if the session didn't already). An implementation ticket verified against its own contract: close it with fresh evidence and a link to the commit/PR. This records implementation completion; the parent intent is delivered only through `ship-acceptance`. Still in flight: one comment with where it stands, so a teammate (or next-session-you) can take it. Unclaim anything you won't continue — including work you'll return to in a later session today, if someone else could pick it up first. **Ask before touching a tracker you don't own.** A ticket that gained a question this session gets `Waiting on:` (who, what, since when) **and** `Status: needs-human`, so no loop selects it; a wait that was answered gets the answer under `## Comments` and its status restored. (A hand-kept `TASKS.md` the repo's `CLAUDE.md` names as its tracker: settle it like any tracker. Otherwise don't grow it — `MIGRATION-0.17.md` has the retirement rubric.)
+**3. Settle the tracker.** A wayfinder ticket resolved this session: post the resolution comment, close it, add its line to the map's *Decisions so far* (if the session didn't already). An implementation ticket verified against its own contract: close it with fresh evidence and a link to the commit/PR. This records implementation completion; the parent intent is delivered only through `ship-acceptance`. Still in flight: one comment with where it stands, so a teammate (or next-session-you) can take it. Unclaim anything you won't continue — including work you'll return to in a later session today, if someone else could pick it up first. **Never unclaim or restatus a ticket an active unattended run actually owns** — closing this chat doesn't end that run, and stealing its ticket forks the work; leave its ownership as-is and note the run in the entry. **Ask before touching a tracker you don't own.** A ticket that gained a question this session gets `Waiting on:` (who, what, since when) **and** `Status: needs-human`, so no loop selects it; a wait that was answered gets the answer under `## Comments` and its status restored. (A hand-kept `TASKS.md` the repo's `CLAUDE.md` names as its tracker: settle it like any tracker. Otherwise don't grow it — `MIGRATION-0.17.md` has the retirement rubric.)
 
 **3a. Capture loose asks — match first.** Anything that surfaced this session and is not a ticket or an intent (a client's someday idea, an ask nobody shaped, a question with no work behind it yet) is offered for capture. **Before adding a line, match it** against `docs/intent/inbox.md`, open intents, and open tickets — by subject, not wording. A repeat adds its date and source to the item that already holds it (an extra `· re-raised YYYY-MM-DD <source>` on the inbox line, or a comment on the ticket), never a second line. A genuinely new ask becomes one inbox line: `- YYYY-MM-DD · <source> · <the ask>`, in client-safe words. A question with no build behind it that needs an answer from someone is a ticket (`Type: research`, `Waiting on:`, `Status: needs-human`), not an inbox line. Retiring an inbox line (moot, merged, declined) **deletes it from the file**; the reason goes in this entry under Tried / Learned / Decided — the session log is the append-only record, the inbox is not.
 
@@ -52,7 +56,8 @@ The helper checks identity, locks the file locally, appends the entry, and write
 
 ## What this skill does NOT do
 
-- Doesn't auto-commit — offers.
+- Doesn't auto-commit — offers. (An approved agreement listing `local-commit` authorizes in-scope local commits; pushing anywhere shared still gets its own ask.)
+- Doesn't claim closing the chat pauses, stops, or schedules background work — pause goes through `build-swarm`'s documented control, verified, or is reported as unavailable.
 - Doesn't close or comment tickets on a tracker the user doesn't own without asking.
 - Doesn't maintain `_pm/decisions/` or `_pm/context-map.md` (pre-0.8, see `MIGRATION-0.8.md`), and doesn't grow a `TASKS.md` unless the repo declared it the tracker (see `MIGRATION-0.17.md`).
 - Doesn't append an inbox line without matching first, and never appends a status or a checkbox to the inbox — it has none.

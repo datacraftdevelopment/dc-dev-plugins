@@ -190,7 +190,7 @@ Read the loop's --help before using it. Its --dry-run can park and commit ticket
 use a scratch repository for setup checks, not a user's active tracker.
 '''
             if name in {'grilling', 'grill-me', 'to-tickets', 'wayfinder'}:
-                body += '\nFor DataCraft PM grilling, load fast-grill first: Fable reviews technical recommendations from a Codex lead; taste, irreversible decisions, and seat splits retain the human boundary.\n'
+                body += '\nFor DataCraft PM grilling, load fast-grill first: Fable reviews technical recommendations from a Codex lead. Apply its accepted-agreement procedure to technical splits; taste and irreversible decisions retain the human boundary.\n'
             folder = stage / 'skills' / name
             folder.mkdir(parents=True)
             (folder / 'SKILL.md').write_text('---\n' + yaml.safe_dump({'name': name, 'description': desc}, sort_keys=False) + '---\n\n' + body)

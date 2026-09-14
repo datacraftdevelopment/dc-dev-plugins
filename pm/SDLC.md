@@ -52,6 +52,8 @@ A gate is a point where the agent stops and a human decides. Three are non-negot
 
 Gates run at stage **boundaries**, never inside a stage. A gate on half-formed work produces noise, and noise trains people to skip gates.
 
+**A gate can be pre-answered, never removed.** A human may record a standing, scoped agreement — in the intent, where the next stage will read it — authorizing named categories of routine, reversible action in advance: which choices the agent may settle, which checks must hold, what the hard ceilings are. Four properties keep this honest. The approval is a **recorded fact** — the human actually said yes to this scope, and no tool, template, or default ever writes that yes for them. The intent is the **single authority** — a second policy store is how two truths diverge. An agreement the reader cannot fully understand — unknown form, malformed content, two competing copies — **fails closed**: it grants nothing, and it does not quietly revert to old permissiveness either; the work stops and says why. And the agreement sits **under** everything above it: standing instructions and platform boundaries outrank it, and the three gates' non-negotiables (a human before production, above all) are not within its power to waive.
+
 **What a gate must produce:** a written disposition for every finding — applied, held, refuted, or out of scope — with the reason. A finding that vanishes without a disposition is the single most common way a record becomes a lie.
 
 ## Who adjudicates
@@ -78,6 +80,7 @@ The stage that gets skipped is Verify→Ship, so the spec is explicit about it.
 - **They are run more than once**: against the local or staging article, and again against production after deploy. Same checks, both times. A check that only ever ran locally proves the code compiles somewhere.
 - **The output is pasted into the record**, not summarized. Exit codes lie by omission and a summary is where a partial pass becomes a full one.
 - **Where nothing runnable can prove it**, the record says so plainly — what would have verified it, and that it wasn't run. Unverifiable-but-labeled keeps trust; unverifiable-but-confident spends it.
+- **A criterion names its evidence channels, and each channel is proven separately.** An outcome a user sees is not proven by a passing test; an outcome that persists is not proven by a screenshot. The intent can declare, per check, which kinds of evidence must independently confirm it — automated output, a real interaction with what the user actually sees, a read of persisted state through a channel that isn't the screen, a recorded human check. A declared channel that is missing, unrun, or failed blocks the verdict; only an explicit human exception naming exactly that gap can qualify it, and a qualified release never masquerades as a clean one. The record is checked mechanically for completeness and identity — which is precisely all a mechanical check can do: it cannot tell a genuine capture from a staged one, or a real human approval from a typed-in one. Someone independent still has to look at the actual media, and the record has to say who did.
 
 ## The three steering layers
 

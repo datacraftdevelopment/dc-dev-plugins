@@ -15,6 +15,10 @@ Claude Design is strong at visual taste. Given even a sparse brief it will inven
 
 If you find yourself writing "use a warm palette" or "the hero should feel cozy" — stop. That's Claude Design's job. Delete it. This rule applies in both modes.
 
+## Frontend taste checkpoints
+
+Delegating visual exploration is not delegating the user's frontend taste. Even when the work runs under an approved Execution agreement (pm's `dc-autonomy-v1` — see the pm plugin), the agreement's `frontend_checkpoints` (typically **prototype** and **final-demo**) reserve the meaningful frontend choices for the user: they react to the prototype before it hardens, and they see the final demo before anything is called delivered. An approved scope lets the agent *reach* those checkpoints without a question round — deriving context from the intent and repo instead of re-interviewing — but never lets it *skip* them or settle look-and-feel calls the user would notice. Record their reactions where the workflow records decisions (tickets, the map, the plan), not in the handoff file.
+
 ## Mode selection
 
 This skill operates in one of two modes:

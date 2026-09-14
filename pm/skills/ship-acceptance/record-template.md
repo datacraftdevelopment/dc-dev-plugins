@@ -6,10 +6,15 @@ Status: blocked | ready-for-release | shipped | released-with-exceptions.
 
 ## Acceptance evidence
 
-| ID and original criterion | Phase | Revision and target | Result | Evaluator and time | Actual evidence |
-|---|---|---|---|---|---|
-| A1: <verbatim criterion> | local/staging | <identity> | pass/fail/not-run | <who, when> | <output or observation/link> |
-| A1: <same criterion> | delivered | <identity> | pass/fail/not-run | <who, when> | <output or observation/link> |
+| ID and original criterion | Phase | Channel | Revision and target | Result | Evaluator and time | Actual evidence |
+|---|---|---|---|---|---|---|
+| A1: <verbatim criterion> | local/staging | automated | <identity> | pass/fail/not-run | <who, when> | <output or observation/link> |
+| A2: <verbatim criterion> | local/staging | ui | <identity> | pass/fail/not-run | <who, when> | <capture link, independently read> |
+| A2: <same criterion> | local/staging | state | <identity> | pass/fail/not-run | <who, when> | <persistence read, non-UI channel> |
+| A1: <same criterion> | delivered | automated | <identity> | pass/fail/not-run | <who, when> | <output or observation/link> |
+
+One row per required channel when the intent carries Evidence requirements;
+a legacy intent without them uses one row per criterion (channel `—`).
 
 ## Delivery and review disposition
 

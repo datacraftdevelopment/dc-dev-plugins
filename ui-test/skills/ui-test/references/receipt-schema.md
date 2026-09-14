@@ -24,6 +24,13 @@ and observed values are strings compared literally, including whitespace.
 Duplicate JSON keys (including assertion IDs) are rejected rather than overwritten.
 `min_png_bytes` is obsolete and ignored: byte count does not establish authenticity.
 
+When a run feeds a pm `ship-acceptance` record with `## Evidence requirements`,
+the mapping is: UI `assertions` proven by the runner's interactions and
+captures → the `ui` channel; `data_assertions` read through the non-UI
+channel → the `state` channel; native-harness/test output → `automated`.
+Each channel entry in the acceptance record carries its own evaluator,
+timestamp, and revision — the runner's identity never evaluates its own work.
+
 ## receipt.json — written by the runner
 
 ```json

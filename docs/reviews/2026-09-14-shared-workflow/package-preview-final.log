@@ -1,0 +1,19 @@
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/pm
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/design-dc
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/fm-dc
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/ui-test
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/basecamp-dc
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/ringer
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/filemaker-agentic-development
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/adt-standards-default
+Plugin validation passed: /private/var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/dc-workflow
+Built pm: 10 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/pm
+Built design-dc: 4 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/design-dc
+Built fm-dc: 21 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/fm-dc
+Built ui-test: 1 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/ui-test
+Built basecamp-dc: 3 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/basecamp-dc
+Built Ringer: 2 canonical skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/ringer
+Built filemaker-agentic-development from Claude active version 0.5.0: /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/filemaker-agentic-development
+Built adt-standards-default from Claude active version 0.5.0: /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/adt-standards-default
+Built dc-workflow: 28 skill entrypoints at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/dc-refresh-p5o7o9fc/dc-workflow
+Preview built. Use --install to refresh Codex and connect managed instructions.

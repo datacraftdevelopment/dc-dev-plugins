@@ -1,7 +1,7 @@
 {
   "name": "pm",
-  "version": "0.17.0",
-  "description": "DataCraft PM: minimal scaffolding with a preset local tracker and an inbox for loose asks, discovery with acceptance criteria, fast grilling, sessions bound to explicit IDs, ticket preparation through build-swarm, fresh verification, and independent delivery acceptance. Credential filename guards cover supported tool calls; versioned policy parity supports the build-loop commit boundary. WORKFLOW.md binds the stages; SDLC.md states the doctrine.",
+  "version": "0.18.0",
+  "description": "DataCraft PM: intent-led planning, AI technical resolution, scoped execution agreements, lightweight session continuity, bounded build-swarm execution, independent cross-review and delivery acceptance with required evidence channels. Existing projects retain their workflow until they opt in. WORKFLOW.md binds the stages; SDLC.md states the doctrine.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

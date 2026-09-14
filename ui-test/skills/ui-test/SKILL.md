@@ -23,7 +23,14 @@ approval, the preconditions, and the non-UI channel — those live in
    pixels when one exists. Rendered state (window and view, dialog text,
    control enabled/visible, overflow markers, list rows) is the UI runner's
    job. If the app has a native UI-test harness (XCUITest, Playwright), prefer
-   it for what it covers and use this pattern for what it can't reach.
+   it for what it covers and use this pattern for what it can't reach — the
+   harness choice is per-assertion, not per-app. These are the same channels
+   pm's `ship-acceptance` enforces from an intent's `## Evidence requirements`
+   (`ui` = this runner's interactions and captures, `state` = the persistence
+   read, `automated` = harness/test output): a run here supplies those channel
+   entries, and the acceptance validator blocks readiness when a required one
+   is missing. Cover the relevant error, empty, and recovery states, not just
+   the happy path.
 2. **Seed ground truth before dispatch**, independently of the runner, and
    write it to `truth.json` (`references/receipt-schema.md`) with a current,
    nonempty `case_id` that both receipt and verdict must copy exactly. Values the runner
@@ -48,7 +55,15 @@ approval, the preconditions, and the non-UI channel — those live in
    authenticity, freshness, and independent transcription still require review.
 6. **Reset** before any replay: relaunch the app on a clean fixture, redeploy
    the file, restore the database. Never let a retry re-run a mutating step
-   against dirty state.
+   against dirty state — there are **no automatic retries for mutating GUI
+   cases**, by anyone: not Ringer (`max_attempts: 1`), not the runner, not
+   the orchestrator deciding "once more". A failed mutating run is reported
+   as it ended; a human or the builder decides whether to reset and rerun.
+   The verifier rules from the receipt and the actual media (screenshots
+   opened and read, values transcribed) — a structurally valid PNG is not
+   visual truth, and the runner's narrative is not evidence. Candidate
+   identity and the expected fixture are fixed in `truth.json` **before**
+   the run, never inferred after it.
 
 ## Outcomes
 

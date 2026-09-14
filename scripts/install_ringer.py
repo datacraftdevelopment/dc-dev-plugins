@@ -105,7 +105,8 @@ def convert(text, name):
                       '## Relationship to installed tooling\n\n'
                       'Ringer owns dispatch and logs. This skill owns triage and consensus.\n'
                       'Use receiving-code-review when available for verification discipline.\n'
-                      'One review round per boundary unless the user asks for another.\n\n',
+                      'An accepted Execution agreement governs scoped dispatch and review.max_rounds;\n'
+                      'without one, use the canonical legacy consent and round limits.\n\n',
                       body, flags=re.DOTALL)
         body = body.replace("not Claude's to apply alone", "not the orchestrator's to apply alone")
     # Source links assumed the upstream .claude/skills/ringer location.
@@ -120,8 +121,9 @@ def build(source, output):
     dest = output / 'ringer'
     if dest.exists() and (dest.is_symlink() or not (dest / MARKER).is_file()):
         raise ValueError(f'Refusing to replace unowned destination: {dest}')
-    # Copy only the two explicit, tracked canonical skill files. No library recursion.
+    # Package tracked resources within the two named skills, never the library at large.
     contents = {}
+    resources = {}
     for name in SKILLS:
         path = source / name / 'SKILL.md'
         subprocess.run(['git', '-C', str(source), 'ls-files', '--error-unmatch',
@@ -129,6 +131,21 @@ def build(source, output):
         if path.is_symlink():
             raise ValueError(f'Expected canonical file, found symlink: {path}')
         contents[name] = path.read_text()
+        listed = subprocess.run(['git', '-C', str(source), 'ls-files', '-z', '--', name],
+                                check=True, capture_output=True).stdout
+        for item in listed.split(b'\0'):
+            if not item:
+                continue
+            relative = Path(item.decode('utf-8'))
+            if relative.is_absolute() or relative.parts[0] != name or '..' in relative.parts:
+                raise ValueError(f'Resource outside selected skill: {relative}')
+            resource = source / relative
+            if any((source / parent).is_symlink() for parent in (relative, *relative.parents)):
+                raise ValueError(f'Expected canonical resource, found symlink: {resource}')
+            if not resource.is_file():
+                raise ValueError(f'Missing tracked resource: {resource}')
+            if relative != Path(name) / 'SKILL.md':
+                resources[relative] = resource
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.ringer-', dir=output) as tmp:
         stage = Path(tmp) / 'ringer'
@@ -136,11 +153,16 @@ def build(source, output):
             path = stage / 'skills' / name / 'SKILL.md'
             path.parent.mkdir(parents=True)
             path.write_text(convert(text, name))
+        for relative, resource in resources.items():
+            path = stage / 'skills' / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(resource, path)
         (stage / 'scripts').mkdir()
         shutil.copy2(ROOT / 'scripts/ringer_bridge.py', stage / 'scripts/ringer_bridge.py')
         digest = hashlib.sha256()
         for path in sorted(stage.rglob('*')):
             if path.is_file():
+                digest.update(str(path.relative_to(stage)).encode('utf-8'))
                 digest.update(path.read_bytes())
         description = 'Ringer orchestration and cross-review gates for DataCraft PM workflows.'
         manifest = {'name': 'ringer', 'version': '0.1.0+codex.' + digest.hexdigest()[:12],

@@ -1,0 +1,8 @@
+.....................................................................................................................................................
+----------------------------------------------------------------------
+Ran 149 tests in 17.070s
+
+OK
+Built pm: 1 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/tmpow19ic7f/output/pm
+Built pm: 1 skills at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/tmp42ivrfpg/output/pm
+Built dc-workflow: 15 skill entrypoints at /var/folders/3c/cpqfrqys0yxb9fcq40_cwvk00000gn/T/workflow space 19gjhqpn/out/dc-workflow

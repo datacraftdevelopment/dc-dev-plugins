@@ -73,7 +73,7 @@ The look should feel **editorial, not app-like**. Closer to Stripe Press than Ta
 
 ## Prompting heuristics
 
-- **Interview before drafting.** If the request is non-trivial, ask the user 5–8 questions first. Surfaces unknown unknowns.
+- **Derive first; ask only what's genuinely missing.** For work already scoped — an accepted intent, an approved Execution agreement, a settled plan, a conversation that answered the framing — the answers exist: read them (intent, rulings, tracker, repo) and draft. Ask only the *product* choices no artifact records — audience, what decision the reader must make, what's deliberately out — and only the ones actually unanswered; that's usually zero to two questions, not a fixed quota. For an unscoped request arriving cold, interviewing before drafting still applies (a handful of questions surfaces unknown unknowns) — but it's for missing context, never a ritual.
 - **Treat the schema as a floor, not a ceiling.** Add fields/sections when content demands it.
 - **Don't over-engineer personas.** No "you are an expert planner with 20 years…" framing. Let the structural conventions carry the load.
 - **Trust statements work.** "I trust your judgment here" produces better output than "make no mistakes."

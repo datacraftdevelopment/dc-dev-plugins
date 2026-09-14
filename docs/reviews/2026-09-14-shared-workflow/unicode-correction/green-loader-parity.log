@@ -1,0 +1,14 @@
+test_both_boundaries_reject_the_same_malformed_agreements (test_execution_contract.ContractParityTests.test_both_boundaries_reject_the_same_malformed_agreements) ... ok
+test_full_runtime_agreement_is_accepted_at_both_boundaries (test_execution_contract.ContractParityTests.test_full_runtime_agreement_is_accepted_at_both_boundaries) ... ok
+test_review_only_authority_difference_is_explicit (test_execution_contract.ContractParityTests.test_review_only_authority_difference_is_explicit) ... ok
+test_topic_title_does_not_become_a_policy_section (test_execution_contract.ContractParityTests.test_topic_title_does_not_become_a_policy_section) ... ok
+test_unapproved_draft_difference_is_explicit (test_execution_contract.ContractParityTests.test_unapproved_draft_difference_is_explicit) ... ok
+test_canonical_heading_still_loads (runtime_boundary.RuntimeHeadingWhitespace.test_canonical_heading_still_loads) ... ok
+test_topic_title_mentioning_the_label_is_still_genuine_absence (runtime_boundary.RuntimeHeadingWhitespace.test_topic_title_mentioning_the_label_is_still_genuine_absence) ... ok
+test_whitespace_variants_fail_closed (runtime_boundary.RuntimeHeadingWhitespace.test_whitespace_variants_fail_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.513s
+
+OK
+PASS: 20 direct before/after parser cases (Unicode rejection, topic prefix restriction, CR/LF exclusion)

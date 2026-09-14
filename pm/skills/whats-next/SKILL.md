@@ -9,13 +9,15 @@ Session open. The user is starting a session — could be the second one today a
 
 **Don't ask "what do you want to work on?"** That's what they're asking *you*. Read first, then propose.
 
+**If the user already named the work, there is no selection to make.** Skip the proposal round: read enough context to draft the Intent block for the named work, write it, and start. Don't re-open the pick, don't run the full survey below, and don't ask for approval the naming already gave.
+
 ## Checklist
 
 **1. Read.** Shared record first, personal log second (`WORKFLOW.md`: `docs/` is truth, `_pm/` is log).
 - `docs/intent/*.md` — every open intent (status draft/accepted and no verified Completion link; `ship-acceptance` owns completion): these are the streams of work. Note each one's size call.
 - For a Completion link, read the linked delivery record before excluding a `shipped` intent. Surface `released-with-exceptions` with its open tail until the originator accepts it; a missing/broken record stays open.
-- **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/` per `docs/agents/issue-tracker.md`. Unreachable → say so, go on with local artifacts. **Waiting tickets** — any ticket carrying `Waiting on:` (and `Status: needs-human`) — are not frontier: list them under watch-outs with who and since when, never as the pick-up.
-- **`docs/intent/inbox.md`** — the ungroomed list: loose asks and ideas that have not been shaped. Read it after intents and the frontier. A line here is a discovery candidate, not a task. **Review trigger:** if the file holds more than twelve lines, or any line is dated before the last four session files, name those lines in the proposal and ask keep / promote (→ `discovery`) / merge (into an existing intent or ticket) / retire — a retired line is deleted from the file and the reason goes in this session's entry. Otherwise say nothing about age.
+- **The tracker** — the frontier: open wayfinder tickets (unblocked, unclaimed) and open implementation tickets. GitHub: `gh issue list --label wayfinder:map`, then children; local: `.scratch/<name>/` per `docs/agents/issue-tracker.md`. Unreachable → say so, go on with local artifacts. **Waiting tickets** — any ticket carrying `Waiting on:` (and `Status: needs-human`) — are not frontier: list them under *Waiting on you* with who and since when, never as the pick-up.
+- **`docs/intent/inbox.md`** — the ungroomed list: loose asks and ideas that have not been shaped. Read it after intents and the frontier. A line here is a discovery candidate, not a task. **Grooming is optional, never a gate on starting work:** if the file holds more than twelve lines, or any line is dated before the last four session files, note that in the proposal and *offer* a keep / promote (→ `discovery`) / merge (into an existing intent or ticket) / retire pass — a retired line is deleted from the file and the reason goes in this session's entry. The user can decline or defer; proceed to the pick-up either way. Otherwise say nothing about age.
 - `docs/adr/` newest entries, `CONTEXT.md` if present — what's been decided.
 - `_pm/skeleton.md` — the macro why of the project.
 - Last 1–3 session files in `_pm/sessions/` (any author, most recent first) — especially Open threads and the previous session's Intent-vs-outcome. The immediately preceding session may be earlier the same day; read it as the live handoff.
@@ -24,13 +26,17 @@ Session open. The user is starting a session — could be the second one today a
 
 **2. Propose.** Output:
 
+Keep **actionable work** and **decisions waiting on the user** as separate lists — a ticket the agent can take next is not the same thing as a question only the user can answer, and mixing them buries both.
+
 ```
 Where we are: <one sentence — which streams exist and what stage each is at>.
-Frontier: <takeable tickets, or "nothing charted yet">.
-Ungroomed: <inbox lines, or "inbox empty"; stale/excess lines flagged with keep / promote / merge / retire>.
+Frontier (actionable): <takeable tickets, or "nothing charted yet">.
+Waiting on you: <decisions only the user can make — seat splits, doors, waiting tickets
+  with who and since when, a draft intent needing acceptance; or "nothing">.
+Ungroomed: <inbox lines, or "inbox empty"; stale/excess lines offered for keep / promote / merge / retire>.
 Recommended pick-up: <one specific ticket / next stage step / "discover <inbox line>"> — because <reason tied to context>.
 Also worth: <maybe one more>.
-Watch-outs: <waiting tickets — who, since when; claimed tickets gone quiet; open threads worth surfacing; an intent still in draft>.
+Watch-outs: <claimed tickets gone quiet; open threads worth surfacing>.
 ```
 
 **3. Draft the Intent block** for the most likely pick-up. Two or three sentences of plain prose — what we're pushing on, why it matters, what done-for-this-session looks like, anything explicitly not in scope. Scope it to one session's worth of work, not a whole day's. Example:
@@ -39,7 +45,7 @@ Watch-outs: <waiting tickets — who, since when; claimed tickets gone quiet; op
 
 **4. Resolve the pick-up.** If the user already named the work, that is the selection: use it without another approval round. Otherwise wait for their pick and any correction to the drafted Intent.
 
-**5. Write.** Once approved, write the Intent block into this session's file in `_pm/sessions/`:
+**5. Write.** Once the selection is settled (named work counts as settled; an accepted `dc-autonomy-v1` Execution agreement covering this scope authorizes the session-file write itself as local bookkeeping), write the Intent block into this session's file in `_pm/sessions/`:
 
 Use the bundled allocator after the user has selected the work (an explicit task already states the selection):
 
