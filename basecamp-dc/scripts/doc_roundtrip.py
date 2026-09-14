@@ -11,12 +11,13 @@ Usage:
   doc_roundtrip.py prepend --entry entry.html  < body.html  > new.html
   doc_roundtrip.py check  < body.html          # exit 1 if any <figure> sits outside a <bc-attachment>
 
-Typical flow (ids from .basecamp/config.json → docs.what_shipped):
-  basecamp files show <doc> --json --jq '.data.content' > body.html
-  doc_roundtrip.py prepend --entry entry.html < body.html > new.html
+Typical flow (ids from .basecamp/config.json → docs.what_shipped; fetch fresh
+with `api get` — the show commands can serve a stale cached copy):
+  basecamp api get /buckets/<project>/documents/<doc>.json --jq '.content' > body.html
+  doc_roundtrip.py prepend --entry entry.html < body.html > new.html   # stop first if body.html is empty
   doc_roundtrip.py check < new.html
   basecamp files update <doc> --title "What shipped" --content "$(cat new.html)" --json
-  basecamp api get /buckets/<project>/documents/<doc>.json --jq '.updated_at'   # confirm; not `files show`
+  basecamp api get /buckets/<project>/documents/<doc>.json --jq '.content'   # verify the entry landed
 """
 import argparse, re, sys
 

@@ -19,7 +19,7 @@ class CodexBuildTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             out = Path(tmp)
-            for name in ('pm', 'design-dc', 'fm-dc'):
+            for name in ('pm', 'design-dc', 'fm-dc', 'ui-test', 'basecamp-dc'):
                 plugin = out / name
                 manifest = json.loads((plugin / '.codex-plugin/plugin.json').read_text())
                 self.assertEqual(manifest['name'], name)
@@ -41,6 +41,12 @@ class CodexBuildTests(unittest.TestCase):
             self.assertIn('.codex-plugin/plugin.json',
                           (fm / 'skills/fm-scaffold/SKILL.md').read_text())
             pm = out / 'pm'
+            # This durable contract is shared by hosts after setup; its meaning
+            # must not depend on which plugin edition installed it.
+            self.assertEqual((ROOT / 'basecamp-dc/templates/client-face.md').read_bytes(),
+                             (out / 'basecamp-dc/templates/client-face.md').read_bytes())
+            self.assertTrue((pm / 'template/docs/agents/issue-tracker.md').is_file())
+            self.assertTrue((pm / 'template/docs/intent/inbox.md').is_file())
             self.assertTrue((pm / 'template/AGENTS.md').is_file())
             self.assertIn('AGENTS.md', (pm / 'skills/pm-scaffold/SKILL.md').read_text())
             grill = (pm / 'skills/fast-grill/SKILL.md').read_text()

@@ -1,13 +1,14 @@
 ---
 name: bc-client-face
-description: The DataCraft Basecamp client-face conventions — how a client project is laid out in Basecamp (client's side: New requests + Questions for you; Joe's side: Shipped / Active / Backlog as the status), what a Work item is (a cluster of repo tasks with a Ref footer), how repo TASKS.md lines carry [bc:<id>] tokens, and the plain-English voice. Load BEFORE creating, moving, commenting on, or editing anything in a repo that has a .basecamp/config.json — everything there is client-visible. Also load when the user says "fold this request", "ship this to Basecamp", "what shipped", "client face", "put this in Basecamp", or asks how Basecamp fits the workflow. Do NOT load for repos without .basecamp/config.json, and do not use it for CLI syntax — that is the /basecamp skill's job.
+description: "The DataCraft Basecamp client-face conventions — how a client project is laid out in Basecamp (client's side: New requests + Questions for you; Joe's side: Shipped / Active / Backlog as the status), what a Work item is (a cluster of repo tickets with a Ref footer), how tickets carry the join (Client-ref lines, or [bc:<id>] tokens in a repo that keeps TASKS.md as its tracker), and the plain-English voice. Load BEFORE creating, moving, commenting on, or editing anything in a repo that has a .basecamp/config.json — everything there is client-visible. Also load when the user says \"fold this request\", \"ship this to Basecamp\", \"what shipped\", \"client face\", \"put this in Basecamp\", or asks how Basecamp fits the workflow. Do NOT load for repos without .basecamp/config.json, and do not use it for CLI syntax — that is the /basecamp skill's job."
 ---
 
 # bc-client-face — the conventions
 
-Basecamp is the **client-facing companion** to a repo whose `docs/TASKS.md` is the only
-source of truth for work. Nothing is mirrored; the two are joined by ids in both
-directions. This skill is the *pattern*. CLI mechanics live in the `/basecamp` skill
+Basecamp is the **client-facing companion** to the repo's own tracker — pm's
+ticket files, or a hand-kept `docs/TASKS.md` when the repo explicitly
+names that as its tracker. The tracker stays the source of truth for work; nothing
+is mirrored, the two are joined by ids in both directions. This skill is the *pattern*. CLI mechanics live in the `/basecamp` skill
 (shipped with the basecamp CLI / 37signals plugin); gotchas in `references/quirks.md`.
 
 ## Gate — is this repo on the pattern?
@@ -40,7 +41,9 @@ Enabling tools, client access, and reading the email-in address are **browser-on
   optional `**Status:**` or `**Waiting on:**` line, and an italic last line
   `_Ref: S1 · S5 · S8_` listing every repo task id it absorbs.
 - From a request: `**From your request:** [their words](app_url)` in the description.
-- Repo side: every absorbed `TASKS.md` line ends with `[bc:<todo id>]`. One Basecamp id → many repo ids.
+- Repo side: every absorbed ticket carries the join — a `Client-ref:` line in a pm
+  ticket file, or a `[bc:<todo id>]` suffix on the task line in a repo that keeps
+  `docs/TASKS.md` as its tracker. One Basecamp id → many repo ids.
   (Tracker-neutral form is `[<tracker>:<id>]`; `bc` is this tracker's prefix.)
 
 ## Motions
@@ -82,7 +85,14 @@ sample PDF (sandbox data only), attached via `basecamp attach` and embedded as
 ```
 
 Find ids: `basecamp todolists list --todoset <set-id> --json`, `basecamp files list --json`.
-Ids never go in this plugin; they stay in the repo's config and `CLAUDE.md`.
+Ids never go in this plugin; they stay in the repo's config and agent instructions.
+
+## Session close (pm seam)
+
+The `bc-setup` skill installs `docs/agents/client-face.md` (only when absent —
+the file is hand-owned afterwards). pm's `stepping-away` reads that contract at
+close and offers the matching `bc-close-out` step; nothing is written to
+Basecamp without authorization covering that update; an explicit request already authorizes it. pm itself never names Basecamp.
 
 ## References
 

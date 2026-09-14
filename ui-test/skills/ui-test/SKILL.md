@@ -25,7 +25,8 @@ approval, the preconditions, and the non-UI channel — those live in
    job. If the app has a native UI-test harness (XCUITest, Playwright), prefer
    it for what it covers and use this pattern for what it can't reach.
 2. **Seed ground truth before dispatch**, independently of the runner, and
-   write it to `truth.json` (`references/receipt-schema.md`). Values the runner
+   write it to `truth.json` (`references/receipt-schema.md`) with a current,
+   nonempty `case_id` that both receipt and verdict must copy exactly. Values the runner
    must read back are decided here, not after. `expected` values are literal
    strings, computed by you when writing the spec.
 3. **Write the instruction** from `references/instruction-template.md`. Every
@@ -33,12 +34,18 @@ approval, the preconditions, and the non-UI channel — those live in
    proves it. Preconditions state the window title, the screen or view, the
    record or fixture identity, the account. Hard rules travel in the spec.
 4. **Dispatch through Ringer** with `references/manifest-template.json`:
+   resolve the plugin root from this loaded skill's location in either host;
+   fill absolute, shell-quoted runtime script paths before dispatch. Ensure the
+   check's Python has Pillow (`<ui-test-plugin-root>/requirements.txt`). Fill
+   runner `expect_files` with receipt.json and every required/planned PNG, using
+   the template's harvest rules. Workers resolve evidence relative to receipt.json.
    runner task check = `scripts/check_receipt.py --truth truth.json`.
    The check fails a BLOCKED receipt on purpose so the blocker is visible;
    `max_attempts: 1` on any task whose steps mutate state.
 5. **Verify in a second task** (fresh context, receipt + artifacts only, no
    runner narrative, no code): check = `scripts/check_verdict.py`. Only this
-   task's PASS is a product pass.
+   task issues the product verdict. The script mechanically checks its PASS claim;
+   authenticity, freshness, and independent transcription still require review.
 6. **Reset** before any replay: relaunch the app on a clean fixture, redeploy
    the file, restore the database. Never let a retry re-run a mutating step
    against dirty state.

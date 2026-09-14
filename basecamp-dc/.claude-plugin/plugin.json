@@ -1,7 +1,7 @@
 {
   "name": "basecamp-dc",
-  "version": "0.1.0",
-  "description": "DataCraft's Basecamp client-face layer. Opt-in per repo: does nothing unless the repo has a .basecamp/config.json. Rides on the official basecamp CLI and its /basecamp skill (37signals plugin) for the mechanics; adds the conventions (Joe's side / client's side, Shipped-Active-Backlog as status, clusters with Ref footers, [bc:<id>] tokens in TASKS.md), the quirk-safe procedures (bc-close-out), and a session-start hook that surfaces the project when the config is present. Never a dependency of pm.",
+  "version": "0.1.1",
+  "description": "DataCraft's Basecamp client-face layer. Opt-in per repo: does nothing unless the repo has a .basecamp/config.json. Rides on the official basecamp CLI and its /basecamp skill (37signals plugin) for the mechanics; adds the conventions (Joe's side / client's side, Shipped-Active-Backlog as status, clusters with Ref footers, Client-ref lines in tickets or [bc:<id>] tokens when a repo keeps TASKS.md as its tracker), the quirk-safe procedures (bc-close-out), a bc-setup skill that installs the pm session-close contract docs/agents/client-face.md when absent, and a session-start hook that surfaces the project when the config is present. Never a dependency of pm.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

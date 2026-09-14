@@ -19,9 +19,11 @@ the client face (SB-SOS), some use another tracker (TC uses Jira), most use none
 | Piece | Job |
 |---|---|
 | `skills/bc-client-face` | The conventions: client's side / Joe's side, Shipped-Active-Backlog as the status, clusters with `Ref:` footers, `[bc:<id>]` tokens, the plain-English voice, the safety rules. Ships copies of `best-practices.md` and `quirks.md`. |
-| `skills/bc-close-out` | Ship a task: move to Shipped unchecked, comment, prepend to *What shipped* without duplicating images. |
-| `hooks/session-start.sh` | When the repo has the config, one paragraph of context (project, list ids). Silent otherwise. |
+| `skills/bc-close-out` | Ship a task: move to Shipped unchecked, comment, prepend to *What shipped* without duplicating images. Runs only on the user's yes — session close never writes by itself. |
+| `skills/bc-setup` | Opt-in seam to pm: with a valid config present, install `docs/agents/client-face.md` from `templates/` when absent (hand edits win, symlink destinations refused). pm's `stepping-away` reads that contract; pm never names Basecamp. |
+| `hooks/session-start.sh` | When the repo has the config, one paragraph of context (project, list ids). Finds the root via `CLAUDE_PROJECT_DIR`, the event cwd, or its git toplevel. Silent otherwise. |
 | `scripts/bc_config.py` | Reads/validates the config; `--require` names missing ids; `--context` feeds the hook. |
+| `scripts/bc_setup.py` | The bc-setup helper. Requires the existing config, installs the bundled contract only if absent, no network. |
 | `scripts/doc_roundtrip.py` | `clean` / `prepend` / `check` a Doc body so attachments don't multiply on every save. |
 
 ## Config contract

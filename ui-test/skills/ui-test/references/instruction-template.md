@@ -11,6 +11,7 @@ write ./receipt.json. You do not judge pass/fail: report what you observed.
 You own only ./receipt.json and ./evidence/. Touch nothing else on disk.
 
 CASE: <case_id>  (spec digest: <sha256 of this spec, filled by the manifest writer>)
+Copy this nonempty case_id exactly into receipt.json; it must match truth.json.
 
 PRECONDITIONS (verify each and record evidence before acting; if any fails,
 stop and write a BLOCKED receipt with stage "precondition"):
@@ -53,3 +54,9 @@ raw_text (or null + reason) and source ∈ {accessibility, pixels}. Outcome is
 PASS-OBSERVED only if every assertion was read and matched your own read;
 FAIL if any read contradicts; BLOCKED if you could not run or could not read.
 ```
+
+Before dispatch, include every EVIDENCE REQUIRED path in both
+`truth.artifacts_required` and runner `expect_files`, along with receipt.json in
+`expect_files`. Add other planned captures there too, using unique basenames so
+Ringer retains each PNG. Resolve command paths as described in the manifest
+template; workers receive concrete plugin runtime paths in either host.

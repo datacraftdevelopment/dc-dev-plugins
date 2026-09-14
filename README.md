@@ -1,7 +1,7 @@
 # dc-dev-plugins
 
 Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`,
-`fm-dc/`, and `ui-test/` folders are the shared source. Claude Code installs them from
+`fm-dc/`, `ui-test/`, and `basecamp-dc/` folders are the shared source. Claude Code installs them from
 `.claude-plugin/marketplace.json`; the Codex builder creates compatible editions
 from the same tracked files. See [Codex installation and compatibility](docs/codex.md).
 
@@ -47,7 +47,7 @@ python3 -m pip install -r scripts/requirements-codex.txt
 python3 scripts/build_codex.py --install
 ```
 
-This installs all three plugins into your personal Codex marketplace. Start a new
+This installs all five plugins into your personal Codex marketplace. Start a new
 Codex task to load them. Use the same command after updating the source plugins.
 The installer uses Codex's bundled `plugin-creator` helpers; see the guide if your
 installation stores them elsewhere. For a build without installation, omit `--install`.
@@ -94,6 +94,7 @@ Update everything later with:
 |---|---|---|
 | **pm** | `/pm:pm-scaffold`, `whats-next`, `stepping-away`, `design-handoff`, `html-artifacts`, `okf` | Scaffolds a client engagement, personal project, or in-place `_pm/` from the datacraft starter and runs the day-to-day PM + delivery workflow. See [`pm/README.md`](pm/README.md). |
 | **design-dc** | `design-handoff`, `html-artifacts`, `excalidraw-artifacts`, `design-sync` | Design handoffs and artifacts. Direct DesignSync requires a host that exposes that tool. |
+| **ui-test** | `ui-test` | macOS UI runner and independent verifier through Ringer, with decoded PNG evidence and explicit PASS/FAIL/BLOCKED outcomes. See [`ui-test/README.md`](ui-test/README.md). |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-proofkit`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, ProofKit doctrine, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
 

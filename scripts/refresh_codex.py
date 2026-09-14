@@ -9,7 +9,7 @@ import tempfile
 import subprocess
 import sys
 
-from build_codex import ROOT, PLUGINS, build_one, install
+from build_codex import ROOT, PLUGINS, MARKER, build_one, install, source_metadata
 from install_ringer import build as build_ringer
 from install_claris import resolve_sources, build as build_claris
 from install_workflow import build as build_workflow, sources as workflow_sources, connect_agents
@@ -77,6 +77,11 @@ def installed_source_issues(item, library, matt, selected, claris):
         manifest = json.loads((package / '.codex-plugin/plugin.json').read_text())
         if manifest.get('version') != item['version']:
             issues.append(f'{name}: generated package differs from installed version; run --install')
+        if name in PLUGINS:
+            marker = json.loads((package / MARKER).read_text())
+            current = source_metadata(name)
+            if any(marker.get(key) != value for key, value in current.items()):
+                issues.append(f'{name}: source changed since installation or source metadata is missing; run --install')
         if name == 'dc-workflow' and selected is not None:
             marker = json.loads((package / '.dc-workflow-build.json').read_text())
             expected = {n: str(p) for n, p in selected.items()}
@@ -98,8 +103,7 @@ def installed_source_issues(item, library, matt, selected, claris):
 
 def promote(packages, output, creator):
     """Validate the whole batch before touching live package folders."""
-    ownership = {'pm': '.dc-codex-build.json', 'design-dc': '.dc-codex-build.json',
-                 'fm-dc': '.dc-codex-build.json', 'ringer': '.dc-ringer-build.json',
+    ownership = {**dict.fromkeys(PLUGINS, MARKER), 'ringer': '.dc-ringer-build.json',
                  'filemaker-agentic-development': '.dc-claris-build.json',
                  'adt-standards-default': '.dc-claris-build.json', 'dc-workflow': '.dc-workflow-build.json'}
     for package in packages:

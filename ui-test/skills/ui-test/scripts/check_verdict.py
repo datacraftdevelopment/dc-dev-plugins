@@ -1,65 +1,71 @@
 #!/usr/bin/env python3
-"""Ringer check for the VERIFIER task.
+"""Mechanically validate a product PASS claim against truth and a valid receipt.
 
-The verifier reads the runner's receipt + artifacts and writes verdict.json.
-This check enforces the verdict contract: every assertion in truth.json has a
-per-assertion row with the verifier's OWN transcription and an artifact
-reference; verdict is internally consistent (PASS only if every row passes);
-a BLOCKED runner receipt can never become PASS. Exit 0 here is the product pass.
-
+Does not establish capture authenticity or independent model transcription.
 usage: check_verdict.py --truth truth.json [--receipt receipt.json] [--verdict verdict.json]
 """
-import argparse, json, pathlib, sys
+import argparse
+from pathlib import Path
+import sys
+
+from check_receipt import (check_case, check_reference, load_document,
+                           negative_reason, nonempty_string, validate_receipt)
+
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--truth", required=True)
-    ap.add_argument("--receipt", default="receipt.json")
-    ap.add_argument("--verdict", default="verdict.json")
-    a = ap.parse_args()
-    fails = []
-    truth = json.loads(pathlib.Path(a.truth).read_text())
-    vp = pathlib.Path(a.verdict)
-    if not vp.exists(): print(f"FAIL: {vp} missing"); return 1
-    try: v = json.loads(vp.read_text())
-    except Exception as e: print(f"FAIL: {vp} not valid JSON: {e}"); return 1
-    receipt = {}
-    rp = pathlib.Path(a.receipt)
-    if rp.exists():
-        try: receipt = json.loads(rp.read_text())
-        except Exception: fails.append("receipt.json unreadable by verifier check")
-    verdict = v.get("verdict")
-    if verdict not in ("PASS", "FAIL", "BLOCKED"): fails.append(f"verdict must be PASS|FAIL|BLOCKED, got {verdict!r}")
-    if receipt.get("execution_outcome") == "BLOCKED" and verdict == "PASS":
-        fails.append("runner receipt is BLOCKED; verdict PASS is impossible")
-    rows = {row.get("id"): row for row in (v.get("per_assertion") or []) if isinstance(row, dict)}
-    art_ids = {x.get("id") for x in (receipt.get("artifacts") or []) if isinstance(x, dict)}
-    art_paths = {str(x.get("path")) for x in (receipt.get("artifacts") or []) if isinstance(x, dict)}
-    for aid, spec in (truth.get("assertions") or {}).items():
-        want = spec["expected"] if isinstance(spec, dict) else spec
-        row = rows.get(aid)
-        if not row: fails.append(f"assertion '{aid}' missing from per_assertion"); continue
-        if "observed_by_verifier" not in row: fails.append(f"'{aid}': no observed_by_verifier — the verifier must transcribe, not copy")
-        ref = row.get("artifact_ref")
-        if not ref or (art_ids and ref not in art_ids and ref not in art_paths):
-            fails.append(f"'{aid}': artifact_ref {ref!r} does not name a receipt artifact")
-        res = row.get("result")
-        if res not in ("pass", "fail"): fails.append(f"'{aid}': result must be pass|fail, got {res!r}"); continue
-        seen = row.get("observed_by_verifier")
-        if res == "pass" and str(seen).strip() != str(want):
-            fails.append(f"'{aid}': marked pass but observed {seen!r} != expected {want!r}")
-        if res == "fail" and str(seen).strip() == str(want):
-            fails.append(f"'{aid}': marked fail but observed matches expected {want!r} — say why")
-    if verdict == "PASS" and any(r.get("result") != "pass" for r in rows.values()):
-        fails.append("verdict PASS with a failing per_assertion row")
-    if verdict == "PASS" and rows and all(r.get("result") == "pass" for r in rows.values()) and len(rows) < len(truth.get("assertions") or {}):
-        fails.append("verdict PASS but not every truth assertion has a row")
-    if not v.get("basis"): fails.append("verdict.basis missing — state that screenshots/values were the basis, not runner notes")
-    if fails:
-        print("FAIL — verdict contract violations:"); [print(" -", f) for f in fails]; return 1
-    print(f"{'PASS' if verdict == 'PASS' else 'FAIL'} — verifier verdict {verdict}: {len(rows)} assertion(s) transcribed against artifacts"
-          + ("" if verdict == "PASS" else f"; disagreements={v.get('runner_disagreements')!r}"))
-    return 0 if verdict == "PASS" else 1
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--truth", required=True)
+    parser.add_argument("--receipt", default="receipt.json")
+    parser.add_argument("--verdict", default="verdict.json")
+    args = parser.parse_args()
+    try:
+        truth = load_document(args.truth)
+        verdict = load_document(args.verdict)
+        check_case(truth, verdict, "verdict")
+        outcome = verdict.get("verdict")
+        if outcome not in ("PASS", "FAIL", "BLOCKED"):
+            raise ValueError("verdict must be PASS|FAIL|BLOCKED")
+        if outcome in ("FAIL", "BLOCKED"):
+            if Path(args.receipt).exists():
+                check_case(truth, load_document(args.receipt), "receipt")
+            print(f"NON-PASS — verifier reported {outcome}: {negative_reason(verdict)}")
+            print("Evidence may be incomplete; no product PASS or evidence-integrity claim.")
+            return 1
+
+        receipt = load_document(args.receipt)
+        expected, references = validate_receipt(truth, receipt, args.receipt)
+        rows = verdict.get("per_assertion")
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("per_assertion must be a nonempty list for PASS")
+        seen_ids = set()
+        for row in rows:
+            if not isinstance(row, dict) or not nonempty_string(row.get("id")):
+                raise ValueError("each per_assertion row must have a nonempty id")
+            aid = row["id"]
+            if aid in seen_ids:
+                raise ValueError(f"duplicate assertion id {aid!r}")
+            seen_ids.add(aid)
+            if aid not in expected:
+                raise ValueError(f"unknown assertion {aid!r}")
+            check_reference(row.get("artifact_ref"), references, f"assertion {aid!r}")
+            if row.get("result") != "pass":
+                raise ValueError(f"verdict PASS requires assertion {aid!r} result pass")
+            observed = row.get("observed_by_verifier")
+            if not isinstance(observed, str) or observed != expected[aid]:
+                raise ValueError(f"assertion {aid!r}: observed {observed!r} != expected {expected[aid]!r} (literal comparison)")
+        missing = expected.keys() - seen_ids
+        if missing:
+            raise ValueError(f"assertions missing from per_assertion: {sorted(missing)}")
+        if not nonempty_string(verdict.get("basis")):
+            raise ValueError("verdict.basis missing — state the evidence used")
+    except ValueError as exc:
+        print(f"FAIL — verdict contract violations: {exc}")
+        return 1
+    print(f"PASS — mechanical validation of verifier's product PASS: {len(rows)} literal assertion(s), "
+          "artifact membership and receipt PNG decoding checked.")
+    print("Capture authenticity and independent transcription require review; this check cannot establish them.")
+    return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

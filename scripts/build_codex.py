@@ -19,6 +19,8 @@ PLUGINS = {
     'pm': ('DataCraft PM', 'Project scaffolding, discovery, session notes, and delivery checks.'),
     'design-dc': ('DataCraft Design', 'Design handoffs, HTML artifacts, Excalidraw, and design-system workflows.'),
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
+    'ui-test': ('DataCraft UI Tests', 'Run macOS UI tests with evidence receipts and independent verification.'),
+    'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
 }
 
 RUNTIME = '''## Codex runtime
@@ -66,6 +68,24 @@ the workflow below.
 
 def run(*args, **kwargs):
     return subprocess.run(args, check=True, text=True, **kwargs)
+
+
+def source_metadata(name):
+    """Fingerprint exactly the tracked inputs used by this local adapter."""
+    tracked = run('git', '-C', str(ROOT), 'ls-files', '-z', '--', name,
+                  'scripts/build_codex.py', capture_output=True).stdout.split('\0')
+    digest = hashlib.sha256()
+    for filename in sorted(filter(None, tracked)):
+        path = ROOT / filename
+        if path.is_symlink():
+            raise ValueError(f'Cannot fingerprint symlink: {path}')
+        content = path.read_bytes()
+        # Include executable permissions: hooks may otherwise look unchanged.
+        for value in (filename.encode(), str(path.stat().st_mode & 0o111).encode(), content):
+            digest.update(len(value).to_bytes(8, 'big'))
+            digest.update(value)
+    manifest = json.loads((ROOT / name / '.claude-plugin/plugin.json').read_text())
+    return {'upstreamVersion': manifest['version'], 'sourceFingerprint': digest.hexdigest()}
 
 
 def adapt(text):
@@ -221,7 +241,8 @@ def build_one(name, parent):
         manifest_path = stage / '.codex-plugin/plugin.json'
         manifest_path.parent.mkdir()
         manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-        (stage / MARKER).write_text(json.dumps({'generator': 'dc-plugins/scripts/build_codex.py'}) + '\n')
+        (stage / MARKER).write_text(json.dumps({
+            'generator': 'dc-plugins/scripts/build_codex.py', **source_metadata(name)}) + '\n')
         if dest.exists():
             backup = Path(temporary) / 'previous'
             dest.rename(backup)

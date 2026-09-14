@@ -1,6 +1,6 @@
 # Claude Code and Codex compatibility
 
-Maintain the three existing plugin folders once. Claude Code reads them directly;
+Maintain the five shared plugin folders once. Claude Code reads them directly;
 `scripts/build_codex.py` generates Codex packages. Do not edit the generated copies.
 The source Claude manifests, commands, skills, agents, and hooks stay intact.
 
@@ -12,7 +12,7 @@ For the complete setup, use one command from this checkout:
 python3 scripts/refresh_codex.py --install
 ```
 
-This refreshes PM, design, FileMaker, Ringer, Claris, and `dc-workflow`, then
+This refreshes PM, design, FileMaker, UI testing, Basecamp, Ringer, Claris, and `dc-workflow`, then
 connects managed instruction blocks in the shared library and Codex's global
 `AGENTS.md`. It preserves text outside those blocks and backs up existing
 instructions before the first change. It does not pull repositories, update
@@ -20,7 +20,10 @@ Claude plugins, run models, change credentials, or trust hooks.
 
 Use `python3 scripts/refresh_codex.py --check` for a read-only connection report.
 It compares installed source metadata with the active Claude versions and reports
-stale or missing links. Optional live services are reported separately.
+stale or missing links. Owned plugins also record their source version and a
+fingerprint of tracked source contents, executable permissions, and the Codex
+builder. Changed source or an older package without this metadata requires a
+refresh; untracked local files are ignored. Optional live services are reported separately.
 Without either flag, it builds a preview under `.codex-build/`. All packages build in staging and validate before any live package is replaced.
 A failed copy restores previous directories. Codex registration remains sequential:
 a registration failure is reported and may leave installed caches at mixed versions;
@@ -39,7 +42,7 @@ Add new source files to Git's index before building. This prevents local virtual
 environments, sandbox databases, personal tracking, and client files entering a
 package. The locally excluded `fm-adt-helper/` is intentionally outside this build.
 
-Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc}`, validates
+Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,ui-test,basecamp-dc}`, validates
 them with Codex's plugin-creator helper, registers them in
 `~/.agents/plugins/marketplace.json`, and runs `codex plugin add` for each.
 Unrelated package folders are never overwritten. Existing generated folders are
@@ -76,8 +79,23 @@ plugins, not submissions to the public OpenAI plugin store.
 
 Try these in a new Codex task: “Use pm-scaffold here,” “Use whats-next,”
 “Use fm-status,” or “Use design-handoff.” The skill picker also exposes the
-converted commands by their names. Packages contain 9 PM, 4 design, and 20
-FileMaker skills, including the converted commands and agent procedures.
+converted commands by their names. The builder reports the skill count for each
+package, including converted commands and agent procedures.
+
+### UI testing and Basecamp
+
+`ui-test` uses the existing Ringer runner/verifier flow from either host. Install
+its Python dependencies from `ui-test/requirements.txt` in the Python runtime
+used by the checks. Computer-use availability and target-app approvals belong to
+the actual worker environment; a successful package build does not establish them.
+
+`basecamp-dc` requires the Basecamp CLI and its `basecamp` skill for live actions.
+It stays inactive in projects without `.basecamp/config.json`. Follow its setup
+instructions to add the optional `docs/agents/client-face.md` contract; installation
+does not opt a project into client updates. Existing project files are preserved.
+The SessionStart hook accepts Codex's working-directory payload and the Claude
+environment. Codex supports the `CLAUDE_PLUGIN_ROOT` compatibility variable in
+plugin hooks; review and trust the hook in `/hooks` before relying on startup context.
 
 ## Dependencies and limits
 

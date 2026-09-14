@@ -1,6 +1,6 @@
 {
   "name": "ui-test",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Agent-run UI tests for any macOS app with a window \u2014 native Swift/SwiftUI apps, FileMaker Pro, Electron: Claude writes a typed test instruction, a Codex computer-use worker runs it under Ringer and returns an evidence receipt (screenshots + values read off the screen), executed checks validate the receipt, and a separate verifier issues the verdict. Outcomes PASS-OBSERVED / FAIL / BLOCKED. Per-app target profiles (FileMaker, native macOS) carry the approval, preconditions and non-UI channel. Requires Ringer and a one-time Codex computer-use approval per app.",
   "author": {
     "name": "Joe",
