@@ -53,4 +53,4 @@ See the [review audit](../reviews/2026-09-14-shared-workflow/README.md) for the 
 
 On the final Unicode-corrected source, the lead ran the actual full suites: **200 runtime tests passed in 79.482 seconds** and **149 plugin tests passed in 17.070 seconds**. These runs use the normal test fixtures, including real temporary Git repositories. All nine generated Codex packages passed plugin validation. Canonical and PM contract bytes match SHA-256 `9f41dfc54df2d8971f386a53bd9cb18ebbef4be92e45ef71c19b3d32b0ac7e28`.
 
-Canonical library implementation commit: `f5e569e` (`Enforce scoped build autonomy and preserve review evidence`). The plugin implementation commit contains this release note and the complete review audit. Local installation verification is recorded separately after refresh.
+Canonical library implementation commit: `f5e569e` (`Enforce scoped build autonomy and preserve review evidence`). The plugin implementation commit contains this release note and the complete review audit. Local installation verification is complete: see the [installation record](2026-09-14-installation/README.md) and [HTML workflow guide](../workflow-guide.html).

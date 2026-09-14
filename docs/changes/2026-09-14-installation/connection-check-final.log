@@ -1,0 +1,16 @@
+Library: /Users/joe/Agentic-Mini/_Core/library (27 canonical workflow skill sources found)
+Matt Pocock: active Claude version 1.2.2
+Claris: filemaker-agentic-development 0.5.0, adt-standards-default 0.5.0
+Plugin: pm 0.18.0+codex.20260914114649 enabled=True
+Plugin: design-dc 0.2.2+codex.20260914114649 enabled=True
+Plugin: fm-dc 0.8.1+codex.20260914114649 enabled=True
+Plugin: ringer 0.1.0+codex.20260914114650 enabled=True
+Plugin: filemaker-agentic-development 0.5.0+codex.20260914114650 enabled=True
+Plugin: adt-standards-default 0.5.0+codex.20260914114650 enabled=True
+Plugin: dc-workflow 0.1.0+codex.20260914114650 enabled=True
+Plugin: ui-test 0.3.0+codex.20260914114650 enabled=True
+Plugin: basecamp-dc 0.1.1+codex.20260914114650 enabled=True
+Ringer clone: /Users/joe/Agentic-Mini/_Core/Ringer
+FileMaker/ADT local endpoint: offline; start ADT/FileMaker for database work
+Credential hook: check persisted trust with Codex /hooks; script tests alone do not prove runtime enforcement.
+Claude Design/Granola: optional host integrations; not verified by this command.

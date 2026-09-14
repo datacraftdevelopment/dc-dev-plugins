@@ -1,0 +1,156 @@
+{
+  "checked": [
+    {
+      "host": "Claude Code",
+      "name": "pm",
+      "version": "0.18.0",
+      "enabled": true,
+      "files": 41
+    },
+    {
+      "host": "Claude Code",
+      "name": "design-dc",
+      "version": "0.2.2",
+      "enabled": true,
+      "files": 8
+    },
+    {
+      "host": "Claude Code",
+      "name": "fm-dc",
+      "version": "0.8.1",
+      "enabled": false,
+      "files": 189
+    },
+    {
+      "host": "Claude Code",
+      "name": "ui-test",
+      "version": "0.3.0",
+      "enabled": true,
+      "files": 17
+    },
+    {
+      "host": "Claude Code",
+      "name": "basecamp-dc",
+      "version": "0.1.1",
+      "enabled": true,
+      "files": 14
+    },
+    {
+      "host": "Codex",
+      "name": "pm",
+      "version": "0.18.0+codex.20260914114649",
+      "enabled": true,
+      "files": 43
+    },
+    {
+      "host": "Codex",
+      "name": "design-dc",
+      "version": "0.2.2+codex.20260914114649",
+      "enabled": true,
+      "files": 9
+    },
+    {
+      "host": "Codex",
+      "name": "fm-dc",
+      "version": "0.8.1+codex.20260914114649",
+      "enabled": true,
+      "files": 197
+    },
+    {
+      "host": "Codex",
+      "name": "ui-test",
+      "version": "0.3.0+codex.20260914114650",
+      "enabled": true,
+      "files": 18
+    },
+    {
+      "host": "Codex",
+      "name": "basecamp-dc",
+      "version": "0.1.1+codex.20260914114650",
+      "enabled": true,
+      "files": 15
+    },
+    {
+      "host": "Codex",
+      "name": "ringer",
+      "version": "0.1.0+codex.20260914114650",
+      "enabled": true,
+      "files": 6
+    },
+    {
+      "host": "Codex",
+      "name": "dc-workflow",
+      "version": "0.1.0+codex.20260914114650",
+      "enabled": true,
+      "files": 31
+    },
+    {
+      "host": "Codex",
+      "name": "filemaker-agentic-development",
+      "version": "0.5.0+codex.20260914114650",
+      "enabled": true,
+      "files": 1130
+    },
+    {
+      "host": "Codex",
+      "name": "adt-standards-default",
+      "version": "0.5.0+codex.20260914114650",
+      "enabled": true,
+      "files": 8
+    }
+  ],
+  "errors": [],
+  "observations": [
+    {
+      "plugin": "code-review@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.220Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "context7@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.222Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "feature-dev@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.222Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "frontend-design@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.222Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "playground@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.221Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "skill-creator@claude-plugins-official",
+      "before": "3deb821cb71c",
+      "after": "022b3c274938",
+      "updated_at": "2026-09-14T09:26:27.221Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    },
+    {
+      "plugin": "vercel@claude-plugins-official",
+      "before": "0.49.0",
+      "after": "0.49.1",
+      "updated_at": "2026-09-14T09:26:28.918Z",
+      "note": "Already present in the inventory captured before removing superseded registrations and refreshing Codex; update timestamp precedes the local installation run."
+    }
+  ],
+  "inventory_note": "Codex CLI 0.154.0 filters --marketplace personal to personal plugins; unfiltered list used to verify unrelated installs.",
+  "verified": "registered versions, enabled preferences, source-to-cache bytes and canonical skill links; new host sessions still required"
+}
