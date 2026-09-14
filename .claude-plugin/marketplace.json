@@ -21,6 +21,11 @@
       "description": "Agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit and server-connection doctrine, and project scaffolding. Commands /fm-dc:fm-init, fm-scaffold, fm-status, fm-rollback, fm-docs-sync."
     },
     {
+      "name": "fm-adt-helper",
+      "source": "./fm-adt-helper",
+      "description": "Agentic FileMaker development for ADT-equipped machines — installed INSTEAD of fm-dc wherever the Claris Agentic Development Toolkit (ADT 0.4.0) CLIs are present. Carries the ADT workflow doctrine: two-lane architecture (fm CLI schema lane needs no handshake; MCP/script lane rides the connector), NDJSON ops discipline, connection lifecycle + unwedge playbook, web viewer app pipeline, native layout authoring with its rendering traps, and the master quirks list. Ships the ADT Helper FileMaker plug-in (window snapshots for visual verification)."
+    },
+    {
       "name": "ui-test",
       "source": "./ui-test",
       "description": "Agent-run UI tests for any macOS app with a window (native Swift apps, FileMaker Pro, Electron): ui-test splits assertions by evidence channel, writes a typed runner instruction, dispatches a Codex computer-use worker under Ringer, validates the returned receipt (screenshots + on-screen reads) with executed checks, and hands a fresh verifier task the verdict. PASS-OBSERVED / FAIL / BLOCKED outcomes; per-app target profiles; ships the tool matrix observed on this stack."
