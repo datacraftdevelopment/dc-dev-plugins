@@ -46,6 +46,12 @@ Joe installed Hermes and created a test profile at
 Its `SOUL.md` currently identifies it only as a persistent named PM agent, and
 `terminal.cwd` is `.`. That is a useful persistent PM test bot, but it is not yet
 bound to one project or given the manager/execution boundary proposed below.
+
+The first managed TokenUsage run is recorded separately in
+[Hermes TokenUsage pilot — 2026-09-15](hermes-tokenusage-pilot-2026-09-15.md).
+It tested the manager-only boundary, direct Codex/Sol delegation, a blocked
+Claude/Opus verification seat, recovery from PTY process tracking, and measured
+context use.
 No bot behavior, delegation, scheduling, or session handoff has been tested by
 this observation, and the profile was not modified.
 
