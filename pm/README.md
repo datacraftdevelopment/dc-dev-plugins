@@ -8,14 +8,18 @@ fits around Matt Pocock's skill set. The default is one orchestrator, meaningful
 outcome tickets and bounded Ringer subagents working a dependency graph (up to
 six active workers when ready and resourced). Worker assignments stay inside
 the parent ticket. Planning and additional review address concrete uncertainty;
-verification remains required and proportional. Manual fresh sessions remain
-normal; automatic succession is an opt-in experiment.
+verification remains required and proportional. Ordinary interactive sessions
+use Sol in Codex and Opus in Claude Code; Astra and Fable are bounded review seats
+invoked through Ringer. Manual fresh sessions remain normal; automatic succession
+is an opt-in experiment.
 
 Provides:
 
 - **`orchestrate`** — prepare shared scaffolding, dispatch ready worker nodes,
   integrate and verify. One outcome may use several subagents without extra
-  tickets. Reuses Ringer and, for prepared real ticket frontiers, build-swarm.
+  tickets. Routes ordinary execution to the least costly locally proven model;
+  reserves Astra/Fable capacity for bounded review. Reuses Ringer and, for
+  prepared real ticket frontiers, build-swarm.
 
 - **`session-succession` beta** — one lean orchestrator, autonomous subagent work,
   and durable turnover into fresh sessions. Explicit per-project opt-in; default

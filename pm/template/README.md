@@ -16,6 +16,9 @@ lives in `CLAUDE.md`).
    work items live on the tracker. Tiny implementation steps don't need tickets.
 5. Planning and extra review resolve named uncertainties. Keep genuine human
    questions together in the orchestrator, with their record on the affected ticket.
+6. Use Sol for ordinary Codex sessions and Opus for ordinary Claude Code sessions.
+   Astra and Fable are bounded Ringer review seats, invoked for a named risk rather
+   than after every successful chunk.
 
 Stamped by the pm plugin's `/pm:pm-scaffold` (`datacraftdevelopment/dc-dev-plugins`).
 The workflow of record is that plugin's `WORKFLOW.md`.

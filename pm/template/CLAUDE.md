@@ -92,6 +92,10 @@ and resource-release checks. Installation/scaffolding alone never opts this proj
 
 ## Working conventions
 
+- **Model economy.** Run ordinary interactive sessions on Sol in Codex and Opus
+  in Claude Code. Invoke Astra and Fable through Ringer for bounded reviews of a
+  named uncertainty or material risk. Executable checks handle continuous
+  verification; a successful chunk does not automatically trigger a reviewer.
 - **Skeleton first** — even a paragraph — before user stories or specs.
 - **Outcome-sized tickets.** Use `orchestrate` for authorized work: prepare shared
   scaffolding, dispatch ready branches of a dependency graph to up to six bounded

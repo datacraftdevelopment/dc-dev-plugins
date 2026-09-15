@@ -55,6 +55,15 @@ spawn additional workers without an explicit allocation from that same ceiling.
 Choose the actual width from ready independent nodes and available resources.
 Use one worker if only one node is ready; use up to six when justified.
 
+Select the **least costly locally proven model** that can satisfy each node's
+executable contract. Sol, Opus and cheaper proven models perform ordinary
+implementation, research and documentation. **Astra and Fable are review
+capacity**: use them only as Ringer review workers for a named unresolved risk or
+applicable review requirement. A failed ordinary worker returns evidence for a
+bounded repair or routing decision; failure alone does not promote implementation
+onto a review seat. Measure account capacity consumed per accepted outcome, not
+the number of agents launched.
+
 Ringer's base manifest has `max_parallel`, not dependency fields. The orchestrator
 dispatches **only ready nodes** in each run, then validates/integrates results and
 recomputes the frontier. Keep one job/run name across stages. Do not invent
@@ -73,6 +82,12 @@ export their results for integration. Workers keep raw transcripts outside the
 orchestrator and return a short result: changed paths, evidence, assumptions,
 blockers and the artifact to integrate. Workers don't push shared branches,
 deploy, edit shared trackers or open interactive sessions for Joe.
+
+Review packets are smaller than build packets: include the accepted intent,
+exact diff or revision, relevant verification evidence and the specific question.
+Exclude conversational history and unrelated repository surfaces. The reviewer
+returns findings and evidence; the ordinary orchestrator owns disposition,
+fixes and integration.
 
 Check current resource pressure before fan-out. On macOS use `memory_pressure`
 when available; inspect existing owned servers and heavy jobs. High or unknown

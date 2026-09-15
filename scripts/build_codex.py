@@ -78,6 +78,11 @@ creation within its stated scope/budget. Installation alone does not. Autonomous
 workers use the existing Ringer/build-swarm path; `create_thread` is only for
 replacing this orchestrator. Never fork the full conversation for succession.
 
+Keep successors on the **ordinary session tier: Sol for Codex**. Astra and Fable
+remain Ringer review seats; successor creation never promotes the interactive
+orchestrator to a reviewer model. When `create_thread` can select the model, set
+`model: gpt-5.6-sol`; preserve the user's explicit model choice when it differs.
+
 Call `list_projects` and match the recorded checkout. This beta's explicit
 same-checkout opt-in selects the saved project directly (`environment: { type: local }`)
 rather than a fresh worktree. If the user has not authorized that environment,

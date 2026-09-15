@@ -4,6 +4,28 @@ Joe's binding of [SDLC.md](SDLC.md). One orchestrator owns the outcome and the
 user conversation. Autonomous work goes to bounded Ringer subagents. The working
 unit is a meaningful outcome ticket; worker assignments are not additional tickets.
 
+## Model economy
+
+Ordinary interactive sessions use **`gpt-5.6-sol` in Codex** and
+**`claude-opus-5` in Claude Code**. Those sessions own the user conversation,
+technical execution, integration and routine judgment. Session succession keeps
+the same ordinary tier when it creates a fresh orchestrator.
+
+**`gpt-6-astra` and `claude-fable-5` are review seats**, invoked **only through
+Ringer**. They receive bounded review packets for a named uncertainty, material
+integration risk or release decision; they do not become interactive PM sessions
+or routine implementation workers. Prefer one cross-vendor seat for a focused
+challenge. Use both seats when an applicable cross-review gate or accepted
+evidence requirement calls for independent panel coverage.
+
+Executable checks remain the continuous quality layer. A green worker result is
+integrated and checked by the ordinary orchestrator; it does not automatically
+buy an Astra or Fable pass. Give a review seat the accepted intent, exact
+diff/revision, relevant test evidence and the unresolved question. Keep transcripts
+and unrelated repository history out of the packet. Judge this routing by
+**account capacity consumed per accepted outcome**, alongside user intervention
+and recovery cost.
+
 ## Default execution path
 
 1. **Read the outcome.** Reuse the user's request, accepted intent and existing
@@ -17,9 +39,12 @@ unit is a meaningful outcome ticket; worker assignments are not additional ticke
    compact plan under the parent ticket, not in a second tracker.
 3. **Dispatch ready work.** Up to **six active subagents**, including any nested
    workers, when independence and resources permit. Six is a ceiling, not a
-   target. Run ready branches concurrently; release dependent nodes only after
-   their inputs are verified and integrated. Shared data, credentials, ports and
-   heavy checks count as dependencies even when files do not overlap.
+   target. Choose the least costly locally proven model that can satisfy each
+   worker's executable contract; ordinary implementation starts with Sol, Opus,
+   or a cheaper proven worker rather than an Astra/Fable review seat. Run ready
+   branches concurrently; release dependent nodes only after their inputs are
+   verified and integrated. Shared data, credentials, ports and heavy checks
+   count as dependencies even when files do not overlap.
 4. **Integrate and verify.** The orchestrator reads short reports, checks patches
    against scope, integrates in dependency order and verifies the combined
    outcome. Choose checks that could catch the actual failure; run required
@@ -60,6 +85,12 @@ round requires a material change, unresolved finding, or explicit project/user
 requirement. Once invoked, `cross-review-gate` still owns its panel, consent,
 finding disposition and freeze rules. Required checks and accepted evidence
 channels remain required; "lean" is not permission to skip them.
+
+The expensive-seat boundary applies inside every review path: Astra and Fable
+run as Ringer workers with a declared task, check, artifact and usage record.
+Never switch the interactive orchestrator to either reviewer for a review. A
+reviewer does not continue into fixes; the ordinary session or a separately
+bounded implementation worker applies accepted findings and reruns checks.
 
 **For PM-bound work, this conditional schedule overrides generic stage-trigger
 text in imported skills**, including `cross-review-gate`'s "plan finalized" /

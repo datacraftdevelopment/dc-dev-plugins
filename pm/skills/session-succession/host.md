@@ -12,6 +12,11 @@ session. Use that permission without repeating the question. A subagent is not
 a substitute for a fresh orchestrator session. Use Ringer for autonomous workers;
 use the host's session-creation control only for orchestrator replacement.
 
+Keep successors on the **ordinary session tier: Opus for Claude Code**. Astra
+and Fable remain Ringer review seats; successor creation never promotes the
+interactive orchestrator to a reviewer model. When the host can select the model,
+select `claude-opus-5`; preserve the user's explicit model choice when it differs.
+
 Prepare the self-contained [successor prompt](prompt.md), filled with actual values.
 
 The helper generates no host call and supplies no host identity. Obtain IDs from

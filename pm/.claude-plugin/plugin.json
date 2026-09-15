@@ -1,7 +1,7 @@
 {
   "name": "pm",
-  "version": "0.19.0",
-  "description": "DataCraft PM: outcome-sized tickets, one orchestrator, dependency-graph execution with up to six autonomous subagents, proportionate verification and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta. Existing project requirements and permissions remain binding.",
+  "version": "0.20.0",
+  "description": "DataCraft PM: outcome-sized tickets, economical Sol/Opus execution, Ringer-only Astra/Fable review seats, dependency-graph orchestration, proportionate verification, and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"
