@@ -1,0 +1,9 @@
+{
+  "name": "fm-lens",
+  "version": "0.2.0",
+  "description": "FM Lens: agentic FileMaker development on machines with the Claris Agentic Development Toolkit (ADT). Ships the FM Lens FileMaker plug-in, an agent's eyes and hands inside FileMaker Pro: window and web viewer snapshots, state probes, menus, go-to-layout, dialog handling, the XML clipboard and a drop-folder command channel. Its skills fill what Claris's ADT plugin leaves out: native layout rendering traps, the per-build capability list, the master quirks list, connection lifecycle and unwedge playbook, and fm CLI field notes. Install alongside Claris's filemaker-agentic-development plugin, INSTEAD of fm-dc.",
+  "author": {
+    "name": "Joe DaSilva / DataCraft Development",
+    "email": "joe@datacraftdev.com"
+  }
+}

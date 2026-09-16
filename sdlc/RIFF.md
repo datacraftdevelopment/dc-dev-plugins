@@ -75,7 +75,7 @@ That's what turns "I can trust it" from a feeling into a mechanism: the same nam
 One skill, working name `ship-gate` (or `prove-it`). It owns Verify→Ship→confirm and nothing else:
 
 1. Read the intent's Acceptance block. If there isn't one, **that's the finding** — write it now, with the user, before anything else.
-2. Name the exercise for *this* stack. Stack-agnostic by design: browser-drive a web app; ADT Helper screenshot + script probe for FileMaker; curl for an API; CLI invocation for a tool. The skill says *exercise the real thing*, never *use Playwright*.
+2. Name the exercise for *this* stack. Stack-agnostic by design: browser-drive a web app; FM Lens screenshot + script probe for FileMaker; curl for an API; CLI invocation for a tool. The skill says *exercise the real thing*, never *use Playwright*.
 3. Run local. Paste output/screenshots.
 4. Offer `cross-review-gate` (existing skill, existing consensus rule — don't reimplement).
 5. **Stop.** Human deploys. Claude does not touch production.

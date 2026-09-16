@@ -21,9 +21,9 @@
       "description": "Agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit and server-connection doctrine, and project scaffolding. Commands /fm-dc:fm-init, fm-scaffold, fm-status, fm-rollback, fm-docs-sync."
     },
     {
-      "name": "fm-adt-helper",
-      "source": "./fm-adt-helper",
-      "description": "Agentic FileMaker development for ADT-equipped machines — installed INSTEAD of fm-dc wherever the Claris Agentic Development Toolkit (ADT 0.7.0) CLIs are present. Carries the ADT workflow doctrine: two-lane architecture (fm CLI schema lane needs no handshake; MCP/script lane rides the connector), NDJSON ops discipline, connection lifecycle + unwedge playbook, web viewer app pipeline, native layout authoring with its rendering traps, and the master quirks list. Ships the ADT Helper FileMaker plug-in (window snapshots for visual verification)."
+      "name": "fm-lens",
+      "source": "./fm-lens",
+      "description": "FM Lens: agentic FileMaker development on machines with the Claris Agentic Development Toolkit (ADT). Ships the FM Lens FileMaker plug-in, an agent's eyes and hands inside FileMaker Pro: window and web viewer snapshots, state probes, menus, go-to-layout, dialog handling, the XML clipboard and a drop-folder command channel. Its skills fill what Claris's ADT plugin leaves out: native layout rendering traps, the per-build capability list, the master quirks list, connection lifecycle and unwedge playbook, and fm CLI field notes. Install alongside Claris's filemaker-agentic-development plugin, INSTEAD of fm-dc."
     },
     {
       "name": "agenticdev-filemaker-standards",
@@ -32,7 +32,7 @@
         "url": "https://github.com/datacraftdevelopment/FM-agent-engineering-standards.git",
         "path": "pack"
       },
-      "description": "The agenticdev Claris ADT standards pack (naming, patterns, advisory, checks) — the house FileMaker conventions fm-adt-helper points at. Install, then declare \"standards\": { \"pack\": \"agenticdev\" } in a project's adt.json. Source of truth is the FM-agent-engineering-standards repo; this entry only mirrors its pack/ folder."
+      "description": "The agenticdev Claris ADT standards pack (naming, patterns, advisory, checks) — the house FileMaker conventions fm-lens points at. Install, then declare \"standards\": { \"pack\": \"agenticdev\" } in a project's adt.json. Source of truth is the FM-agent-engineering-standards repo; this entry only mirrors its pack/ folder."
     },
     {
       "name": "ui-test",
