@@ -80,9 +80,9 @@ list, it failed on this build.
 ## What this skill cannot tell you
 
 Whether an object actually DRAWS. Nothing in ADT renders a native layout, so
-"it is on disk" and "the user can see it" are different claims. Two open cases
-need pixels: whether button-bar segments draw (their zero-bounds readback is a
-reporting artifact, not a defect) and whether plain buttons draw at all
-(quirk 73). Use the ADT Helper plug-in and `tests/visual.py` for that.
+"it is on disk" and "the user can see it" are different claims. The known
+trap: objects fm adds draw only once the layout's theme was assigned through
+fm (quirk 106; see `adt-native-layouts`). Check with the FM Lens plug-in (the
+`fm-lens` skill) and `tests/visual.py`.
 
 See also: `adt-quirks` for the full catalogue of edges and how each was found.

@@ -756,8 +756,16 @@ static NSString* PerformMenu( NSArray<NSString*>* path )
             out = [NSString stringWithFormat:@"ERROR: \"%@\" is disabled right now (wrong mode, no window, or a dialog is up)", item.title];
             return;
         }
-        [parent performActionForItemAtIndex:[parent indexOfItem:item]];
-        out = [NSString stringWithFormat:@"OK: performed %@", [path componentsJoinedByString:@" > "]];
+        // Run the item AFTER this command returns. An item that opens a modal
+        // dialog blocks inside performAction; run inline, it would block the
+        // very channel that has to see and dismiss that dialog.
+        NSInteger index = [parent indexOfItem:item];
+        dispatch_async( dispatch_get_main_queue(), ^{
+            if (index >= 0 && index < parent.numberOfItems)
+                [parent performActionForItemAtIndex:index];
+        } );
+        out = [NSString stringWithFormat:@"OK: performing %@ (queued; check state or dialogs for the effect)",
+               [path componentsJoinedByString:@" > "]];
     } );
     return out;
 }
@@ -1070,24 +1078,38 @@ static NSDictionary* ObjectSnapshot( NSDictionary* cmd, const fmx::ExprEnv& env 
                   @"no named object \"%@\" on the current layout (GetLayoutObjectAttribute bounds: \"%@\")",
                   name, bounds ?: @"?"] };
 
-    // bounds are window coordinates below the status toolbar; the snapshot view
-    // includes the toolbar, so shift down by the difference in heights.
-    NSString* contentH = EvalExpr( env, @"Get ( WindowContentHeight )" );
-    __block CGFloat viewH = 0;
+    // bounds are SCREEN coordinates (moving the window moves them), with the
+    // window frame's top-left at ( Get ( WindowLeft ) ; Get ( WindowTop ) ),
+    // title bar and toolbar included (measured on FileMaker 26.0.1). The
+    // snapshot captures the content view, so subtract the window position and
+    // the frame-to-view gap.
+    CGFloat winLeft = [EvalExpr( env, @"Get ( WindowLeft )" ) doubleValue];
+    CGFloat winTop  = [EvalExpr( env, @"Get ( WindowTop )" ) doubleValue];
+    __block CGFloat dx = 0, dy = 0;
+    __block BOOL haveWindow = NO;
     NSString* window = [cmd[@"window"] isKindOfClass:[NSString class]] ? cmd[@"window"] : @"";
-    RunOnMain( ^{ viewH = FindWindow( window ).contentView.bounds.size.height; } );
-    CGFloat offset = (contentH.doubleValue > 0 && viewH > contentH.doubleValue) ? viewH - contentH.doubleValue : 0;
+    RunOnMain( ^{
+        NSWindow* w = FindWindow( window );
+        if (w == nil) return;
+        haveWindow = YES;
+        NSRect frame = w.frame, view = w.contentView.bounds;
+        dx = frame.size.width  - view.size.width;
+        dy = frame.size.height - view.size.height;
+    } );
+    if (!haveWindow) return @{ @"ok": @NO, @"error": @"no matching visible window" };
 
     CGFloat pad = cmd[@"pad"] ? [cmd[@"pad"] doubleValue] : 4;
     CGFloat l = [nums[0] doubleValue], t = [nums[1] doubleValue];
     CGFloat r = [nums[2] doubleValue], b = [nums[3] doubleValue];
-    NSRect region = NSMakeRect( l - pad, t + offset - pad, (r - l) + 2 * pad, (b - t) + 2 * pad );
+    NSRect region = NSMakeRect( l - winLeft - dx - pad, t - winTop - dy - pad,
+                                (r - l) + 2 * pad, (b - t) + 2 * pad );
     NSMutableDictionary* out = [SnapshotCommand( cmd, region ) mutableCopy];
     if ([out[@"ok"] boolValue])
     {
         NSMutableDictionary* res = [out[@"result"] mutableCopy];
         res[@"objectBounds"] = bounds;
-        res[@"toolbarOffset"] = @(offset);
+        res[@"frameOffset"] = @{ @"x": @(dx), @"y": @(dy) };
+        res[@"windowOrigin"] = @{ @"left": @(winLeft), @"top": @(winTop) };
         out[@"result"] = res;
     }
     return out;
