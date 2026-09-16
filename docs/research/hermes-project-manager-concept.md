@@ -52,6 +52,9 @@ The first managed TokenUsage run is recorded separately in
 It tested the manager-only boundary, direct Codex/Sol delegation, a blocked
 Claude/Opus verification seat, recovery from PTY process tracking, and measured
 context use.
+The second run is recorded in
+[Hermes TokenUsage pilot 2](hermes-tokenusage-pilot-2-2026-09-15.md). It covers seven
+hours of Ringer-routed delegation, 14 tickets, and two open boundary issues.
 No bot behavior, delegation, scheduling, or session handoff has been tested by
 this observation, and the profile was not modified.
 
