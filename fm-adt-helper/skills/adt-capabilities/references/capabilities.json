@@ -1,0 +1,3438 @@
+{
+  "fmVersion": "0.7.0",
+  "build": "29823677",
+  "generated": "2026-09-16T15:24:34",
+  "capabilities": {
+    "field.type.text": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.type.number": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.type.date": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.type.time": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.type.timestamp": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.type.container": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back"
+    },
+    "field.option.serial": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter a serial number",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_serial",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "serial",
+              "next": "1",
+              "increment": 1,
+              "prohibitModification": true
+            }
+          }
+        }
+      ]
+    },
+    "field.option.uuid": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter Get(UUID)",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_uuid",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "calc",
+              "calculation": {
+                "text": "Get ( UUID )",
+                "context": "A"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field.option.timestamp-created": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter a creation timestamp",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_timestamp-created",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "variable",
+              "variable": "creationTimestamp"
+            }
+          }
+        }
+      ]
+    },
+    "field.option.account-modified": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter the modifying account",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_account-modified",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "variable",
+              "variable": "modifierAccount"
+            }
+          }
+        }
+      ]
+    },
+    "field.option.constant": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter a constant",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_constant",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "constant",
+              "constant": "Open"
+            }
+          }
+        }
+      ]
+    },
+    "field.option.lookup": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Auto-enter a looked-up value",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_lookup",
+          "type": "text",
+          "options": {
+            "autoEnter": {
+              "type": "lookup",
+              "lookup": {
+                "source": {
+                  "occurrence": "B",
+                  "field": "Amount"
+                },
+                "context": "A",
+                "onNoMatch": "nextHigher"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field.option.not-empty": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Require a value",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_not-empty",
+          "type": "text",
+          "options": {
+            "validation": {
+              "notEmpty": true,
+              "strict": true
+            }
+          }
+        }
+      ]
+    },
+    "field.option.unique": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Require a unique value",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_unique",
+          "type": "text",
+          "options": {
+            "validation": {
+              "unique": true
+            }
+          }
+        }
+      ]
+    },
+    "field.option.max-length": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Limit a field's length",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_max-length",
+          "type": "text",
+          "options": {
+            "validation": {
+              "maxLength": 40
+            }
+          }
+        }
+      ]
+    },
+    "field.option.range": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Constrain a field to a range",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_range",
+          "type": "text",
+          "options": {
+            "validation": {
+              "range": {
+                "min": "A",
+                "max": "M"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field.option.four-digit-year": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Require a four-digit year",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_four-digit-year",
+          "type": "text",
+          "options": {
+            "validation": {
+              "strictFourDigitYear": true
+            }
+          }
+        }
+      ]
+    },
+    "field.option.validation-message": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Attach a custom validation message",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_validation-message",
+          "type": "text",
+          "options": {
+            "validation": {
+              "notEmpty": true,
+              "message": "Name is required"
+            }
+          }
+        }
+      ]
+    },
+    "field.option.global": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a global field",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_global",
+          "type": "text",
+          "options": {
+            "global": true
+          }
+        }
+      ]
+    },
+    "field.option.repetitions": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a repeating field",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_repetitions",
+          "type": "text",
+          "options": {
+            "repetitions": 4
+          }
+        }
+      ]
+    },
+    "field.option.indexing": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Index a field",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_indexing",
+          "type": "text",
+          "options": {
+            "indexing": "all"
+          }
+        }
+      ]
+    },
+    "field.option.comment": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Comment a field",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_comment",
+          "type": "text",
+          "options": {
+            "comment": "A note for developers"
+          }
+        }
+      ]
+    },
+    "field.option.ai-annotation": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Annotate a field for AI and OData",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Opt_ai-annotation",
+          "type": "text",
+          "options": {
+            "aiAnnotation": "The person's display name"
+          }
+        }
+      ]
+    },
+    "field.calculated.stored": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "9",
+      "recipe": "Create a calculated field",
+      "ops": [
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Upper",
+          "type": "text",
+          "options": {
+            "fieldType": "calculated",
+            "calculation": {
+              "text": "Upper ( Name )",
+              "context": "A"
+            }
+          }
+        }
+      ]
+    },
+    "field.calculated.contextOptional": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'options.calculation.context' is required",
+      "quirk": "9",
+      "workaround": "Always pass {\"text\": ..., \"context\": \"<occurrence>\"}."
+    },
+    "relation.create": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Relate two tables",
+      "ops": [
+        {
+          "op": "create:relation",
+          "left": "A",
+          "right": "B",
+          "predicates": [
+            {
+              "leftField": "Id",
+              "op": "=",
+              "rightField": "AId"
+            }
+          ]
+        }
+      ]
+    },
+    "relation.options": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "11",
+      "recipe": "Relate two tables with cascade delete",
+      "ops": [
+        {
+          "op": "create:relation",
+          "left": "A",
+          "right": "B",
+          "predicates": [
+            {
+              "leftField": "Id",
+              "op": "=",
+              "rightField": "AId"
+            }
+          ],
+          "leftToRight": {
+            "createRelated": true,
+            "cascadeDelete": true,
+            "sortRelated": true
+          }
+        }
+      ]
+    },
+    "relation.sortSpec": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "11 (lifted in 0.7.0, see quirk 100)",
+      "recipe": "Sort a relationship's related records by a named field",
+      "ops": [
+        {
+          "op": "create:relation",
+          "left": "A",
+          "right": "B",
+          "predicates": [
+            {
+              "leftField": "Id",
+              "op": "=",
+              "rightField": "AId"
+            }
+          ],
+          "leftToRight": {
+            "sortRelated": true,
+            "sortSpec": {
+              "fields": [
+                {
+                  "field": "B::Amount",
+                  "order": "descending"
+                }
+              ],
+              "maintain": true
+            }
+          }
+        }
+      ]
+    },
+    "theme.crud": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "16 (lifted in 0.7.0, see quirk 100)",
+      "recipe": "Derive a custom theme from the file's own and regroup it",
+      "ops": [
+        {
+          "op": "create:theme",
+          "displayName": "Suite Theme"
+        },
+        {
+          "op": "update:theme",
+          "name": "Suite Theme",
+          "group": "suite"
+        }
+      ]
+    },
+    "relation.sameBatchContext": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "10",
+      "recipe": "Create a relationship and a calc that travels it, in one batch",
+      "ops": [
+        {
+          "op": "create:tableOccurrence",
+          "name": "B2",
+          "table": "B"
+        },
+        {
+          "op": "create:relation",
+          "left": "A",
+          "right": "B2",
+          "predicates": [
+            {
+              "leftField": "Id",
+              "op": "=",
+              "rightField": "AId"
+            }
+          ]
+        },
+        {
+          "op": "create:field",
+          "table": "A",
+          "name": "Total",
+          "type": "number",
+          "options": {
+            "fieldType": "calculated",
+            "calculation": {
+              "text": "Sum ( B2::Amount )",
+              "context": "A"
+            }
+          }
+        }
+      ]
+    },
+    "table.rename": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "41",
+      "recipe": "Rename a table",
+      "ops": [
+        {
+          "op": "update:table",
+          "name": "B",
+          "newName": "B2"
+        }
+      ]
+    },
+    "table.deleteWithDependents": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "delete succeeded silently; layout survives with tableOccurrence=None and field names [None]",
+      "quirk": "17"
+    },
+    "script.create": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a script",
+      "ops": [
+        {
+          "op": "create:script",
+          "name": "Hello",
+          "body": [
+            {
+              "stepID": 89,
+              "step": "#",
+              "text": "a comment"
+            },
+            {
+              "stepID": 141,
+              "step": "Set Variable",
+              "name": "$x",
+              "value": "1 + 1"
+            },
+            {
+              "stepID": 86,
+              "step": "Set Error Capture",
+              "on": true
+            }
+          ]
+        }
+      ]
+    },
+    "script.triState.numeric": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'on' is a switch and takes true or false (or null to leave it unset) (at /0/on)",
+      "quirk": "51",
+      "workaround": "Use JSON booleans: true / false."
+    },
+    "script.folder.autoCreate": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: no script folder 'Seed' in 'Seed'",
+      "quirk": "74",
+      "workaround": "Omit `folder`. No op in the create surface makes a script folder, so the folder must already exist in the file."
+    },
+    "script.update.tokenless": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'token' is required when 'body' is 'set'",
+      "quirk": "31",
+      "workaround": "Read the script with detail:true, take its `token`, and pass it with the new body. Optimistic concurrency is mandatory for body replacement."
+    },
+    "script.performFind.criteria": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'Perform Find' has no option 'requests' (at /0/requests)",
+      "quirk": "45",
+      "workaround": "Build the find as steps: Enter Find Mode (22) -> Set Field -> Perform Find (28)."
+    },
+    "valueList.custom": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a value list",
+      "ops": [
+        {
+          "op": "create:valueList",
+          "name": "Status",
+          "type": "custom",
+          "values": [
+            "Open",
+            "Closed"
+          ]
+        }
+      ]
+    },
+    "customFunction.create": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a custom function",
+      "ops": [
+        {
+          "op": "create:customFunction",
+          "name": "Double",
+          "parameters": [
+            "n"
+          ],
+          "body": "n * 2"
+        }
+      ]
+    },
+    "customMenu.create": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Create a custom menu set",
+      "ops": [
+        {
+          "op": "create:customMenu",
+          "name": "AgentMenu"
+        },
+        {
+          "op": "create:customMenuSet",
+          "name": "AgentSet",
+          "menus": [
+            "AgentMenu"
+          ]
+        }
+      ]
+    },
+    "account.create.fullAccess": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: create:account is not supported: binding an account to '[Full Access]' is refused: this tool will not create or promote an account to [Full Access]. [Full Access] is identified by its engine key, not by this name, so renaming the set would not change this answer",
+      "quirk": "58",
+      "workaround": "Refused by design. Set a password on the built-in Admin account with update:account, and bind new accounts to a built-in set like [Data Entry Only]."
+    },
+    "account.create.limited": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "43",
+      "recipe": "Create a limited account",
+      "ops": [
+        {
+          "op": "create:account",
+          "name": "agent",
+          "password": "hunter2hunter2",
+          "privilegeSet": "[Data Entry Only]"
+        }
+      ]
+    },
+    "privilegeSet.recordAccess": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'tablePrivileges' for create:privilegeSet; it accepts 'description', 'fileOptions', 'layouts', 'minPasswordLength', 'name', 'op', 'passwordExpirationDays', 'records', 'scripts', 'valueLists'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help privilegeSet create`",
+      "quirk": "59",
+      "workaround": "create:privilegeSet exposes file-level options only, so a custom set sees no records. Bind agent accounts to the built-in [Data Entry Only] or [Read-Only Access]."
+    },
+    "extendedPrivilege.grant": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "2, 61",
+      "recipe": "Grant an extended privilege",
+      "ops": [
+        {
+          "op": "update:extendedPrivilege",
+          "name": "fmplugin",
+          "privilegeSets": [
+            "[Full Access]"
+          ]
+        }
+      ]
+    },
+    "persistentData.largeValue": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "400,026 bytes round-tripped intact",
+      "quirk": "40",
+      "recipe": "Deploy a web viewer app over the schema lane",
+      "ops": [
+        {
+          "op": "create:persistentData",
+          "instance": "suite",
+          "key": "html",
+          "value": "<html><body>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx... [400,026 chars total, truncated for display]"
+        }
+      ]
+    },
+    "batch.readsTransactional": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: table 'NoSuchTable' not found",
+      "quirk": "8",
+      "workaround": "Trust only the closing summary line, and verify with a read from a FRESH process. Pass --abort-on-error=false to keep the ops that succeeded."
+    },
+    "error.unknownKeyTeaches": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'bogusKey' for create:field; it accepts 'name', 'op', 'options', 'ownerId', 'position', 'table', 'type'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help field create`",
+      "quirk": "20"
+    },
+    "layout.tableViewColumns.read": {
+      "status": "unknown",
+      "tier": "persisted",
+      "reached": null,
+      "detail": "seed fixture missing: tests/fixtures/seeds/tableview-columns.fmp12. Make it in FileMaker Pro: new file, table 'T' with fields A, B, C; layout 'Grid' on T; View as Table; Modify Table View: tick A, B, C; OK; save as tests/fixtures/seeds/tableview-columns.fmp12 (copy it in from outside Dropbox).",
+      "workaround": "On 0.5.0 the CLI cannot see or address these objects; rebind or remove them in Pro. Field objects dragged onto the body read and update normally."
+    },
+    "layout.tableViewColumns.write": {
+      "status": "unknown",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "seed fixture missing: tests/fixtures/seeds/tableview-columns.fmp12. Same seed as layout-tableview-columns-visible.",
+      "workaround": "Not addressable on 0.5.0 (layoutObject_not_found). Remove the column in Pro."
+    },
+    "layout.viewStyles.write": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'viewStyles' for update:layout; it accepts 'addObjects', 'addParts', 'baseWidth', 'bodyHeight', 'duplicateObjects', 'folder', 'hidden', 'name', 'newName', 'op', 'pageMargins', 'position', 'printColumns', 'removeObjects', 'removeParts', 'removeTriggers', 'rowHeight', 'setTriggers', 'tableOccurrence', 'theme', 'updateObjects'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help layout update`",
+      "workaround": "read:layout reports viewStyles but no op writes them; set the views in Pro's Layout Setup. Field report 2026-09-04 \u00a73.2."
+    },
+    "layout.object.button": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "button on disk at 20,20 200x30",
+      "recipe": "Add a button to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "button",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_button",
+              "text": "Go"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.buttonBar": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "buttonBar on disk at 300,20 300x40"
+    },
+    "layout.object.field": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "field on disk at 20,30 200x30",
+      "recipe": "Add a field to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "field",
+              "bounds": {
+                "left": 20,
+                "top": 30,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_field",
+              "field": "UI::Name",
+              "label": ""
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.group": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "group on disk at 20,35 200x30",
+      "recipe": "Add a group to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "group",
+              "bounds": {
+                "left": 20,
+                "top": 35,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_group"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.label": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "label on disk at 20,40 200x30",
+      "recipe": "Add a label to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "label",
+              "bounds": {
+                "left": 20,
+                "top": 40,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_label",
+              "text": "A label"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.line": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "line on disk at 20,45 200x30",
+      "recipe": "Add a line to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "line",
+              "bounds": {
+                "left": 20,
+                "top": 45,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_line"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.oval": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "oval on disk at 20,50 200x30",
+      "recipe": "Add a oval to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "oval",
+              "bounds": {
+                "left": 20,
+                "top": 50,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_oval"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.popoverButton": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "popoverButton on disk at 20,55 200x30",
+      "recipe": "Add a popoverButton to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "popoverButton",
+              "bounds": {
+                "left": 20,
+                "top": 55,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_popoverButton",
+              "text": "Pop"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.portal": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "portal on disk at 20,200 400x120",
+      "recipe": "Add a portal to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "portal",
+              "bounds": {
+                "left": 20,
+                "top": 200,
+                "width": 400,
+                "height": 120
+              },
+              "objectName": "probe_portal",
+              "tableOccurrence": "UIChild",
+              "rows": 4
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.rectangle": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "rectangle on disk at 20,65 200x30",
+      "recipe": "Add a rectangle to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "rectangle",
+              "bounds": {
+                "left": 20,
+                "top": 65,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_rectangle"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.roundedRectangle": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "roundedRectangle on disk at 20,70 200x30",
+      "recipe": "Add a roundedRectangle to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "roundedRectangle",
+              "bounds": {
+                "left": 20,
+                "top": 70,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_roundedRectangle"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.slideControl": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "slideControl on disk at 20,470 400x100",
+      "recipe": "Add a slideControl to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "slideControl",
+              "bounds": {
+                "left": 20,
+                "top": 470,
+                "width": 400,
+                "height": 100
+              },
+              "objectName": "probe_slideControl",
+              "objects": [
+                {
+                  "type": "slidePanel"
+                },
+                {
+                  "type": "slidePanel"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.tabControl": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "tabControl on disk at 20,340 400x120",
+      "recipe": "Add a tabControl to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "tabControl",
+              "bounds": {
+                "left": 20,
+                "top": 340,
+                "width": 400,
+                "height": 120
+              },
+              "objectName": "probe_tabControl",
+              "objects": [
+                {
+                  "type": "tabPanel",
+                  "title": "One"
+                },
+                {
+                  "type": "tabPanel",
+                  "title": "Two"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.webViewer": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "webViewer on disk at 20,85 200x30",
+      "recipe": "Add a webViewer to a layout",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "webViewer",
+              "bounds": {
+                "left": 20,
+                "top": 85,
+                "width": 200,
+                "height": 30
+              },
+              "objectName": "probe_webViewer",
+              "url": "https://example.invalid"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.tabPanel.bare": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: addObjects[0] is a panel with no control to belong to: a panel is created inside a 'tabControl' or a 'slideControl', either in that control's own 'objects' or by naming an existing control's 'id' as 'parent'",
+      "workaround": "Create the tabControl with its panels inline, then address panels by the ids in createdObjectIds."
+    },
+    "layout.object.slidePanel.bare": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: addObjects[0] is a panel with no control to belong to: a panel is created inside a 'tabControl' or a 'slideControl', either in that control's own 'objects' or by naming an existing control's 'id' as 'parent'",
+      "workaround": "Create the slideControl with its panels inline, then address panels by the ids in createdObjectIds."
+    },
+    "layout.object.graphic": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: addObjects[0] has a 'picture' that is not there: nothing exists at '/nonexistent.png'. The path is read on the machine running this command, while the op runs -- it is not stored, and it is not resolved against the FileMaker file's location",
+      "workaround": "Pass an absolute path to a real PNG/SVG; it is embedded on write and reads back as an id, never the path."
+    },
+    "layout.addObjects.richKeys": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "102",
+      "recipe": "Give a button its tooltip in the same op that places it",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "button",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 200,
+                "height": 30
+              },
+              "text": "Go",
+              "tooltip": "\"hello\""
+            }
+          ]
+        }
+      ]
+    },
+    "layout.object.configure": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "configured on disk: {'tooltip': '\"The contact\\'s name\"', 'control': 'dropDownList', 'valueList': {'name': 'Colours', 'id': 1}, 'placeholderText': '\"Pick one\"'}",
+      "quirk": "9, 14",
+      "recipe": "Configure an object after placing it (the two-step)",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "field",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 200,
+                "height": 30
+              },
+              "field": "UI::Name",
+              "label": "",
+              "objectName": "nameField"
+            }
+          ]
+        },
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "updateObjects": [
+            {
+              "id": 1,
+              "tooltip": "\"The contact's name\"",
+              "control": "dropDownList",
+              "valueList": "Colours",
+              "placeholderText": "\"Pick one\"",
+              "accessibilityTitle": "\"Name field\"",
+              "hideCondition": "Get ( AccountName ) = \"nobody\""
+            }
+          ]
+        }
+      ]
+    },
+    "layout.buttonBar.segmentBounds": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "3 segments; 3 report zero bounds (derived from the bar, not stored -- the CLI refuses to set them, so this is expected, NOT the render bug quirk 72 blamed it for)",
+      "quirk": "72",
+      "recipe": "Add a button bar",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "buttonBar",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 300,
+                "height": 40
+              },
+              "objects": [
+                {
+                  "type": "button",
+                  "text": "A"
+                },
+                {
+                  "type": "button",
+                  "text": "B"
+                },
+                {
+                  "type": "button",
+                  "text": "C"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "layout.buttonBar.explicitSegmentBounds": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: addObjects[0].objects[0] is a button bar SEGMENT and takes no 'bounds': a segment's rectangle is the bar's divided by the number of segments, and is not stored at all. Set the BAR's 'bounds'",
+      "quirk": "72",
+      "workaround": "Size the bar itself; segment widths are the bar's width divided by the segment count."
+    },
+    "layout.nesting.twoLevel": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'addObjects[0].objects[0].objects' for update:layout; it accepts 'accessibilityHelp', 'accessibilityLabel', 'accessibilityTitle', 'action', 'allowDelete', 'allowEditingOfValueList', 'allowEntryOfOtherValues', 'allowInteraction', 'allowJavaScriptToPerformScripts', 'allowVerticalScrolling', 'anchors', 'applyInFindMode', 'applyVisualSpellChecking', 'autoComplete', 'autoPlay', 'bounds', 'browseEntry', 'control', 'displayInFindMode', 'enableSwipeGestures', 'encodeUrl', 'entryCalculation', 'exitOnEnter', 'exitOnReturn', 'exitOnTab', 'field', 'fieldId', 'fieldOccurrence', 'findEntry', 'graphicSizing', 'hideCondition', 'hideWhenPrinting', 'horizontalAlignment', 'icon', 'iconPosition', 'iconSize', 'includeShowHideIcon', 'initialRow', 'inputMode', 'keyboardType', 'label', 'locked', 'maintainOriginalProportions', 'noContextMenu', 'objectName', 'optimizeFor', 'orientation', 'overrideDataFormattingWithValueList', 'picture', 'placeholderText', 'popoverArrow', 'preservePdfTransparency', 'quickFind', 'repetition', 'repetitionCount', 'repetitionOrientation', 'resetScrollBarOnExit', 'resizeEnclosingPart', 'rotation', 'rows', 'scrollBarVisibility', 'scrollBarVisibility', 'selectContentsOnEntry', 'showHandCursor', 'showNavigationDots', 'showPlaceholderInFindMode', 'showProgressBar', 'showStatusMessages', 'showTitleBar', 'showVerticalScrollBar', 'slideBasedOn', 'slideLeft', 'slideUp', 'style', 'tabWidthModifier', 'tabWidthStyle', 'tabWidthUnits', 'tableOccurrence', 'tabsShareSingleStyle', 'text', 'title', 'tooltip', 'type', 'url', 'urlCalculation', 'valueList', 'verticalAlignment'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help layout update addObjects objects`",
+      "quirk": "12",
+      "workaround": "Create the control with its panels, read back the panel ids, then addObjects the interior with parent:<panelId>."
+    },
+    "layout.nesting.parentKey": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "12, 13",
+      "recipe": "Put content inside a tab panel",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "tabControl",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 400,
+                "height": 200
+              },
+              "objects": [
+                {
+                  "type": "tabPanel",
+                  "title": "One"
+                },
+                {
+                  "type": "tabPanel",
+                  "title": "Two"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "label",
+              "text": "inside",
+              "parent": 2,
+              "bounds": {
+                "left": 220,
+                "top": 40,
+                "width": 150,
+                "height": 24
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "layout.parts": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "18 (lifted in 0.7.0, see quirk 100)",
+      "recipe": "Build a layout with header, sub-summary and footer parts",
+      "ops": [
+        {
+          "op": "create:layout",
+          "name": "Parted",
+          "tableOccurrence": "UI",
+          "baseWidth": 700,
+          "bodyHeight": 300,
+          "parts": [
+            {
+              "type": "header",
+              "height": 40
+            },
+            {
+              "type": "leadingSubSummary",
+              "breakField": "UI::Name",
+              "height": 30
+            },
+            {
+              "type": "body"
+            },
+            {
+              "type": "trailingSubSummary",
+              "breakField": "UI::Name",
+              "height": 30
+            },
+            {
+              "type": "footer",
+              "height": 40
+            }
+          ]
+        }
+      ]
+    },
+    "layout.colors": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'fillColor' for update:layout; it accepts 'addObjects', 'addParts', 'baseWidth', 'bodyHeight', 'duplicateObjects', 'folder', 'hidden', 'name', 'newName', 'op', 'pageMargins', 'position', 'printColumns', 'removeObjects', 'removeParts', 'removeTriggers', 'rowHeight', 'setTriggers', 'tableOccurrence', 'theme', 'updateObjects'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help layout update`",
+      "quirk": "18",
+      "workaround": "Cosmetics are theme-bound. Apex Blue is the only theme a blank file has, and no per-object colour key exists."
+    },
+    "layout.viewmode": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: unknown key 'viewMode' for update:layout; it accepts 'addObjects', 'addParts', 'baseWidth', 'bodyHeight', 'duplicateObjects', 'folder', 'hidden', 'name', 'newName', 'op', 'pageMargins', 'position', 'printColumns', 'removeObjects', 'removeParts', 'removeTriggers', 'rowHeight', 'setTriggers', 'tableOccurrence', 'theme', 'updateObjects'. Unknown keys are refused rather than ignored: a dropped key would report status 'ok' for a request that did not happen. See `fm-cli help layout update`",
+      "quirk": "18",
+      "workaround": "No view-mode key. The layout is created in form view."
+    },
+    "layout.printSetup": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Set a layout's print columns, page margins and row height",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "printColumns": {
+            "count": 2,
+            "width": 250
+          },
+          "pageMargins": {
+            "left": 36,
+            "top": 36,
+            "right": 36,
+            "bottom": 36
+          },
+          "rowHeight": 20
+        }
+      ]
+    },
+    "layout.theme.classic": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: theme 'Enlightened' is not in this file and is not one of FileMaker Pro's built-in themes; name a theme the file already has (read:theme lists them), name a built-in one to install it, or make the theme first with create:theme",
+      "quirk": "16",
+      "workaround": "Apex Blue is the only theme a blank 2025/26 file carries and the only one the CLI installs."
+    },
+    "layout.portal.rowFit": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'bounds' on addObjects[0] fall outside a portal (id 1), which is to hold it. A portal repeats one ROW once per record, so an object outside that row would be drawn a single time over the portal instead of with each record. The room inside it starts at -1pt,-1pt and is 400pt by 30pt, measured from the container's top-left corner",
+      "quirk": "60, 75",
+      "workaround": "Child bounds are measured from the CONTAINER's top-left, not the layout's. Row height is the portal's height divided by rows (180/6 = 30pt here). Enlarge the portal FIRST -- and pass `rows` in the same entry, or the row height silently re-derives."
+    },
+    "layout.portal.resize": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "60, 75",
+      "recipe": "Resize a portal and its row contents",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "portal",
+              "tableOccurrence": "UIChild",
+              "rows": 6,
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 400,
+                "height": 180
+              }
+            }
+          ]
+        },
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "field",
+              "field": "UIChild::Label",
+              "label": "",
+              "parent": 1,
+              "bounds": {
+                "left": 0,
+                "top": 0,
+                "width": 200,
+                "height": 28
+              }
+            }
+          ]
+        },
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "updateObjects": [
+            {
+              "id": 1,
+              "rows": 4,
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 400,
+                "height": 200
+              }
+            },
+            {
+              "id": 2,
+              "bounds": {
+                "left": 0,
+                "top": 0,
+                "width": 200,
+                "height": 44
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "layout.button.action": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Wire a button to a script",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "addObjects": [
+            {
+              "type": "button",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 200,
+                "height": 30
+              },
+              "text": "Run it",
+              "action": {
+                "stepID": 1,
+                "step": "Perform Script",
+                "script": "Noop"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "layout.scriptTrigger": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Set a layout script trigger",
+      "ops": [
+        {
+          "op": "update:layout",
+          "name": "Main",
+          "setTriggers": [
+            {
+              "event": "OnLayoutEnter",
+              "script": "Noop"
+            }
+          ]
+        }
+      ]
+    },
+    "layout.removeObjects.bareInt": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'removeObjects[0]' must be an object",
+      "quirk": "42",
+      "workaround": "removeObjects takes objects: [{\"id\": 1}], not bare ints."
+    },
+    "script.step.nameOnly": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: body entry /0 is missing required field 'stepID'",
+      "workaround": "Send both `stepID` and `step`; they are cross-checked against each other."
+    },
+    "script.step.mismatch": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: step 89 is '#', not 'Set Error Capture'. 'stepID' is authoritative and 'step' is advisory, but a disagreement is reported rather than resolved: either one could be the mistake. (at /0/step)"
+    },
+    "script.calc.pluginFunction": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: the engine stored a DIFFERENT calculation than the one written: wrote [ADTH_Version], stored [\"ADTH_Version\"]. SetCalculation silently quotes text it cannot parse as a formula -- a misspelled field or table name becomes a string literal -- and reports success. (at /0/value)",
+      "quirk": "32",
+      "workaround": "Wrap it: Evaluate ( \"ADTH_Version\" ). That compiles in the headless engine (which loads no plug-ins) and resolves at runtime inside FileMaker Pro."
+    },
+    "script.calc.evaluateWrapper": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "32",
+      "recipe": "Call a plug-in function from an fm-authored script",
+      "ops": [
+        {
+          "op": "create:script",
+          "name": "Plug",
+          "body": [
+            {
+              "stepID": 141,
+              "step": "Set Variable",
+              "name": "$v",
+              "value": "Evaluate ( \"ADTH_Version\" )"
+            }
+          ]
+        }
+      ]
+    },
+    "script.step.#": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.AVPlayer Play": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.AVPlayer Set Options": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.AVPlayer Set Playback State": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Add Account": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Adjust Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Allow Formatting Bar": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Allow User Abort": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Append PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Append PDF' (/0) has a problem in its options"
+    },
+    "script.step.Arrange All Windows": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Beep": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Cancel PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Change Password": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Check Found Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Check Record": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Check Selection": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Check Selection' (/0) has a problem in its options"
+    },
+    "script.step.Clear": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Clear' (/0) has a problem in its options"
+    },
+    "script.step.Close Data File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Close Data File' (/0) has a problem in its options"
+    },
+    "script.step.Close File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Close PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Close PDF' (/0) has a problem in its options"
+    },
+    "script.step.Close Popover": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Close Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Commit Records/Requests": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Commit Transaction": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Configure AI Account": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Configure AI Account' (/0) has a problem in its options"
+    },
+    "script.step.Configure Local Notification": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Configure Machine Learning Model": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Configure NFC Reading": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Configure Persistent Data": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Configure Persistent Data' (/0) has a problem in its options"
+    },
+    "script.step.Configure Prompt Template": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Configure Prompt Template' (/0) has a problem in its options"
+    },
+    "script.step.Configure RAG Account ": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Configure Region Monitor Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Configure Regression Model": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Configure Regression Model' (/0) has a problem in its options"
+    },
+    "script.step.Constrain Found Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Convert File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Convert File' (/0) has a 'source' FileMaker does not recognize, and will not open fo"
+    },
+    "script.step.Copy": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Copy' (/0) has a problem in its options"
+    },
+    "script.step.Copy All Records/Requests": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Copy Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Correct Word": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Create Data File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Create Data File' (/0) has a problem in its options"
+    },
+    "script.step.Create PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Cut": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Cut' (/0) has a problem in its options"
+    },
+    "script.step.Delete Account": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Delete All Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Delete File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Delete File' (/0) has a problem in its options"
+    },
+    "script.step.Delete Portal Row": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Delete Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Dial Phone": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Duplicate Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Edit User Dictionary": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Else": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Else If": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Enable Account": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Enable Touch Keyboard": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.End If": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.End Loop": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Enter Browse Mode": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Enter Find Mode": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Enter Preview Mode": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Execute FileMaker Data API": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Execute FileMaker Data API' (/0) has a problem in its options"
+    },
+    "script.step.Execute SQL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Execute URL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Exit Application": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Exit Loop If": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Exit Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Export Field Contents": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Export Field Contents' (/0) has a problem in its options"
+    },
+    "script.step.Export Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare; its settings remain unwritable (see suites/boundaries.py)",
+      "workaround": "The step can be authored bare, but its settings cannot be written (the field mapping and output options are a structured sub-object this CLI cannot read; a write carries them across unchanged). Place it with fm, then set its options in FileMaker Pro."
+    },
+    "script.step.Extend Found Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Find Matching Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Find Matching Records' (/0) has a problem in its options"
+    },
+    "script.step.Fine-Tune Model": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Fine-Tune Model' (/0) has a problem in its options"
+    },
+    "script.step.Flush Cache to Disk": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Flush Web Viewer Cookies": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Freeze Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Generate Response from Model": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Generate Response from Model' (/0) has a problem in its options"
+    },
+    "script.step.Get Data File Position": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Get Data File Position' (/0) has a problem in its options"
+    },
+    "script.step.Get File Exists": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Get File Exists' (/0) has a problem in its options"
+    },
+    "script.step.Get File Size": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Get File Size' (/0) has a problem in its options"
+    },
+    "script.step.Get Folder Path": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Field": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Go to Field' (/0) has a problem in its options"
+    },
+    "script.step.Go to Layout": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to List of Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Next Field": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Object": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Portal Row": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Previous Field": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Record/Request/Page": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Go to Related Record": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Go to Related Record' (/0) has a problem in its options"
+    },
+    "script.step.Halt Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.If": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Import Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare; its settings remain unwritable (see suites/boundaries.py)",
+      "workaround": "The step can be authored bare, but its settings cannot be written (the field mapping and data-source options are a structured sub-object this CLI cannot read; a write carries them across unchanged). Place it with fm, then set its options in FileMaker Pro."
+    },
+    "script.step.Insert Audio/Video": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Insert Calculated Result": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Calculated Result' (/0) has a problem in its options"
+    },
+    "script.step.Insert Current Date": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Current Date' (/0) has a problem in its options"
+    },
+    "script.step.Insert Current Time": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Current Time' (/0) has a problem in its options"
+    },
+    "script.step.Insert Current User Name": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Current User Name' (/0) has a problem in its options"
+    },
+    "script.step.Insert Embedding": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Embedding' (/0) has a problem in its options"
+    },
+    "script.step.Insert Embedding in Found Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Embedding in Found Set' (/0) has a problem in its options"
+    },
+    "script.step.Insert File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert File' (/0) has a problem in its options"
+    },
+    "script.step.Insert Image Caption": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Image Caption' (/0) has a problem in its options"
+    },
+    "script.step.Insert Image Captions in Found Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Image Captions in Found Set' (/0) has a problem in its options"
+    },
+    "script.step.Insert PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Insert Picture": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Insert Text": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert Text' (/0) has a problem in its options"
+    },
+    "script.step.Insert from Device": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert from Device' (/0) has a problem in its options"
+    },
+    "script.step.Insert from Index": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert from Index' (/0) has a problem in its options"
+    },
+    "script.step.Insert from Last Visited": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert from Last Visited' (/0) has a problem in its options"
+    },
+    "script.step.Insert from URL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Insert from URL' (/0) has a problem in its options"
+    },
+    "script.step.Install Menu Set": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Install OnTimer Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Install Plug-In File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Install Plug-In File' (/0) has a problem in its options"
+    },
+    "script.step.Loop": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Modify Last Find": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Move/Resize Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.New File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.New Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.New Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Omit Multiple Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Omit Record": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Data File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Open Data File' (/0) has a problem in its options"
+    },
+    "script.step.Open Edit Saved Finds": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Favorites": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open File Options": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Find/Replace": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Help": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Hosts": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Containers": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Data Sources": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Database": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Layouts": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Themes": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Manage Value Lists": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Open PDF' (/0) has a problem in its options"
+    },
+    "script.step.Open Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Script Workspace": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Settings": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Sharing": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Transaction": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "supported; a block step needs its matching pair in the same body (script_unbalanced_block)"
+    },
+    "script.step.Open URL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Open Upload to Host": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Page Setup": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare; its settings remain unwritable (see suites/boundaries.py)",
+      "workaround": "The step can be authored bare, but its settings cannot be written (the page setup is a structured sub-object this CLI cannot read; a write carries it across unchanged). Place it with fm, then set its options in FileMaker Pro."
+    },
+    "script.step.Paste": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Paste' (/0) has a problem in its options"
+    },
+    "script.step.Pause/Resume Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform AppleScript": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform Find": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform Find by Natural Language": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform Find by Natural Language' (/0) has a problem in its options"
+    },
+    "script.step.Perform Find/Replace": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform JavaScript in Web Viewer": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform Quick Find": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform RAG Action": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Perform SQL Query by Natural Language": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform SQL Query by Natural Language' (/0) has a problem in its options"
+    },
+    "script.step.Perform Script": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform Script' (/0) has a problem in its options"
+    },
+    "script.step.Perform Script on Server": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform Script on Server' (/0) has a problem in its options"
+    },
+    "script.step.Perform Script on Server with Callback": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform Script on Server with Callback' (/0) has a problem in its options"
+    },
+    "script.step.Perform Semantic Find": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Perform Semantic Find' (/0) has a problem in its options"
+    },
+    "script.step.Print": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare; its settings remain unwritable (see suites/boundaries.py)",
+      "workaround": "The step can be authored bare, but its settings cannot be written (the print settings are a structured sub-object this CLI cannot read; a write carries them across unchanged). Place it with fm, then set its options in FileMaker Pro."
+    },
+    "script.step.Print PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Print PDF' (/0) has a problem in its options"
+    },
+    "script.step.Re-Login": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Read from Data File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Read from Data File' (/0) has a problem in its options"
+    },
+    "script.step.Recover File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Refresh Object": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Refresh Object' (/0) has a problem in its options"
+    },
+    "script.step.Refresh Portal": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Refresh Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Relookup Field Contents": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Relookup Field Contents' (/0) has a problem in its options"
+    },
+    "script.step.Rename File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Rename File' (/0) has a problem in its options"
+    },
+    "script.step.Replace Field Contents": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Replace Field Contents' (/0) has a problem in its options"
+    },
+    "script.step.Reset Account Password": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Revert Record/Request": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Revert Transaction": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Save Records as Excel": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Save Records as JSONL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Save Records as JSONL' (/0) has a problem in its options"
+    },
+    "script.step.Save Records as PDF": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Save Records as Snapshot Link": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Save a Copy as": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Save a Copy as Add-on Package": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Save a Copy as Add-on Package' (/0) has a problem in its options"
+    },
+    "script.step.Save a Copy as XML": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Save a Copy as XML' (/0) has a problem in its options"
+    },
+    "script.step.Scroll Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Select All": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Select Dictionaries": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Select Window": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Send DDE Execute": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Send Event": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Send Mail": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set AI Call Logging": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Data File Position": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Data File Position' (/0) has a problem in its options"
+    },
+    "script.step.Set Dictionary": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Error Capture": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Error Logging": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Field": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Field' (/0) has a problem in its options"
+    },
+    "script.step.Set Field by Name": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Field by Name' (/0) has a problem in its options"
+    },
+    "script.step.Set Layout Object Animation": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Multi-User": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Next Serial Value": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Next Serial Value' (/0) has a problem in its options"
+    },
+    "script.step.Set Revert Transaction on Error": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Selection": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Selection' (/0) has a problem in its options"
+    },
+    "script.step.Set Session Identifier": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Use System Formats": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Variable": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Variable' (/0) has a problem in its options"
+    },
+    "script.step.Set Web Viewer": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Set Web Viewer' (/0) has a 'action' FileMaker does not recognize, and will not open "
+    },
+    "script.step.Set Window Title": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Set Zoom Level": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show All Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show Custom Dialog": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show Omitted Only": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show/Hide Menubar": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show/Hide Text Ruler": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Show/Hide Toolbars": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Sort Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Sort Records by Field": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Sort Records by Field' (/0) has a problem in its options"
+    },
+    "script.step.Speak": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Spelling Options": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Trigger Claris Connect Flow": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Trigger Claris Connect Flow' (/0) has a problem in its options"
+    },
+    "script.step.Truncate Table": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Undo/Redo": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Unsort Records": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Validate Scripts": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Validate Scripts' (/0) has a problem in its options"
+    },
+    "script.step.View As": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, no warnings"
+    },
+    "script.step.Write to Data File": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "authored bare, with warnings: step 'Write to Data File' (/0) has a problem in its options"
+    },
+    "calculation.evaluate": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "evaluated to 2",
+      "quirk": "76",
+      "recipe": "Evaluate a calculation from the shell",
+      "ops": [
+        {
+          "op": "evaluate:calculation",
+          "calculation": "1 + 1",
+          "context": "C"
+        }
+      ]
+    },
+    "calculation.evaluate.objectShape": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: 'calculation' must be of type string",
+      "quirk": "76",
+      "workaround": "Use \"calculation\": \"1 + 1\", \"context\": \"C\" as siblings."
+    },
+    "calculation.validate": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted",
+      "recipe": "Check a formula compiles before writing it anywhere",
+      "ops": [
+        {
+          "op": "validate:calculation",
+          "calculation": "Upper ( Name )",
+          "context": "C"
+        }
+      ]
+    },
+    "calculation.validate.invalidStatus": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "status \"ok\" but result.valid is false (calc_unexpected_token) -- branching on status alone would have accepted it",
+      "quirk": "new",
+      "recipe": "Tell whether a formula is valid",
+      "ops": [
+        {
+          "op": "validate:calculation",
+          "calculation": "Upper ( ",
+          "context": "C"
+        }
+      ]
+    },
+    "calculation.validate.fieldChecked": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "status \"ok\" but result.valid is false (field_missing) -- branching on status alone would have accepted it"
+    },
+    "calculation.sameBatchContext": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: the calculation could not be parsed (DBError 8309)",
+      "quirk": "10",
+      "workaround": "Split it: create the schema in one fm invocation, then evaluate in a second. A table occurrence created earlier in the SAME batch is not yet usable as an evaluation context -- it fails with DBError 8309 ('could not be parsed'), which reads like a syntax error and is not. Worse, the batch then rolls back, so the table you just created is gone too."
+    },
+    "calculation.executeSQL": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "SQL returned '0' with no connector running",
+      "quirk": "33",
+      "recipe": "Read FileMaker data headlessly, with no connector",
+      "ops": [
+        {
+          "op": "evaluate:calculation",
+          "context": "C",
+          "calculation": "ExecuteSQL ( \"SELECT COUNT(*) FROM C\" ; \"\" ; \"\" )"
+        }
+      ]
+    },
+    "calculation.functions.aggregate": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.container": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.date": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.design": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.get": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.json": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.logical": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.number": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.text": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "calculation.functions.text-formatting": {
+      "status": "works",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "accepted"
+    },
+    "file.options": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no catalog or op for file options -- the boundary holds",
+      "quirk": "34",
+      "workaround": "Not in the surface. Author a Startup script with fm, then wire it to OnFirstWindowOpen by hand in FileMaker Pro -- that wiring is GUI-only. Consequence: a file reopens on whatever layout its front window last showed, so never leave the connector layout frontmost."
+    },
+    "script.folder.create": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no create op for script folders -- the boundary holds",
+      "quirk": "74",
+      "workaround": "No op makes one. Omit `folder` on create:script, or make the folder in FileMaker Pro first."
+    },
+    "style.create": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no style catalog -- the boundary holds",
+      "quirk": "16",
+      "workaround": "Styles cannot be created. updateObjects accepts a `style` key that selects an EXISTING theme style by name."
+    },
+    "layout.render": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no op or verb that renders a layout -- the boundary holds",
+      "quirk": "36",
+      "workaround": "Nothing in ADT renders a native layout -- no MCP tool, no fm op, no CLI verb. Browser preview covers web viewer apps only. The gap is filled locally by the ADT Helper plug-in (docs/visual-verification.md)."
+    },
+    "data.records": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no record catalog -- the boundary holds",
+      "workaround": "fm is a SCHEMA tool. For reads use evaluate:calculation with ExecuteSQL; for writes, author a script with fm and trigger it, or use the Data API / OData on a hosted file."
+    },
+    "privilegeSet.tableAccess": {
+      "status": "supported",
+      "tier": "accepted",
+      "reached": "accepted",
+      "detail": "this build HAS table/record grant keys on create:privilegeSet -- the boundary has lifted, so this is a new capability",
+      "quirk": "59",
+      "workaround": "File-level options only, so a custom set sees no records. Bind agent accounts to the built-in [Data Entry Only] or [Read-Only Access]."
+    },
+    "script.performFind.requests": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no requests/criteria key on the Perform Find step -- the boundary holds",
+      "quirk": "45",
+      "workaround": "Perform Find exposes only `restore`. Build the find as Enter Find Mode (22) -> Set Field -> Perform Find (28)."
+    },
+    "script.step.Export Records.settings": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no writable settings for the 'Export Records' step -- the boundary holds",
+      "workaround": "Author the step bare with fm, then set its options in FileMaker Pro. The step itself can be placed in a script body; only its settings are out of reach."
+    },
+    "script.step.Import Records.settings": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no writable settings for the 'Import Records' step -- the boundary holds",
+      "workaround": "Author the step bare with fm, then set its options in FileMaker Pro. The step itself can be placed in a script body; only its settings are out of reach."
+    },
+    "script.step.Page Setup.settings": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no writable settings for the 'Page Setup' step -- the boundary holds",
+      "workaround": "Author the step bare with fm, then set its options in FileMaker Pro. The step itself can be placed in a script body; only its settings are out of reach."
+    },
+    "script.step.Print.settings": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "this build has no writable settings for the 'Print' step -- the boundary holds",
+      "workaround": "Author the step bare with fm, then set its options in FileMaker Pro. The step itself can be placed in a script body; only its settings are out of reach."
+    },
+    "multifile.eds.create": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "recipe": "Register another FileMaker file as a data source",
+      "ops": [
+        {
+          "op": "create:externalDataSource",
+          "name": "Data",
+          "paths": [
+            "file:{{Data}}"
+          ]
+        }
+      ]
+    },
+    "multifile.eds.paths": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "92",
+      "recipe": "Give a data source a hosted path with a local fallback",
+      "ops": [
+        {
+          "op": "update:externalDataSource",
+          "name": "Data",
+          "paths": [
+            "fmnet:/fms.example.com/Data",
+            "file:{{Data}}"
+          ]
+        }
+      ]
+    },
+    "multifile.to.qualified": {
+      "status": "unsupported",
+      "tier": "accepted",
+      "reached": null,
+      "detail": "refused as expected: cannot name the base table 'Items' in 'Data': that file is not open here, so its table catalog cannot be read. Only local file references are opened -- a hosted one is not",
+      "quirk": "91",
+      "workaround": "Use the id form: {\"dataSource\": \"Data\", \"tableId\": 129}. Read the id with read:table against the data file first. On 0.5.0 the qualified form says the file is not open even when it sits beside the UI file (quirk 91)."
+    },
+    "multifile.to.byId": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "read back as an external occurrence (resolved:false, dataSource named)",
+      "quirk": "91",
+      "recipe": "Add a table from another FileMaker file to the graph",
+      "ops": [
+        {
+          "op": "create:tableOccurrence",
+          "name": "Data_Items",
+          "dataSource": "Data",
+          "tableId": 129,
+          "graph": {
+            "bounds": {
+              "left": 400,
+              "top": 40,
+              "width": 180,
+              "height": 160
+            },
+            "color": "#4A90D9"
+          }
+        }
+      ]
+    },
+    "multifile.relation": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "91",
+      "recipe": "Join a local table to a table in another file",
+      "ops": [
+        {
+          "op": "create:relation",
+          "left": "Orders",
+          "right": "Data_Items",
+          "predicates": [
+            {
+              "leftField": "SKU",
+              "op": "=",
+              "rightFieldId": 1
+            }
+          ]
+        }
+      ]
+    },
+    "multifile.layout.externalField": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "91",
+      "recipe": "Show a field from another file on a layout",
+      "ops": [
+        {
+          "op": "create:layout",
+          "name": "OrderEntry",
+          "tableOccurrence": "Orders",
+          "baseWidth": 700,
+          "bodyHeight": 400,
+          "objects": [
+            {
+              "type": "field",
+              "field": "Orders::SKU",
+              "objectName": "sku",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 200,
+                "height": 24
+              }
+            },
+            {
+              "type": "field",
+              "fieldOccurrence": "Data_Items",
+              "fieldId": 2,
+              "objectName": "description",
+              "bounds": {
+                "left": 20,
+                "top": 60,
+                "width": 300,
+                "height": 24
+              }
+            },
+            {
+              "type": "portal",
+              "tableOccurrence": "Data_Items",
+              "objectName": "items",
+              "rows": 5,
+              "bounds": {
+                "left": 20,
+                "top": 100,
+                "width": 400,
+                "height": 150
+              },
+              "objects": [
+                {
+                  "type": "field",
+                  "fieldOccurrence": "Data_Items",
+                  "fieldId": 3,
+                  "bounds": {
+                    "left": 0,
+                    "top": 0,
+                    "width": 100,
+                    "height": 24
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "multifile.dataSeparation": {
+      "status": "works",
+      "tier": "persisted",
+      "reached": "persisted",
+      "detail": "accepted and read back",
+      "quirk": "91",
+      "recipe": "Data separation: a UI file over a data file",
+      "ops": [
+        {
+          "op": "create:tableOccurrence",
+          "name": "Items",
+          "dataSource": "Data",
+          "tableId": 129,
+          "graph": {
+            "bounds": {
+              "left": 40,
+              "top": 40,
+              "width": 180,
+              "height": 160
+            }
+          }
+        },
+        {
+          "op": "create:tableOccurrence",
+          "name": "Vendors",
+          "dataSource": "Data",
+          "tableId": 130,
+          "graph": {
+            "bounds": {
+              "left": 400,
+              "top": 40,
+              "width": 180,
+              "height": 160
+            }
+          }
+        },
+        {
+          "op": "create:relation",
+          "left": "Items",
+          "right": "Vendors",
+          "predicates": [
+            {
+              "leftFieldId": 4,
+              "op": "=",
+              "rightFieldId": 2
+            }
+          ]
+        },
+        {
+          "op": "create:layout",
+          "name": "Item List",
+          "tableOccurrence": "Items",
+          "baseWidth": 700,
+          "bodyHeight": 300,
+          "objects": [
+            {
+              "type": "field",
+              "fieldOccurrence": "Items",
+              "fieldId": 1,
+              "objectName": "sku",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 150,
+                "height": 24
+              }
+            },
+            {
+              "type": "field",
+              "fieldOccurrence": "Items",
+              "fieldId": 2,
+              "objectName": "description",
+              "bounds": {
+                "left": 190,
+                "top": 20,
+                "width": 300,
+                "height": 24
+              }
+            },
+            {
+              "type": "field",
+              "fieldOccurrence": "Vendors",
+              "fieldId": 1,
+              "objectName": "vendor",
+              "bounds": {
+                "left": 20,
+                "top": 60,
+                "width": 300,
+                "height": 24
+              }
+            }
+          ]
+        },
+        {
+          "op": "create:layout",
+          "name": "Vendor Detail",
+          "tableOccurrence": "Vendors",
+          "baseWidth": 700,
+          "bodyHeight": 300,
+          "objects": [
+            {
+              "type": "field",
+              "fieldOccurrence": "Vendors",
+              "fieldId": 1,
+              "objectName": "name",
+              "bounds": {
+                "left": 20,
+                "top": 20,
+                "width": 300,
+                "height": 24
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

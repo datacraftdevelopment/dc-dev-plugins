@@ -23,7 +23,7 @@
     {
       "name": "fm-adt-helper",
       "source": "./fm-adt-helper",
-      "description": "Agentic FileMaker development for ADT-equipped machines — installed INSTEAD of fm-dc wherever the Claris Agentic Development Toolkit (ADT 0.4.0) CLIs are present. Carries the ADT workflow doctrine: two-lane architecture (fm CLI schema lane needs no handshake; MCP/script lane rides the connector), NDJSON ops discipline, connection lifecycle + unwedge playbook, web viewer app pipeline, native layout authoring with its rendering traps, and the master quirks list. Ships the ADT Helper FileMaker plug-in (window snapshots for visual verification)."
+      "description": "Agentic FileMaker development for ADT-equipped machines — installed INSTEAD of fm-dc wherever the Claris Agentic Development Toolkit (ADT 0.7.0) CLIs are present. Carries the ADT workflow doctrine: two-lane architecture (fm CLI schema lane needs no handshake; MCP/script lane rides the connector), NDJSON ops discipline, connection lifecycle + unwedge playbook, web viewer app pipeline, native layout authoring with its rendering traps, and the master quirks list. Ships the ADT Helper FileMaker plug-in (window snapshots for visual verification)."
     },
     {
       "name": "agenticdev-filemaker-standards",
