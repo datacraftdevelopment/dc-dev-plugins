@@ -40,7 +40,7 @@ Run this from a Git checkout. The builder reads the current contents of tracked
 files, including edits, but excludes untracked/ignored files and rejects symlinks.
 Add new source files to Git's index before building. This prevents local virtual
 environments, sandbox databases, personal tracking, and client files entering a
-package. The `fm-lens/` plugin (formerly `fm-adt-helper/`) is intentionally outside this build.
+package. The `fm-lens` plugin (formerly `fm-adt-helper`) is intentionally outside this build; its source moved to the private FM_Agent_Lens repo (`lens/`) on 2026-09-16.
 
 Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,ui-test,basecamp-dc}`, validates
 them with Codex's plugin-creator helper, registers them in
