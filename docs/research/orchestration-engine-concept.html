@@ -1,0 +1,263 @@
+<title>Orchestration Engine Concept</title>
+<style>
+  :root {
+    --bg: #F4ECE0; --panel: #EDE3D3; --ink: #2D241B; --muted: #7A6B59;
+    --accent: #B5452A; --rule: #D9CFC0; --good: #4F6B3A; --warn: #9A6A12; --new: #B5452A;
+    --bar-lead: #B5452A; --bar-work: #6F8A8C; --bar-est: #C9A48F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E1813; --panel: #29211A; --ink: #EBDFCE; --muted: #A89680;
+      --accent: #E0805F; --rule: #3D3228; --good: #9DBB80; --warn: #D9A94A; --new: #E0805F;
+      --bar-lead: #D46A48; --bar-work: #7FA3A6; --bar-est: #7A5A4A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E1813; --panel: #29211A; --ink: #EBDFCE; --muted: #A89680;
+    --accent: #E0805F; --rule: #3D3228; --good: #9DBB80; --warn: #D9A94A; --new: #E0805F;
+    --bar-lead: #D46A48; --bar-work: #7FA3A6; --bar-est: #7A5A4A;
+  }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 20px; padding-block: 3.5rem;
+  }
+  main { max-width: 68ch; margin: 0 auto; display: flex; flex-direction: column; gap: 0; }
+  h1, h2, h3 { font-family: Charter, "Iowan Old Style", Georgia, serif; text-wrap: balance; }
+  h1 { font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.15; margin: 0 0 1rem; }
+  h2 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 .6rem; }
+  h3 { font-size: 1.1rem; margin: 0 0 .3rem; }
+  p { margin: 0 0 .9rem; }
+  code { font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel); padding: .08em .35em; border-radius: 3px; }
+  .eyebrow, .label { text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; color: var(--muted); }
+  .eyebrow { margin-bottom: .6rem; }
+  .meta { color: var(--muted); font-size: .95rem; margin-bottom: 0; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  section { border-top: 1px solid var(--rule); padding-block: 2.2rem; }
+  header { padding-bottom: 2.2rem; }
+  .verdict { background: var(--panel); border-left: 4px solid var(--accent); padding: 1.3rem 1.4rem; }
+  .verdict h2 { margin-bottom: .5rem; }
+  .verdict p:last-child, .card p:last-child { margin-bottom: 0; }
+  .row { display: grid; grid-template-columns: 8.5rem 1fr; gap: .3rem 1rem; font-size: .93rem; margin-top: .55rem; }
+  .row .label { padding-top: .25rem; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; gap: 0; margin-top: .8rem; } }
+  .card { padding-block: 1.3rem; border-top: 1px dashed var(--rule); }
+  .card:first-of-type { border-top: 0; padding-top: .4rem; }
+  .tag { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+  .tag.exists { color: var(--good); } .tag.new { color: var(--new); } .tag.warn { color: var(--warn); }
+  .wide { overflow-x: auto; margin-block: 1rem; }
+  pre.mermaid { margin: 0; min-width: 560px; background: transparent; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 520px; }
+  th, td { text-align: left; vertical-align: top; padding: .5rem .7rem .5rem 0; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 600; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bars { display: flex; flex-direction: column; gap: .7rem; margin-block: 1.2rem .6rem; }
+  .bar { display: grid; grid-template-columns: 11.5rem 1fr; gap: .8rem; align-items: center; font-size: .88rem; }
+  @media (max-width: 520px) { .bar { grid-template-columns: 1fr; gap: .2rem; } }
+  .track { display: flex; align-items: center; gap: .5rem; }
+  .fill { height: 1.05rem; border-radius: 2px; min-width: 3px; }
+  .fill.lead { background: var(--bar-lead); } .fill.work { background: var(--bar-work); }
+  .fill.est { background: repeating-linear-gradient(45deg, var(--bar-est) 0 6px, transparent 6px 10px); border: 1px solid var(--bar-est); }
+  .val { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .note { font-size: .85rem; color: var(--muted); }
+  ol.ladder { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-direction: column; gap: 1.1rem; counter-reset: rung; }
+  ol.ladder li { display: grid; grid-template-columns: 2.2rem 1fr; gap: .2rem .8rem; counter-increment: rung; }
+  ol.ladder li::before { content: counter(rung); font-family: Charter, Georgia, serif; font-size: 1.5rem; line-height: 1.2; color: var(--accent); }
+  ol.ladder li > div > p { margin-bottom: .3rem; }
+  .stop { font-size: .88rem; color: var(--muted); }
+  .stop b { color: var(--ink); }
+  ul { margin: 0 0 .9rem; padding-left: 1.2rem; } li { margin-bottom: .35rem; }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Concept · parked on purpose · 2026-09-20</div>
+  <h1>Move the orchestration loop out of the model's head.</h1>
+  <p class="meta">
+    <b>What this is for:</b> so "let's talk about the engine build" starts with the thinking already done.<br>
+    <b>Good looks like:</b> more accepted tickets per week of plan allowance, with Joe away, on any host: Claude Code, Codex, Cursor. At the same quality. Less intervention that produces garbage is a loss, so quality is the gate on every rung below, ahead of tokens.<br>
+    <b>What it is not:</b> a new tool, a Hermes replacement, or anything Claude-only. Nothing here is built.
+  </p>
+</header>
+
+<section>
+  <div class="verdict">
+    <div class="eyebrow">The pushback, first</div>
+    <h2>Good idea. Don't build it. Maybe not ever.</h2>
+    <p>The cost problem this solves had one cause: the Marvel run started inside a day-old session already holding 327K tokens. A fresh session fixes that for free, and pm 0.21 now requires it. That fix hasn't been run once yet.</p>
+    <p>Most of the engine also already exists. <code>build-swarm</code>'s <code>loop.py</code> is this loop, in code, over Ringer, and it has never run on a real repo. Building a layer on top of a loop you haven't used is the pattern you asked me to call out: dc-loop (parked as too big), the Hermes pilots, build-swarm, and now this, in under four weeks.</p>
+    <p><b>Your own logs agree.</b> The week orchestration started, Claude Code usage went from about 1.0 to 1.2 billion tokens a week to 2.5 billion. Context per call didn't move (238K, 190K, 234K). Calls doubled, 5,200 to 10,900. Orchestration costs more because it is more model calls at once, and an engine shrinks context per call, which isn't what grew. What nobody has measured is tokens per <i>accepted ticket</i>. That number decides this, not the weekly total.</p>
+    <p><b>Flip condition:</b> two fresh-session runs where the lead seat still out-spends its workers, <i>and</i> you are actually hitting the weekly limit. Until both are true, this page is a parking spot.</p>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">The problem, measured</div>
+  <h2>The orchestrator re-reads itself on every call.</h2>
+  <p>A model has no memory. Each call resends the whole conversation. An orchestrator that lives in one long conversation pays for that conversation on every step, whatever model it is.</p>
+  <div class="bars">
+    <div class="bar"><div>Hermes pilot 2, lead seat</div><div class="track"><div class="fill lead" style="width:100%"></div><span class="val">73.7M</span></div></div>
+    <div class="bar"><div>Marvel, lead seat (Fable)</div><div class="track"><div class="fill lead" style="width:74%"></div><span class="val">54.6M</span></div></div>
+    <div class="bar"><div>Marvel, all 8 workers</div><div class="track"><div class="fill work" style="width:27%"></div><span class="val">20.15M</span></div></div>
+    <div class="bar"><div>Marvel lead, if lean</div><div class="track"><div class="fill est" style="width:20%"></div><span class="val">~15M, estimate</span></div></div>
+  </div>
+  <p class="note">Tokens, cache reads included. Marvel: 125 calls at about 436K each (327K at the first call, 532K at the last). Hermes: 311 calls at about 236K. The last bar is arithmetic, not a measurement: the same 125 calls at a 120K average. That bar is the whole argument for trying the free fix first.</p>
+  <p>Hermes can cap its context with one setting. A Claude Code or Codex session mostly can't. Code has no context at all, and state on disk costs nothing to keep. That is the engine idea.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Where everything fits</div>
+  <h2>Four layers you already own, one thin addition.</h2>
+  <div class="wide"><pre class="mermaid">
+flowchart TB
+    J([Joe])
+    subgraph H [Host session: Claude Code, Codex or Cursor]
+      S[Front desk: brief in, report out]
+    end
+    subgraph PM [pm plugin: the rules]
+      O[orchestrate skill and WORKFLOW]
+    end
+    subgraph BS [build-swarm: the loop, in code]
+      L[loop.py: frontier, prove red, dispatch, integrate, commit, park]
+      N[NEW: prep, review and report steps]
+    end
+    subgraph RG [Ringer: the transport]
+      R[run tasks in worktrees, execute checks, retry, scoreboard]
+    end
+    subgraph W [Worker lanes]
+      W1[claude]
+      W2[codex]
+      W3[any CLI]
+    end
+    D[(Disk: tickets, checks, integration branch, run records)]
+    J <--> S
+    S --> O
+    O --> L
+    N -.-> L
+    L --> R
+    N -.-> R
+    R --> W1 & W2 & W3
+    L <--> D
+    R <--> D
+  </pre></div>
+  <table>
+    <tr><th>Piece</th><th>Its one job</th><th>Status</th></tr>
+    <tr><td>Host session</td><td>Talk to Joe. Hold the brief and the report, nothing else.</td><td><span class="tag exists">exists</span></td></tr>
+    <tr><td>pm <code>orchestrate</code></td><td>The rules: budget, gates, integration branch, report shape.</td><td><span class="tag exists">0.21, today</span></td></tr>
+    <tr><td><code>build-swarm</code> <code>loop.py</code></td><td>Work a ticket DAG in waves, deterministically.</td><td><span class="tag exists">exists</span> <span class="tag warn">unused on a real repo</span></td></tr>
+    <tr><td>Ringer</td><td>Run a worker, run its check, record the result.</td><td><span class="tag exists">in daily use</span></td></tr>
+    <tr><td>Three judgment steps</td><td>Prep, review, report, as stateless Ringer tasks.</td><td><span class="tag new">the only new part</span></td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="eyebrow">Today against the engine</div>
+  <h2>Same work. The difference is who holds the state.</h2>
+  <h3>Today: the session is the loop</h3>
+  <div class="wide"><pre class="mermaid">
+flowchart LR
+    S[One long session] -->|writes tests, specs, manifests| R[Ringer]
+    R -->|results land in the conversation| S
+    S -->|reads patches, integrates, verifies| S
+    S -->|next wave| R
+    S --> X[Context grows every step: 327K to 532K]
+  </pre></div>
+  <h3>Engine: the loop is code, the model is a guest</h3>
+  <div class="wide"><pre class="mermaid">
+flowchart LR
+    S[Session] -->|accepted brief| P[Prep step]
+    P -->|committed checks, Owns| L[loop.py]
+    L <--> R[Ringer workers]
+    L -->|diff plus one question| V[Review step]
+    V -->|findings become ticket states| L
+    L -->|run records| T[Report step]
+    T --> S
+    L <--> D[(Disk)]
+  </pre></div>
+  <p class="note">Each step is a fresh call with a small packet. No step keeps a conversation. Nothing a model writes decides what runs next except through a ticket.</p>
+</section>
+
+<section>
+  <div class="eyebrow">The three new steps</div>
+  <h2>Everything else stays deterministic.</h2>
+
+  <div class="card">
+    <h3>1. Prep</h3>
+    <p>One Ringer task per ticket, run as a wave before the build wave. It writes the ticket's check, proves it red, and proposes the owned files.</p>
+    <div class="row"><div class="label">Replaces</div><div>The session scouting and writing acceptance tests: 16 minutes and most of the context in Marvel.</div></div>
+    <div class="row"><div class="label">Packet</div><div>The ticket, the intent's constraints, the few interface files a cheap scout names.</div></div>
+    <div class="row"><div class="label">Risk</div><div>The big one. Marvel's tests were the best thing in that run, and they were written with the whole repo in mind. A thin packet may produce weak or vacuous checks, and then everything downstream is confidently wrong.</div></div>
+  </div>
+
+  <div class="card">
+    <h3>2. Review</h3>
+    <p>One bounded read of the integrated diff per wave, conditional like pm's review schedule. Not a panel after every green.</p>
+    <div class="row"><div class="label">Replaces</div><div>The session reading each patch. Or, with <code>loop.py</code> today, nobody reading it until the gate.</div></div>
+    <div class="row"><div class="label">Packet</div><div>Intent, diff, check evidence, one question.</div></div>
+    <div class="row"><div class="label">Risk</div><div>It spends back some of the tokens the engine saved. Marvel's README passed its check with three wrong statements; only a read caught them, so this step can't be dropped.</div></div>
+  </div>
+
+  <div class="card">
+    <h3>3. Report</h3>
+    <p>One call over the run records at the end. Shipped, what each check proved, not verified, waiting on Joe, seat usage.</p>
+    <div class="row"><div class="label">Replaces</div><div>The session writing the report from a full context: 20.5M more tokens in Marvel.</div></div>
+    <div class="row"><div class="label">Packet</div><div>Run records, ticket states, commits.</div></div>
+    <div class="row"><div class="label">Risk</div><div>Low. Mostly templating.</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">The ledger</div>
+  <h2>What it adds, against what it returns.</h2>
+  <div class="wide"><table>
+    <tr><th>Adds</th><th>Returns</th></tr>
+    <tr><td>A new failure class: bad checks written from thin packets.</td><td>Lead-seat tokens drop from tens of millions to a few, if prep holds up.</td></tr>
+    <tr><td>Packet-building logic to design, test and keep current.</td><td>Host-agnostic for real: the loop doesn't care which CLI started it.</td></tr>
+    <tr><td>More code on a skill that is already 2,700 lines plus 6,500 of tests.</td><td>Runs that survive a session dying, because state is on disk.</td></tr>
+    <tr><td>A less conversational run: harder to steer mid-wave than a session.</td><td>Longer unattended stretches inside one week's allowance.</td></tr>
+  </table></div>
+  <p>The return is tokens on a plan allowance, not dollars. It only matters if the limit is what stops you. After the Marvel run the weekly Fable meter read 24% with five days left. The Codex week in the Hermes pilot did run out, on a 900K window that has since been capped and not re-tested.</p>
+  <p><b>Honest read:</b> the Marvel run shipped eight tickets in fifty minutes, all first try. The process works. What's unproven is whether it's too expensive once the free fix is in.</p>
+</section>
+
+<section>
+  <div class="eyebrow">The path, cheapest first</div>
+  <h2>Three free rungs before any build.</h2>
+  <ol class="ladder">
+    <li><div>
+      <p><b>Run pm 0.21 as written.</b> Next orchestrated job: fresh session from a written brief, Ringer output read by path, seat usage in the report.</p>
+      <p class="stop"><b>Stop here if</b> lead-seat tokens come in at or below the workers'. The engine stays parked.</p>
+    </div></li>
+    <li><div>
+      <p><b>Use the loop you already have.</b> Prepare three real tickets by hand and run <code>loop.py --wave 1</code> on an integration branch. This is build-swarm's own overdue proving run.</p>
+      <p class="stop"><b>Stop here if</b> the session's share is now small enough. Then the lesson is "prepare tickets and use build-swarm", and nothing new gets built.</p>
+    </div></li>
+    <li><div>
+      <p><b>Prove prep by hand.</b> Same three tickets, but prep runs as plain Ringer tasks with hand-built packets. Compare the checks they write against the ones you'd have written.</p>
+      <p class="stop"><b>Stop here if</b> the checks are weaker, or the whole thing isn't at least three times cheaper at the same first-try rate.</p>
+    </div></li>
+    <li><div>
+      <p><b>Only now, build.</b> Packet builder plus three task templates, inside <code>build-swarm</code>. Read dc-loop's ADR 0006 first so the same weight isn't rebuilt.</p>
+      <p class="stop"><b>Size it as</b> three manifest templates and one script. If the plan grows past that, that is the signal to stop.</p>
+    </div></li>
+  </ol>
+</section>
+
+<section>
+  <div class="eyebrow">Open questions for the build conversation</div>
+  <h2>What we don't know yet.</h2>
+  <ul>
+    <li>Does prep quality survive a small packet? Rung 3 answers it. Everything hangs on this.</li>
+    <li>Who picks the interface files for a packet: a cheap model, or grep rules?</li>
+    <li>One prep task per ticket, or one per brief so shared fixtures agree?</li>
+    <li>How does a session start a run and watch it without holding its output? Likely: start detached, read <code>control.py status</code>, read the final report.</li>
+    <li>Why exactly was dc-loop parked? Its ADR 0006 isn't on this Mac and wasn't read for this sketch.</li>
+    <li>Claude Code's Projects beta has the same shape (one coordinator, a cloud thread per task, the coordinator sees reports only). It is Claude-only, cloud-only and has no executed checks, so it doesn't replace this. If the contract stays brief → tickets with checks → reports, it could later be one more lane.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">Where the thinking lives</div>
+  <p class="note">In <code>dc-dev-plugins</code>: <code>docs/research/orchestration-engine-concept.md</code> (the agent-readable version of this page) · <code>docs/intent/pm-021-orchestrated-runs.md</code> (evidence and numbers) · <code>docs/research/orchestrate-ringer-field-report-marvel-2026-09-20.md</code> · <code>docs/research/hermes-tokenusage-pilot-2-2026-09-15.md</code>. The loop itself: the <code>build-swarm</code> skill under the library's <code>skills/agent-operations/</code>. Library background: <code>token-economics</code>, <code>loop-engineering</code>, <code>open-engine</code>, <code>software-factory</code>.</p>
+</section>
+</main>
