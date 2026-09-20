@@ -33,7 +33,10 @@ class OwnedPluginRefreshTests(unittest.TestCase):
     def test_new_plugins_are_in_default_catalog(self):
         self.assertTrue({'ui-test', 'basecamp-dc'} <= set(build_codex.PLUGINS))
         market = json.loads((build_codex.ROOT / '.claude-plugin/marketplace.json').read_text())
-        self.assertEqual(set(build_codex.PLUGINS), {p['name'] for p in market['plugins']})
+        # Only local ./subfolder sources can be packaged; git-subdir pointers
+        # (fm-lens, agenticdev-filemaker-standards) live in another repo.
+        local = {p['name'] for p in market['plugins'] if isinstance(p['source'], str)}
+        self.assertEqual(set(build_codex.PLUGINS), local)
 
     def test_owned_sources_detect_content_version_and_adapter_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
