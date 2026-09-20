@@ -77,6 +77,8 @@ and record the state of any durable paused worker before leaving.
 
 **9. Sign off.** One short summary: what shipped vs. intended (call out drift), what's queued on the tracker, and the one or two threads the next session should open on.
 
+**10. Offer the next session.** If ready work remains, offer to open a fresh session for it. (Several independent tickets to run at once is the [sibling-sessions](../sibling-sessions/SKILL.md) skill, not this step.) One offer, one session, and the user stays in the loop in it: this is not a succession chain and needs no reservation or budget. On a yes, use the host's session-creation control with a short self-contained prompt: the checkout path, "run `whats-next`", the one or two threads from the sign-off, and this session's file as the handoff. Check where the host will start it. A control that only starts in a fresh worktree will not see uncommitted work or gitignored files such as `_pm/`; say so, and hand the user the prompt to paste into a session opened in the real checkout instead. A queued session or a click-to-start chip is reported as created and pending, never running. No control on this host: print the prompt. No ready work, or the user is done for the day: skip the offer.
+
 ## What this skill does NOT do
 
 - Commits and shared pushes require applicable authorization; reuse existing permission rather than offering the same action again.

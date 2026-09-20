@@ -1,6 +1,7 @@
 # PM model economy
 
-Status: accepted and implemented
+Status: accepted and implemented; amended 2026-09-20 by
+[pm-021](pm-021-orchestrated-runs.md)
 Date: 2026-09-15
 Source: Joe's direction in the Hermes / software-factory discussion
 
@@ -25,6 +26,14 @@ work completed over longer periods with less human intervention.
   Astra + Fable panel only when independent panel coverage matters.
 - Review packets contain the accepted intent, exact diff/revision, relevant
   evidence and unresolved question rather than full conversational history.
+
+## Amendment, 2026-09-20 (pm-021)
+
+Astra or Fable may hold the lead seat of an orchestrated run, from a fresh
+session on a context budget and as a manager-only seat. Everything else above
+stands: they are never implementation workers, and review still goes through
+Ringer. Measured cause: in both field runs the orchestrator's own context, not
+its model tier, was the larger cost.
 
 ## Acceptance
 

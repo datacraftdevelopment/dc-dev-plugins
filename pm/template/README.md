@@ -18,7 +18,8 @@ lives in `CLAUDE.md`).
    questions together in the orchestrator, with their record on the affected ticket.
 6. Use Sol for ordinary Codex sessions and Opus for ordinary Claude Code sessions.
    Astra and Fable are bounded Ringer review seats, invoked for a named risk rather
-   than after every successful chunk.
+   than after every successful chunk. Either may lead an orchestrated run from a
+   fresh session, manager-only.
 
 Stamped by the pm plugin's `/pm:pm-scaffold` (`datacraftdevelopment/dc-dev-plugins`).
 The workflow of record is that plugin's `WORKFLOW.md`.

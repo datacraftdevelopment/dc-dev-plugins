@@ -10,15 +10,25 @@ six active workers when ready and resourced). Worker assignments stay inside
 the parent ticket. Planning and additional review address concrete uncertainty;
 verification remains required and proportional. Ordinary interactive sessions
 use Sol in Codex and Opus in Claude Code; Astra and Fable are bounded review seats
-invoked through Ringer. Manual fresh sessions remain normal; automatic succession
+invoked through Ringer, and either may lead an orchestrated run from a fresh
+session as a manager-only seat. Manual fresh sessions remain normal; automatic succession
 is an opt-in experiment.
 
 Provides:
 
-- **`orchestrate`** — prepare shared scaffolding, dispatch ready worker nodes,
+- **Default loop** — `whats-next` opens a session, the work happens in it,
+  `stepping-away` closes it and offers a fresh session for the next ready work.
+
+- **`sibling-sessions`** — the default way to parallelize: two or three
+  independent ready tickets, each in its own ordinary session that owns its
+  ticket through its own merge. No orchestrator, no report-in.
+
+- **`orchestrate`** — opt-in, for a real batch while the user is away: prepare shared scaffolding, dispatch ready worker nodes,
   integrate and verify. One outcome may use several subagents without extra
   tickets. Routes ordinary execution to the least costly locally proven model;
-  reserves Astra/Fable capacity for bounded review. Reuses Ringer and, for
+  reserves Astra/Fable capacity for bounded review. Runs from a fresh session on
+  a context budget, writes acceptance tests before dispatch, commits verified
+  chunks to an integration branch and ends with one fixed-shape report. Reuses Ringer and, for
   prepared real ticket frontiers, build-swarm.
 
 - **`session-succession` beta** — one lean orchestrator, autonomous subagent work,

@@ -55,6 +55,7 @@ first written into it (`mkdir -p` then write) — presence means it was needed.
 | `knowledge/` | Curated project knowledge — always an OKF bundle (`okf` skill), never homegrown | facts turn entity-shaped: same tables/systems re-described across sessions, or a second consumer needs them |
 | `resources/` | Material **you bring in** from outside the Claude-driven workflow (`design-handoff/`, `design-exploration/`, `research/`, `history/` as needed) | first external file arrives |
 | `.scratch/<effort>/` | The tracker: map, spec, `issues/NN-<slug>.md` — Matt's local-markdown convention (`docs/agents/issue-tracker.md`) | `/wayfinder` or `/to-tickets` writes the first ticket |
+| `docs/agents/worker-env.md` | What a fresh worktree lacks, the repo's own verify command, the commands the worker lane allows, off-limits paths (`orchestrate` reads it) | the first orchestrated run in this repo writes it |
 | `docs/agents/client-face.md` | Optional: names a client-facing tracker and its close-out steps; `stepping-away` follows it (contract in the pm `stepping-away` skill) | the client-face tool's own setup writes it |
 | `_pm/transcripts/` | Meeting transcripts — client conversations, **gitignored** | first transcript kept (e.g. `granola-transcript` skill) |
 | `_pm/artifacts/` | Other raw inputs — customer docs, exports, recordings | first raw input that isn't a transcript |
@@ -96,8 +97,16 @@ and resource-release checks. Installation/scaffolding alone never opts this proj
   in Claude Code. Invoke Astra and Fable through Ringer for bounded reviews of a
   named uncertainty or material risk. Executable checks handle continuous
   verification; a successful chunk does not automatically trigger a reviewer.
+  Either may lead an orchestrated run only from a fresh session and manager-only
+  (pm `WORKFLOW.md`, lead seat).
 - **Skeleton first** — even a paragraph — before user stories or specs.
-- **Outcome-sized tickets.** Use `orchestrate` for authorized work: prepare shared
+- **One session, one outcome.** `whats-next` opens, the work happens in that
+  session, `stepping-away` closes and offers a fresh session for the next ready
+  work. Do not orchestrate by default. Two or three independent ready tickets
+  can run as **sibling sessions** (pm `sibling-sessions` skill): each its own
+  ordinary session through its own merge, nobody watching the others.
+- **Outcome-sized tickets.** `orchestrate` is opt-in, for a real batch of
+  independent tickets while the user is away: prepare shared
   scaffolding, dispatch ready branches of a dependency graph to up to six bounded
   subagents, then integrate and verify. Worker assignments are not extra tickets.
   Planning and additional review address named uncertainties, not every stage.

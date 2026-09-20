@@ -71,10 +71,15 @@ On resume/context recovery, read that file's opening Intent and latest Re-aimed 
 
 If the stream's wayfinder ticket is what's being picked up, **claim it on the tracker** (assign to self) — the assignee is the claim. For a succession handoff, confirm the chain's existing reservation and transfer it only after `begin`; do not create a competing claim.
 
-**6. Execute.** Use [orchestrate](../orchestrate/SKILL.md) for authorized
-implementation: shared setup, a dependency graph of bounded worker assignments,
-up to six ready subagents, then integration and proportionate verification.
-Worker briefs belong under the existing outcome ticket; do not generate a ticket
+**6. Execute.** Do the work in this session, one outcome at a time, with the
+user in the loop. That is the default. Reach for
+[orchestrate](../orchestrate/SKILL.md) only when the user asks for it, or when
+there is a real batch of independent tickets, each worth an hour or more, and
+the user will be away; say so and let them choose. Two or three ready tickets
+that are independent of each other go to sibling sessions first: use the
+[sibling-sessions](../sibling-sessions/SKILL.md) skill, which decides whether it
+is appropriate, launches them and then leaves them alone. When orchestrating, worker
+briefs belong under the existing outcome ticket; do not generate a ticket
 for each little task. Keep human questions on the tracker and surface them
 together in this conversation. A successor reaches this step only after `begin`.
 
