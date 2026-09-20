@@ -1,0 +1,212 @@
+<title>Sibling Sessions Map</title>
+<style>
+  :root {
+    --bg: #F4ECE0; --panel: #EDE3D3; --ink: #2D241B; --muted: #7A6B59;
+    --accent: #B5452A; --rule: #D9CFC0; --good: #4F6B3A; --warn: #9A6A12;
+    --b1: #B5452A; --b2: #6F8A8C; --b3: #C9A48F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E1813; --panel: #29211A; --ink: #EBDFCE; --muted: #A89680;
+      --accent: #E0805F; --rule: #3D3228; --good: #9DBB80; --warn: #D9A94A;
+      --b1: #D46A48; --b2: #7FA3A6; --b3: #7A5A4A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E1813; --panel: #29211A; --ink: #EBDFCE; --muted: #A89680;
+    --accent: #E0805F; --rule: #3D3228; --good: #9DBB80; --warn: #D9A94A;
+    --b1: #D46A48; --b2: #7FA3A6; --b3: #7A5A4A;
+  }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 20px; padding-block: 3.5rem;
+  }
+  main { max-width: 68ch; margin: 0 auto; }
+  h1, h2, h3 { font-family: Charter, "Iowan Old Style", Georgia, serif; text-wrap: balance; }
+  h1 { font-size: clamp(1.9rem, 5vw, 2.5rem); line-height: 1.15; margin: 0 0 1rem; }
+  h2 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 .6rem; }
+  h3 { font-size: 1.1rem; margin: 1.4rem 0 .3rem; }
+  p { margin: 0 0 .9rem; }
+  code { font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel); padding: .08em .35em; border-radius: 3px; }
+  pre.prompt { background: var(--panel); padding: 1rem 1.1rem; font: .82rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; border-left: 3px solid var(--rule); margin: .8rem 0 1rem; }
+  .eyebrow, .label { text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; color: var(--muted); }
+  .eyebrow { margin-bottom: .6rem; }
+  .meta { color: var(--muted); font-size: .95rem; margin-bottom: 0; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  section { border-top: 1px solid var(--rule); padding-block: 2.2rem; }
+  header { padding-bottom: 2.2rem; }
+  .callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 1.2rem 1.4rem; }
+  .callout p:last-child { margin-bottom: 0; }
+  .wide { overflow-x: auto; margin-block: 1rem; }
+  pre.mermaid { margin: 0; min-width: 560px; background: transparent; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 560px; }
+  th, td { text-align: left; vertical-align: top; padding: .5rem .8rem .5rem 0; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 600; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  td:first-child { font-weight: 600; }
+  .yes { color: var(--good); font-weight: 600; } .no { color: var(--warn); font-weight: 600; }
+  .bars { display: flex; flex-direction: column; gap: .7rem; margin-block: 1.2rem .6rem; }
+  .bar { display: grid; grid-template-columns: 12.5rem 1fr; gap: .8rem; align-items: center; font-size: .88rem; }
+  @media (max-width: 520px) { .bar { grid-template-columns: 1fr; gap: .2rem; } }
+  .track { display: flex; align-items: center; gap: .5rem; }
+  .fill { height: 1.05rem; border-radius: 2px; min-width: 3px; background: var(--b2); }
+  .fill.hot { background: var(--b1); }
+  .val { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .note { font-size: .85rem; color: var(--muted); }
+  ul.check { list-style: none; padding: 0; margin: .6rem 0 1rem; display: flex; flex-direction: column; gap: .45rem; }
+  ul.check li { display: grid; grid-template-columns: 1.4rem 1fr; gap: .4rem; }
+  ul.check li::before { content: "□"; color: var(--accent); }
+  ol { margin: 0 0 .9rem; padding-left: 1.3rem; } ol li { margin-bottom: .4rem; }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">pm 0.21.0 · how Joe works now · 2026-09-20</div>
+  <h1>One session per outcome. Siblings when the work is independent.</h1>
+  <p class="meta">
+    <b>What this is for:</b> one page to check the workflow against, and to hand a new session when it asks "how do we work here?"<br>
+    <b>Good looks like:</b> tickets accepted at the same quality, with usage back near the pre-orchestration weeks.<br>
+    <b>What it is not:</b> a new system. Same skills, same tracker, same Ringer. One new skill, one changed default.
+  </p>
+</header>
+
+<section>
+  <div class="callout">
+    <div class="eyebrow">What changed today</div>
+    <p><b>The old loop is the default again.</b> <code>whats-next</code> → do the work in that session → <code>stepping-away</code>, which now offers to open a fresh session for the next ready work.</p>
+    <p><b>Sibling sessions are how work runs in parallel.</b> Two or three independent tickets, each in its own ordinary session, each through its own merge. Nobody watches the others.</p>
+    <p><b><code>orchestrate</code> is opt-in.</b> A real batch of independent, meaty tickets while you're away. It keeps the stricter rules from pm-021.</p>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">The whole workflow</div>
+  <h2>From a loose ask to shipped.</h2>
+  <div class="wide"><pre class="mermaid">
+flowchart TB
+    I[Loose ask: docs/intent/inbox.md] -->|discovery, only if unclear| N[Intent: docs/intent]
+    N -->|to-tickets, only if it needs splitting| T[Tickets: the tracker]
+    T --> W[whats-next: pick the work, write the session Intent]
+    W --> Q{How should it run?}
+    Q -->|one ticket, or tickets that touch each other| A[Default loop: work here, Joe in the loop]
+    Q -->|2 or 3 independent tickets, Joe around| S[Sibling sessions]
+    Q -->|real batch, Joe away| O[orchestrate: Ringer workers, opt-in]
+    A --> X[stepping-away: close the record]
+    S --> X
+    O --> X
+    X -->|ready work remains| F[Offer: open a fresh session]
+    F --> W
+    X -->|intent fully built| H[ship-acceptance: evidence against the intent]
+  </pre></div>
+  <p class="note">Planning skills only fire to resolve a named uncertainty. A clear request goes straight to <code>whats-next</code> and work.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Choosing how to run the work</div>
+  <h2>Three modes. The first one is the answer most days.</h2>
+  <div class="wide"><table>
+    <tr><th></th><th>Default loop</th><th>Sibling sessions</th><th>orchestrate</th></tr>
+    <tr><td>Shape</td><td>One session, one outcome</td><td>2 or 3 ordinary sessions side by side</td><td>One lead session plus Ringer workers</td></tr>
+    <tr><td>Use when</td><td>Always, unless one of the others clearly fits</td><td>Ready tickets are independent and you're around</td><td>A real batch, each ticket an hour or more, and you're away</td></tr>
+    <tr><td>Joe in the loop</td><td>Yes</td><td>Yes, in every window</td><td>No, one report at the end</td></tr>
+    <tr><td>Who merges</td><td>The session, on your word</td><td>Each sibling merges its own, on your word</td><td>The lead commits to an integration branch; you merge or replay</td></tr>
+    <tr><td>Who watches</td><td>Nobody needed</td><td>Nobody. That is the point</td><td>The lead session, the whole run</td></tr>
+    <tr><td>Token shape</td><td>Baseline</td><td>Baseline times the number of siblings</td><td>Workers plus a lead that re-reads itself on every call</td></tr>
+    <tr><td>Ceiling</td><td>n/a</td><td>3 at once, counting this one</td><td>6 workers; a 150K context budget on the lead</td></tr>
+    <tr><td>Say</td><td>"what's next"</td><td>"sibling sessions if appropriate"</td><td>"orchestrate this"</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">Sibling sessions</div>
+  <h2>Independent tickets, independent sessions, no parent.</h2>
+  <div class="wide"><pre class="mermaid">
+flowchart LR
+    L[This session: screens the tickets, launches, then lets go]
+    L -.launch.-> S1
+    L -.launch.-> S2
+    subgraph S0 [This session]
+      A0[ticket A: work] --> M0[rebase, green, merge on Joe's word]
+    end
+    subgraph S1 [Sibling 1: own worktree and branch]
+      A1[whats-next on ticket B] --> B1[work] --> M1[rebase, green, merge on Joe's word] --> C1[stepping-away]
+    end
+    subgraph S2 [Sibling 2: own worktree and branch]
+      A2[whats-next on ticket C] --> B2[work] --> M2[rebase, green, merge on Joe's word] --> C2[stepping-away]
+    end
+    J([Joe]) <--> S0
+    J <--> S1
+    J <--> S2
+    M0 --> MAIN[(base branch)]
+    M1 --> MAIN
+    M2 --> MAIN
+  </pre></div>
+  <p class="note">Dotted lines are the only contact between sessions. After launch there is none: no polling, no reports, no sweep, no shared board.</p>
+
+  <h3>The screen: all of these, or it's a no</h3>
+  <ul class="check">
+    <li>At least two ready tickets that are real outcomes. Small fixes stay serial in one session.</li>
+    <li>Disjoint files, including lockfiles, generated code, migrations, schema and config registries.</li>
+    <li>At most one database writer. No shared port, dev server or browser profile.</li>
+    <li>No ticket needs another's output.</li>
+    <li>The machine has room: memory and CPU checked. Three builds at once ran the 16 GB Mac out of memory on 09-14.</li>
+    <li>You're around to answer each window. One lane sat four hours on a question nobody saw.</li>
+  </ul>
+  <p>The skill answers out loud, <span class="yes">yes</span> or <span class="no">no</span>, with the reason. On a no it names the alternative: serial in this session, or <code>orchestrate</code> if you'll be away.</p>
+
+  <h3>What a sibling is told</h3>
+<pre class="prompt">Repo: &lt;main checkout path&gt;. You are one of &lt;N&gt; sibling sessions; the others are
+working &lt;ticket ids&gt;, leave those alone.
+Run whats-next bound to ticket &lt;id&gt;: &lt;title&gt;. Do not pick other work.
+Work in your own worktree on branch &lt;name&gt;. Set the worktree up from
+docs/agents/worker-env.md if the repo has one.
+You own this ticket through its merge: rebase on &lt;base branch&gt;, get green on the
+rebased tree, then merge only when the user says so. Close with stepping-away.
+Do not message or wait on the other sessions.
+Handoff: &lt;this session's file&gt;.</pre>
+
+  <h3>The merge rule</h3>
+  <ol>
+    <li>First sibling ready merges first.</li>
+    <li>Later ones rebase onto it and rerun the checks on the rebased tree.</li>
+    <li>A conflict belongs to the sibling that hit it, in its own window.</li>
+    <li>Merge only on your word. Push, deploy and client messages keep their own permission.</li>
+  </ol>
+
+  <h3>Known catch</h3>
+  <p>A fresh worktree doesn't have uncommitted work or anything git ignores: env files, dependencies, local databases, and <code>_pm/</code> in repos that ignore it. Commit what a sibling needs before launching, and say in the prompt what it must set up. A launched session shows as <i>created and pending</i> until you click it.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Why it changed</div>
+  <h2>Orchestration doubled the calls, not the context.</h2>
+  <div class="bars">
+    <div class="bar"><div>09-01 to 09-06</div><div class="track"><div class="fill" style="width:49%"></div><span class="val">1,236M · 5,185 calls</span></div></div>
+    <div class="bar"><div>09-07 to 09-13</div><div class="track"><div class="fill" style="width:39%"></div><span class="val">989M · 5,180 calls</span></div></div>
+    <div class="bar"><div>09-14 to 09-20, orchestrating</div><div class="track"><div class="fill hot" style="width:100%"></div><span class="val">2,545M · 10,854 calls</span></div></div>
+  </div>
+  <p class="note">Claude Code only, from the local session logs. Context per call held at 238K, 190K, 234K.</p>
+  <p>Over 09-14 to 09-16 the lane sessions each cost what a normal session costs, 30 to 120M. The orchestrator session watching them was 628M of 1,924M. Sibling sessions keep the lanes and drop the watcher.</p>
+  <p><b>Still unmeasured:</b> tokens per accepted ticket. That number, not the weekly total, says whether any parallel mode is worth it. Every orchestrated run now records tickets accepted and tokens used.</p>
+</section>
+
+<section>
+  <div class="eyebrow">What you say, what happens</div>
+  <h2>The phrases.</h2>
+  <div class="wide"><table>
+    <tr><th>You say</th><th>Skill</th><th>What it does</th></tr>
+    <tr><td>"what's next"</td><td><code>whats-next</code></td><td>Reads the handoff and tracker, proposes one or two things, writes the session Intent, then works here.</td></tr>
+    <tr><td>"stepping away"</td><td><code>stepping-away</code></td><td>Intent against outcome, settles tickets, closes the session file, offers a fresh session if ready work remains.</td></tr>
+    <tr><td>"sibling sessions if appropriate"</td><td><code>sibling-sessions</code></td><td>Runs the screen, answers yes or no, launches one session per ticket, then leaves them alone.</td></tr>
+    <tr><td>"orchestrate this"</td><td><code>orchestrate</code></td><td>Fresh session from a written brief, acceptance tests first, Ringer workers, integration branch, one report.</td></tr>
+    <tr><td>"checkpoint"</td><td><code>checkpoint</code></td><td>Records a change of direction mid-session.</td></tr>
+    <tr><td>"let's think this through"</td><td><code>discovery</code></td><td>Shapes a missing intent. Skipped when the ask is already clear.</td></tr>
+    <tr><td>"is it actually delivered?"</td><td><code>ship-acceptance</code></td><td>Evidence against the intent's criteria, at the delivered revision.</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">Where it lives</div>
+  <p class="note">In <code>dc-dev-plugins</code>: <code>pm/skills/sibling-sessions/SKILL.md</code> · <code>pm/WORKFLOW.md</code> (Default loop) · <code>pm/skills/stepping-away/SKILL.md</code> (step 10) · <code>docs/intent/pm-021-orchestrated-runs.md</code> (the evidence and the decision) · <code>docs/intent/pm-018-orchestrator-lanes.md</code> (the 09-14 lane run this grew from) · <code>docs/research/orchestration-engine-concept.md</code> (parked). Each machine picks it up with a marketplace update of <code>dc-dev-plugins</code> and a restart.</p>
+</section>
+</main>
