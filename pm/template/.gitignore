@@ -15,3 +15,6 @@ secrets.*
 
 # Transcripts — client conversations stay out of the shared repo.
 _pm/transcripts/
+
+# Derived view: the pm board skill rewrites this every run.
+_pm/board.html

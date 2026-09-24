@@ -68,6 +68,11 @@ Provides:
   merge / retire), waiting tickets, and recent sessions; proposes a pick-up;
   drafts this session's Intent block into a per-session, per-person file;
   claims the ticket.
+- **`board`** skill — one read-only HTML page of the tracker: inbox, intents,
+  every `.scratch/*/issues/` ticket ordered needs-human → in progress → ready →
+  blocked → done, blockers computed from `Blocked by:`. Ships `scripts/board.py`
+  (no dependencies, no model). Always `_pm/board.html`, overwritten, gitignored;
+  never a history. New in 0.22.
 - **`stepping-away`** skill — session close: compares Intent to what shipped,
   writes the session entry, settles the tracker (waiting = `Waiting on:` +
   `needs-human`), captures loose asks into the inbox after matching them
@@ -142,6 +147,7 @@ pm/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
 │   ├── verify-before-done/ · okf/ · granola-transcript/
 │   ├── fast-grill/ · ship-acceptance/
+│   ├── board/                ← scripts/board.py renders _pm/board.html (0.22)
 └── template/                ← the minimal starter /pm:pm-scaffold copies
     └── docs/agents/issue-tracker.md · docs/intent/inbox.md  (new in 0.17)
 ```
