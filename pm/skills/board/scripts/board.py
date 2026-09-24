@@ -28,7 +28,7 @@ def first_heading(text):
 
 
 def header_line(text, key):
-    m = re.search(rf"^{key}:\s*(.*)$", text, re.M | re.I)
+    m = re.search(rf"^\**{key}:\**\s*(.*)$", text, re.M | re.I)
     return m.group(1).strip() if m else ""
 
 
