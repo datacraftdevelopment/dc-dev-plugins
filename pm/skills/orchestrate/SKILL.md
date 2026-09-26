@@ -57,6 +57,10 @@ ports, deployments, hooks and shared documents. Resolve a shared contract in
 Setup or serialize its writers. Keep tracker/changelog/client updates with the
 orchestrator. A worker finding a new dependency returns it for re-planning.
 
+Order nodes by risk, not size: the first code node is the skeleton that settles
+the shape, the second is one deliberately small slice through it, and wider
+nodes are released only after those two have passed their checks.
+
 For code nodes, write the **acceptance tests before dispatch**. Run them against
 the base to see them fail for the right reason. The node's check copies them
 into the worktree fresh on every run, so a worker cannot edit them. Baseline

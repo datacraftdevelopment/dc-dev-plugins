@@ -56,7 +56,7 @@ timestamp, and revision — the runner's identity never evaluates its own work.
   "unexpected": [{"kind": "dialog", "raw_text": "…verbatim…", "artifact_ref": "a2"}],
   "mutations_made": false,
   "notes": "anything the tool said, verbatim",
-  "blocker": {"stage": "precondition | locate_app | action | evidence", "code": "COMPUTER_USE_NOT_APPROVED | WINDOW_NOT_FOUND | LOGIN_FAILED | EVIDENCE_UNREADABLE | …", "reason": "…", "raw_error": "…verbatim…", "last_completed_action": 0}
+  "blocker": {"stage": "precondition | locate_app | action | evidence | comparison", "code": "COMPUTER_USE_NOT_APPROVED | WINDOW_NOT_FOUND | LOGIN_FAILED | EVIDENCE_UNREADABLE | STATE_MISMATCH | …", "reason": "…", "raw_error": "…verbatim…", "last_completed_action": 0}
 }
 ```
 `observations` may also be flat `{"id": "raw text"}` — `check_receipt.py` accepts both.

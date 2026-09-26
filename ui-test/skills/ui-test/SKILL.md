@@ -30,7 +30,9 @@ approval, the preconditions, and the non-UI channel — those live in
    read, `automated` = harness/test output): a run here supplies those channel
    entries, and the acceptance validator blocks readiness when a required one
    is missing. Cover the relevant error, empty, and recovery states, not just
-   the happy path.
+   the happy path. When a case compares the app against a reference (a
+   prototype, the old app, a design), the precondition names the state both
+   must be in, and the runner captures both in that state.
 2. **Seed ground truth before dispatch**, independently of the runner, and
    write it to `truth.json` (`references/receipt-schema.md`) with a current,
    nonempty `case_id` that both receipt and verdict must copy exactly. Values the runner
@@ -63,7 +65,9 @@ approval, the preconditions, and the non-UI channel — those live in
    opened and read, values transcribed) — a structurally valid PNG is not
    visual truth, and the runner's narrative is not evidence. Candidate
    identity and the expected fixture are fixed in `truth.json` **before**
-   the run, never inferred after it.
+   the run, never inferred after it. Scope a visual comparison to what this
+   change built: a skeleton is judged on its frame, not on content the
+   reference has and the app doesn't yet.
 
 ## Outcomes
 
@@ -72,6 +76,7 @@ approval, the preconditions, and the non-UI channel — those live in
 | `PASS-OBSERVED` | ran, every assertion has evidence and matches the runner's read | passes if values match `truth.json` |
 | `FAIL` | ran, evidence contradicts an assertion | fails, prints the mismatch |
 | `BLOCKED` | could not run: approval refused, window missing, login failed, evidence unreadable | fails, prints `blocker.raw_error` verbatim |
+| `BLOCKED`, stage `comparison` | the app and the reference were captured in different states or sections, so nothing was compared | fails, prints the mismatch; recapture both in the named state, do not fail the product |
 
 A BLOCKED is not a test failure of the product. Report it as its own line.
 
