@@ -98,7 +98,7 @@ EDITS = [
      "(see [README.md](README.md) for install/use)"),
     ("CLAUDE.md",
      "**Clean-room rule** (SCOPE §10): nothing in this repo may be copied from Claris's beta toolkit plugin. DataCraft code + public docs only.",
-     "**Clean-room rule:** nothing in this repo may be copied from Claris's beta toolkit plugin. Original code + public docs only."),
+     "**Clean-room rule:** original code + public docs only."),
     ("CLAUDE.md",
      "- Phase roadmap and open questions live in SCOPE.md §9/§11 — check them before starting new work.\n",
      ""),
@@ -276,7 +276,7 @@ cp "$REPO/LICENSE" "$PLUGIN/LICENSE"   # travels with the installed plugin
 Home of **fm-rcc**, a Claude Code plugin for agentic FileMaker development:
 calculation language, paste-ready validated XML, Save-as-XML/DDR schema
 analysis, and safe `.fmp12` patching (backup → validate → verify → rollback),
-plus Data API / OData / ProofKit integration and offline Claris docs lookup.
+plus Data API / OData integration and offline Claris docs lookup.
 
 ## Install
 
@@ -299,7 +299,7 @@ printf '.DS_Store\n/_pm/\n' > "$REPO/.gitignore"   # /_pm/ = local-only personal
 
 # --- 6. verification gate: zero brand/leak residue, valid manifests, no symlinks
 echo "== verify"
-RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|dc-dev-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/' "$PLUGIN" || true)
+RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|dc-dev-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/|beta toolkit|filemaker-init|fm-proofkit' "$PLUGIN" || true)
 [ -z "$RESIDUE" ] || { echo "BRAND/LEAK RESIDUE:"; echo "$RESIDUE"; exit 1; }
 TOKEN=$(grep -rIl 'fm-dc' "$PLUGIN" || true)
 [ -z "$TOKEN" ] || { echo "fm-dc TOKEN RESIDUE:"; echo "$TOKEN"; exit 1; }

@@ -18,7 +18,7 @@
     {
       "name": "fm-dc",
       "source": "./fm-dc",
-      "description": "Agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, ProofKit and server-connection doctrine, and project scaffolding. Commands /fm-dc:fm-init, fm-scaffold, fm-status, fm-rollback, fm-docs-sync."
+      "description": "Agentic FileMaker development: SaXML patching with verify/rollback, DDR analysis, snippet validation, server-connection doctrine, and project scaffolding. Commands /fm-dc:fm-init, fm-scaffold, fm-status, fm-rollback, fm-docs-sync."
     },
     {
       "name": "fm-lens",
