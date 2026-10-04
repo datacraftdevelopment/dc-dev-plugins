@@ -15,10 +15,19 @@ import sys
 
 from credential_policy import is_secret
 
-RELEVANT = re.compile(r'\bgit\b[\s\S]*?\b(?:add|stage|commit)\b')
+# The word `git` as a command, not the `.git` directory or a `foo.git` remote
+# (`grep --exclude-dir=.git … | head` is not a Git pipeline). A leading `/`,
+# quote or backslash still counts: `/usr/bin/git`, `"git"` and `\git` run Git.
+GIT_WORD = re.compile(r'(?<![.\-])\bgit\b')
+RELEVANT = re.compile(GIT_WORD.pattern + r'[\s\S]*?\b(?:add|stage|commit)\b')
 SUB = re.compile(r'__CG_SUB_(\d+)__')
-# Aliases and unknown subcommands are unresolved; use their literal expansion.
-OTHER_GIT = set('status log diff show branch rev-parse ls-files ls-tree cat-file config help version init clone fetch pull push remote worktree tag describe blame grep reflog rev-list diff-tree diff-index diff-files check-ignore check-attr for-each-ref symbolic-ref ls-remote merge-base count-objects fsck gc maintenance prune rm reset restore checkout switch clean stash merge rebase revert cherry-pick bisect archive apply am format-patch bundle notes shortlog submodule sparse-checkout update-index'.split())
+# Subcommands that neither stage nor commit. Read-only ones cannot change what a
+# later add/commit in the same command would select, so inspection continues
+# past them; the rest (index or working-tree changes, remotes, history) end the
+# resolvable prefix. Aliases and unknown subcommands are unresolved; use their
+# literal expansion.
+READ_ONLY_GIT = set('status log diff show branch rev-parse ls-files ls-tree cat-file help version describe blame grep rev-list diff-tree diff-index diff-files check-ignore check-attr for-each-ref ls-remote merge-base count-objects shortlog range-diff name-rev show-ref show-branch check-mailmap check-ref-format whatchanged stripspace var cherry patch-id verify-commit verify-tag verify-pack merge-tree'.split())
+OTHER_GIT = READ_ONLY_GIT | set('config init clone fetch pull push remote worktree tag reflog symbolic-ref fsck gc maintenance prune rm mv reset restore checkout switch clean stash merge rebase revert cherry-pick bisect archive apply am format-patch bundle notes submodule sparse-checkout update-index'.split())
 
 
 class Unresolved(ValueError):
@@ -212,7 +221,7 @@ def inspect_segment(segment, cwd):
         return cwd
     if Path(args[0]).name != 'git':
         if args[0] not in ('echo', 'printf') and (any(Path(a).name == 'git' for a in args[1:])
-                or (args[0] in ('sh', 'bash', 'zsh') and re.search(r'\bgit\b', ' '.join(args)))):
+                or (args[0] in ('sh', 'bash', 'zsh') and GIT_WORD.search(' '.join(args)))):
             raise Unresolved('wrapped Git command; use an explicit literal git -C command')
         return None
     if env_sensitive: raise Unresolved('Git environment changes candidate selection')
@@ -237,8 +246,7 @@ def inspect_segment(segment, cwd):
         else:
             if value not in ('add', 'stage', 'commit'):
                 if value in OTHER_GIT:
-                    read_only = {'status','log','diff','show','branch','rev-parse','ls-files','ls-tree','cat-file','help','version','describe','blame','grep','rev-list','diff-tree','diff-index','diff-files','check-ignore','check-attr','for-each-ref','ls-remote','merge-base','count-objects','shortlog'}
-                    return cwd if value in read_only else None
+                    return cwd if value in READ_ONLY_GIT else None
                 raise Unresolved('Git alias or unknown subcommand; use its literal expansion')
             if git(work, 'rev-parse', '--is-inside-work-tree', allow_nonrepo=True) is None:
                 return cwd
@@ -270,7 +278,7 @@ def inspect(command, cwd):
             if not stack: raise Unresolved('unbalanced shell group')
             cwd = stack.pop()
         elif token in (';', '&&', '||', '|', '&'):
-            if token in ('|', '&') and re.search(r'\bgit\b', command):
+            if token in ('|', '&') and GIT_WORD.search(command):
                 raise Unresolved('pipeline or background Git command; use separate literal commands')
             finish()
         elif token in ('<', '>'):

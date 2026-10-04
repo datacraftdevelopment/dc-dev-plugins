@@ -143,6 +143,41 @@ class CredentialGuardTests(unittest.TestCase):
         self.assertEqual(self.guard('touch .env; git add -A').returncode, 2)
         self.assertEqual(self.guard('echo dummy > .env; git add -A').returncode, 2)
 
+    def test_mv_is_allowed_and_add_still_inspects(self):
+        # `mv` is index-only, like `rm`: allowed on its own, but it ends the
+        # resolvable prefix, so an add/commit chained after it is still blocked.
+        self.assertEqual(self.guard(f'git -C "{self.repo}" mv README.md docs-readme.md', self.outer).returncode, 0)
+        self.assertEqual(self.guard('git mv README.md docs-readme.md').returncode, 0)
+        self.assertEqual(self.guard(f'git -C "{self.repo}" add .env', self.outer).returncode, 2)
+        self.assertEqual(self.guard('git mv README.md docs-readme.md && git add .env').returncode, 2)
+        self.assertEqual(self.guard('git mv README.md docs-readme.md && git commit -am fixture').returncode, 2)
+
+    def test_read_only_subcommands_allowed_and_do_not_hide_a_later_add(self):
+        for sub in ('range-diff', 'name-rev', 'show-ref', 'show-branch', 'check-mailmap',
+                    'check-ref-format', 'whatchanged', 'stripspace', 'var', 'cherry',
+                    'patch-id', 'verify-commit', 'verify-tag', 'verify-pack', 'merge-tree'):
+            with self.subTest(sub=sub):
+                self.assertEqual(self.guard(f'git {sub} HEAD').returncode, 0)
+                self.assertEqual(self.guard(f'git {sub} HEAD && git add .env').returncode, 2)
+        self.assertEqual(self.guard('git show-ref && git add README.md').returncode, 0)
+
+    def test_dot_git_and_dot_git_suffix_are_not_git_commands(self):
+        (self.repo / 'list.txt').write_text('./.git/config\n')
+        for command in ('grep -rn fixture --exclude-dir=.git . | head',
+                        "grep -v '^./.git/' list.txt | head",
+                        'ls -d .git | cat',
+                        'echo https://example.invalid/repo.git | cat',
+                        'bash -c "ls .git"'):
+            with self.subTest(command=command):
+                self.assertEqual(self.guard(command).returncode, 0)
+        for command in ('git add .env | cat', 'cd clean | cat; git add .env',
+                        'cd clean | cat; /usr/bin/git add .env', 'cd clean | cat; ./git add .env',
+                        'cd clean | cat; "git" add .env', 'cd clean | cat; \\git add .env',
+                        'bash -c "cd clean; git add .env"', 'bash -c "cd clean; /usr/bin/git add .env"',
+                        'git add .env &'):
+            with self.subTest(command=command):
+                self.assertEqual(self.guard(command).returncode, 2)
+
 
 if __name__ == '__main__':
     unittest.main()
