@@ -12,7 +12,7 @@
 #   sdlc/                      the whole plugin (gate hooks, REVIEW.md, policy reviewer)
 #   tc-overlay/pm/             WORKFLOW.md, the adversary-reviewer agent, the
 #                              adversary-review and ship-acceptance skills
-#   pm/scripts/session.py      the private copy, and pm takes the private version
+#   pm/scripts/session.py, pm/hooks/hooks.json   the private copies; pm takes the private version
 # TC runs Claude Code only: no Ringer, no second vendor. The overlay's review is a
 # fresh Claude subagent. Every phrase-map entry must hit or the build aborts.
 #
@@ -99,7 +99,7 @@ for rel in ("pm/.claude-plugin/plugin.json", "fm-dc/.claude-plugin/plugin.json")
 PYEOF
 
 # --- 2b. TC-only overlay from the private repo ------------------------------------
-OVERLAY_PATHS="sdlc tc-overlay pm/scripts/session.py pm/.claude-plugin/plugin.json"
+OVERLAY_PATHS="sdlc tc-overlay pm/scripts/session.py pm/hooks/hooks.json pm/.claude-plugin/plugin.json"
 [ -z "$(git -C "$HERE" status --porcelain -- $OVERLAY_PATHS)" ] || { echo "uncommitted overlay sources in $HERE (commit first; the overlay is cut from HEAD)" >&2; exit 1; }
 PRIV_COMMIT="$(git -C "$HERE" rev-parse --short HEAD)"
 OV="$(mktemp -d "${TMPDIR:-/tmp}/tc-overlay.XXXXXX")"
@@ -149,6 +149,7 @@ edit("sdlc/.claude-plugin/plugin.json", '"name": "Joe",', '"name": "Joe DaSilva"
 # pm: overlay files, the private session helper, the private version
 shutil.copytree(ov / "tc-overlay/pm", build / "pm", dirs_exist_ok=True)
 shutil.copy2(ov / "pm/scripts/session.py", build / "pm/scripts/session.py")
+shutil.copy2(ov / "pm/hooks/hooks.json", build / "pm/hooks/hooks.json")
 version = json.loads((ov / "pm/.claude-plugin/plugin.json").read_text())["version"]
 manifest = build / "pm/.claude-plugin/plugin.json"; d = json.loads(manifest.read_text())
 d["version"] = version

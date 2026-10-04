@@ -275,7 +275,7 @@ def build_one(name, parent):
         hooks = stage / 'hooks/hooks.json'
         if hooks.exists():
             # Codex documents Bash matcher and tool_input.command compatibility.
-            hooks.write_text(hooks.read_text().replace('${CLAUDE_PLUGIN_ROOT}/hooks/credential-guard.sh',
+            hooks.write_text(hooks.read_text().replace('\\"${CLAUDE_PLUGIN_ROOT}/hooks/credential-guard.sh\\"',
                                                        'bash \\"${PLUGIN_ROOT}/hooks/credential-guard.sh\\"'))
         manifest = json.loads((ROOT / name / '.claude-plugin/plugin.json').read_text())
         display, description = PLUGINS[name]
