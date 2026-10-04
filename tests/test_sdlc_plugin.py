@@ -54,6 +54,12 @@ def run_installer(repo, *extra):
                           capture_output=True, text=True)
 
 
+def state_line(result):
+    """The installer's plan line about its state folder."""
+    (line,) = [text for text in result.stdout.splitlines() if 'create .claude/sdlc/state/' in text]
+    return line
+
+
 class RepoCase(unittest.TestCase):
     """A committed fixture repo in a path with a space."""
 
@@ -823,6 +829,22 @@ class InstallerTests(RepoCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse((self.repo / '.claude').exists())
 
+    def test_plan_names_the_folder_the_lock_is_really_kept_in(self):
+        line = state_line(run_installer(self.repo))
+        self.assertIn('the lock and log are kept in .git/sdlc-gate/', line)
+        self.assertNotIn('(lock', line)
+        lock = subprocess.run([sys.executable, str(self.repo / MARKER), 'lock'],
+                              capture_output=True, text=True, cwd=self.repo)
+        self.assertEqual(lock.returncode, 0, lock.stdout + lock.stderr)
+        self.assertEqual([p.parent for p in self.repo.rglob('test-lock.json')], [self.gate_state])
+
+    def test_plan_in_a_worktree_points_at_its_own_git_directory(self):
+        tree = Path(self.tmp.name).resolve() / 'tree'
+        self.git('worktree', 'add', '-q', str(tree), '-b', 'side')
+        line = state_line(run_installer(tree, '--dry-run'))
+        self.assertIn("the lock and log are kept in this checkout's own git directory", line)
+        self.assertNotIn('.git/sdlc-gate/', line)
+
     def test_missing_repo_is_an_error(self):
         result = run_installer(self.repo / 'nope')
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
@@ -840,6 +862,14 @@ class NonGitFolderTests(unittest.TestCase):
                                   capture_output=True, text=True, cwd=root)
             self.assertEqual(lock.returncode, 0, lock.stdout + lock.stderr)
             self.assertTrue((root / '.claude/sdlc/state/test-lock.json').exists())
+
+    def test_plan_says_the_state_folder_holds_the_lock_without_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / 'plain'
+            root.mkdir()
+            line = state_line(run_installer(root, '--dry-run'))
+            self.assertIn('(lock, log and backups', line)
+            self.assertNotIn('.git/', line)
 
 
 class PluginShapeTests(unittest.TestCase):

@@ -49,6 +49,16 @@ def merge_hooks(settings):
     return settings
 
 
+def lock_home(repo):
+    """Where the installed gate keeps its lock and log; mirrors state_dir() in the kit."""
+    dot_git = repo / '.git'
+    if dot_git.is_dir():
+        return '.git/sdlc-gate/'
+    if dot_git.is_file():  # a worktree or submodule keeps a pointer file here
+        return "this checkout's own git directory"
+    return None  # no git: the state folder holds them
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--repo', required=True, help='root of the repo to install into')
@@ -89,7 +99,10 @@ def main():
     if old_settings != new_settings:
         plan.append(('settings', 'add the sdlc-gate PreToolUse and Stop hooks to .claude/settings.json'))
     if not (state / '.gitignore').exists():
-        plan.append(('state', 'create .claude/sdlc/state/ (lock, log and backups; ignored by git)'))
+        home = lock_home(repo)
+        where = (f'for backups (ignored by git); the lock and log are kept in {home}' if home
+                 else '(lock, log and backups; ignored by git)')
+        plan.append(('state', f'create .claude/sdlc/state/ {where}'))
 
     if not plan:
         print('install_gates: unchanged; the kit is already installed and current.')
