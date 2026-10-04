@@ -36,7 +36,9 @@ class OwnedPluginRefreshTests(unittest.TestCase):
         # Only local ./subfolder sources can be packaged; git-subdir pointers
         # (fm-lens, agenticdev-filemaker-standards) live in another repo.
         local = {p['name'] for p in market['plugins'] if isinstance(p['source'], str)}
-        self.assertEqual(set(build_codex.PLUGINS), local)
+        # Every local plugin is either packaged for Codex or declared Claude-only.
+        self.assertEqual(set(build_codex.PLUGINS) | build_codex.CLAUDE_ONLY, local)
+        self.assertFalse(set(build_codex.PLUGINS) & build_codex.CLAUDE_ONLY)
 
     def test_owned_sources_detect_content_version_and_adapter_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

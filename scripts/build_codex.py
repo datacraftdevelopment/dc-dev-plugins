@@ -22,6 +22,8 @@ PLUGINS = {
     'ui-test': ('DataCraft UI Tests', 'Run macOS UI tests with evidence receipts and independent verification.'),
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
 }
+# Local plugins with no Codex edition: sdlc installs Claude Code hooks into a repo's .claude/.
+CLAUDE_ONLY = {'sdlc'}
 
 RUNTIME = '''## Codex runtime
 

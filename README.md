@@ -99,6 +99,7 @@ Update everything later with:
 | **ui-test** | `ui-test` | macOS UI runner and independent verifier through Ringer, with decoded PNG evidence and explicit PASS/FAIL/BLOCKED outcomes. See [`ui-test/README.md`](ui-test/README.md). |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
+| **sdlc** | `gate-hooks`, `review-policy`; agent `policy-reviewer` | Repo-level enforcement kits: gate hooks installed into a repo's `.claude/` (production gate, protected paths, test lock) and a `REVIEW.md` policy with a read-only reviewer. Claude Code only: no Codex edition, no `pm` or Ringer dependency. See [`sdlc/README.md`](sdlc/README.md). |
 
 ## Adding a new plugin
 
