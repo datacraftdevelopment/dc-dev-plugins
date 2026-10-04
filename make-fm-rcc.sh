@@ -158,33 +158,9 @@ EDITS = [
      "with `ddr.py` — SCOPE open question #4)",
      "with `ddr.py`)"),
 
-    # Private-infrastructure residue in shipped skill text
-    ("skills/fm-saxml/SKILL.md",
-     "> Engine provenance: synced from Joe's library skill `_agentic-2026/_library/skills/core-infrastructure/filemaker-ddr` (2026-07-02). When improving the engine, update the library copy too — or make this starter's copy the one true home and retire the library's.",
-     "> Engine provenance: vendored 2026-07-06 — see `tools/ddr/VENDOR.md`."),
-    ("skills/fm-odata/SKILL.md",
-     "(e.g. `JDAI`, `SPAI`, `LEADGEN`)",
-     "(e.g. `CONN_A`, `CONN_B`)"),
-    ("skills/fm-odata/references/odata-lessons.md",
-     "(`JDAI`, `SPAI`, `LEADGEN`, `SBSOS`)",
-     "(e.g. `CONN_A`, `CONN_B`, `CONN_C`)"),
-    ("skills/fm-odata/references/odata-lessons.md",
-     "- The closest-named (`SPAI`) resolved to a database called `StartingPoint_AI_FM22`, and its stored credentials returned",
-     "- The closest-named ID resolved to a *different* database entirely, and its stored credentials returned"),
-
-    # Real-looking credentials in a docstring -> placeholders
-    ("skills/fm-odata/scripts/odata_client.py",
-     "server  - agentic-workshop.atrcc.com",
-     "server  - your-server.example.com"),
-    ("skills/fm-odata/scripts/odata_client.py",
-     "file    - AI_RC_SP_24_Lite.fmp12",
-     "file    - YourFile.fmp12"),
-    ("skills/fm-odata/scripts/odata_client.py",
-     "account - api\n",
-     "account - apiuser\n"),
-    ("skills/fm-odata/scripts/odata_client.py",
-     "pass    - api!234",
-     "pass    - your-password"),
+    # (fm-odata connection IDs, the client docstring's workshop connection and the
+    #  fm-saxml provenance line were scrubbed upstream in fm-dc 0.9.1; the residue
+    #  gate below still fails the build if any of them comes back.)
 
     # Scaffold template: drop the dangling cross-plugin `whats-next` dependency
     ("templates/scaffold/_pm/skeleton.md",

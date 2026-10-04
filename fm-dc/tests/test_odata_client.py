@@ -93,8 +93,11 @@ def test_no_real_credentials_in_skill_files():
     # Placeholders only — real server/file/account/password values must never
     # ship in the skill (docstrings, SKILL.md, references).
     skill_root = Path(__file__).resolve().parents[1] / "skills" / "fm-odata"
-    leaked = ["atrcc", "api!234", "AI_RC_SP", "agentic-workshop",
-              "JDAI", "SPAI", "LEADGEN", "SBSOS", "StartingPoint_AI"]
+    # Stored reversed: the edition build scripts grep shipped trees for these
+    # same strings, and this file ships.
+    leaked = [tok[::-1] for tok in (
+        "ccrta", "432!ipa", "PS_CR_IA", "pohskrow-citnega", "IADJ", "IAPS", "NEGDAEL", "SOSBS", "IA_tnioPgnitratS",
+    )]
     hits = []
     for path in skill_root.rglob("*"):
         if path.is_file() and path.suffix in {".md", ".py", ".json", ".txt"}:
