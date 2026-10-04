@@ -13,13 +13,14 @@
 #
 # Usage: ./make-tc-plugins.sh [--src <public dc-plugins checkout>] [--dest <tc-plugins checkout>]
 #   defaults: ../dc-plugins and ../tc-plugins relative to this script.
-#   TC_REPO (env) — the GitHub coordinate stamped into install lines.
+#   TC_REPO (env) — the marketplace source stamped into install lines. TC gets the
+#   folder itself (no GitHub repo, decided 2026-10-04), so it defaults to a local path.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SRC="$HERE/../dc-plugins"
 DEST="$HERE/../tc-plugins"
-TC_REPO="${TC_REPO:-TC-GITHUB-ACCOUNT/tc-plugins}"   # set once the TC account is known
+TC_REPO="${TC_REPO:-/path/to/tc-plugins}"   # wherever TC puts the shared folder
 while [ $# -gt 0 ]; do
   case "$1" in
     --src)  SRC="$2"; shift 2 ;;
