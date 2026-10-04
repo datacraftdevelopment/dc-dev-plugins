@@ -80,6 +80,6 @@ See `docs/reference/ddr_xml_structure.md` for the full format spec (both classic
 - `scripts/fmsaveasxml.py` — FM 2026 split-catalog parser (invoked by `split`).
 - `scripts/readable.py` — the knowledge-base exporter (invoked by `readable`).
 
-> Engine provenance: synced from Joe's library skill `_agentic-2026/_library/skills/core-infrastructure/filemaker-ddr` (2026-07-02). When improving the engine, update the library copy too — or make this starter's copy the one true home and retire the library's.
+> Engine provenance: see `${CLAUDE_PLUGIN_ROOT}/tools/ddr/VENDOR.md`. This plugin's copy is the one true home — improve it here.
 
 Requires Python 3 + `lxml` (`pip install lxml`; falls back to `xml.etree` with reduced XPath).
