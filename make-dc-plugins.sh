@@ -71,10 +71,6 @@ EDITS = [
                      "/plugin marketplace add datacraftdevelopment/dc-plugins"),
     ("pm/template/CLAUDE.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
     ("pm/template/README.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
-    ("pm/SDLC.md", "the part the RCC course can render for an audience that has none of those tools.",
-                   "the part a course can render for an audience that has none of those tools."),
-    ("pm/SDLC.md", "The RCC course's bonus-SDLC page is an independent rendering",
-                   "A companion course's bonus-SDLC page is an independent rendering"),
 
     ("fm-dc/.claude-plugin/plugin.json", '"name": "Joe DaSilva and Richard Carlton"',
                                          '"name": "Joe DaSilva / DataCraft Development"'),
