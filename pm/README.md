@@ -4,10 +4,11 @@ Claude Code plugin that packages Joe's project-management layer. **Read
 [`WORKFLOW.md`](./WORKFLOW.md) first** — it gives the default execution path,
 when extra stages help, and the record rule: `docs/` is shared record,
 `_pm/` is personal log. pm
-fits around Matt Pocock's skill set. The default is one orchestrator, meaningful
-outcome tickets and bounded Ringer subagents working a dependency graph (up to
-six active workers when ready and resourced). Worker assignments stay inside
-the parent ticket. Planning and additional review address concrete uncertainty;
+fits around Matt Pocock's skill set. The default is one session working one
+meaningful outcome ticket with Joe in the loop. Independent tickets run as
+sibling sessions. Orchestration is opt-in: one orchestrator and bounded Ringer
+subagents working a dependency graph (up to six active workers), with worker
+assignments kept inside the parent ticket. Planning and additional review address concrete uncertainty;
 verification remains required and proportional. Ordinary interactive sessions
 use Sol in Codex and Opus in Claude Code; Astra and Fable are bounded review seats
 invoked through Ringer, and either may lead an orchestrated run from a fresh
@@ -142,12 +143,15 @@ pm/
 ├── commands/
 │   └── pm-scaffold.md       ← /pm:pm-scaffold
 ├── hooks/
-│   ├── hooks.json · credential-guard.sh · test-credential-guard.sh
+│   └── hooks.json · credential-guard.sh · test-credential-guard.sh
+├── scripts/                 ← session.py, succession.py, acceptance.py, credential guard and policy
 ├── skills/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
+│   ├── sibling-sessions/ · orchestrate/ · session-succession/
 │   ├── verify-before-done/ · okf/ · granola-transcript/
 │   ├── fast-grill/ · ship-acceptance/
-│   ├── board/                ← scripts/board.py renders _pm/board.html (0.22)
+│   └── board/                ← scripts/board.py renders _pm/board.html (0.22)
+├── WORKFLOW.md · SDLC.md    ← Joe's binding, and the portable principles
 └── template/                ← the minimal starter /pm:pm-scaffold copies
     └── docs/agents/issue-tracker.md · docs/intent/inbox.md  (new in 0.17)
 ```
@@ -162,6 +166,10 @@ Edit `commands/pm-scaffold.md` to change what the command does; edit
 `/plugin marketplace update dc-dev-plugins`. Run
 `bash hooks/test-credential-guard.sh` after touching the hook.
 
-## 0.16.0 workflow repair
+## Release checks
 
-The Ticket → Build handoff now points to canonical build-swarm preparation and dependency setup. Session identity/closure is executable; intent refresh happens at explicit boundaries. Ship is owned by `ship-acceptance`, with record validation rather than a claim that the validator itself adjudicates. Run `python3 -m unittest discover -s tests -v` from the marketplace root and `bash pm/hooks/test-credential-guard.sh`. Credential policy parity between PM and the build-swarm source is checked with `python3 scripts/sync_pm_policy.py --build-swarm <source-dir> --check`. Stack-specific delivery still needs its own real evidence.
+Run `python3 -m pytest tests -q` from the marketplace root and
+`bash pm/hooks/test-credential-guard.sh`. Credential policy parity between pm
+and the build-swarm source is checked with
+`python3 scripts/sync_pm_policy.py --build-swarm <source-dir> --check`.
+Stack-specific delivery still needs its own real evidence.

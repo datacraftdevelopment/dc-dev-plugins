@@ -47,7 +47,7 @@ The library page is `_Core/library/wiki/craft/agents/ai-native-sdlc.md`.
 
 ### Why a separate plugin
 
-`RIFF.md` (2026-09-03) concluded the SDLC gap belonged in `pm`, and for Ship it
+`docs/sdlc/RIFF.md` at the repo root (2026-09-03) concluded the SDLC gap belonged in `pm`, and for Ship it
 did: that became `ship-acceptance`. These kits are different in kind. `pm` is a
 workflow you run every session. A gate is installed once per repo and then runs
 on its own. Keeping the kits out of `pm` keeps `pm` from growing a fifth job,
@@ -201,9 +201,10 @@ sdlc/
 ├── skills/
 │   ├── gate-hooks/            ← SKILL.md, managed-settings.md
 │   └── review-policy/         ← SKILL.md
-├── templates/REVIEW.md
-├── RIFF.md                    ← the 2026-09-03 riff this grew from
-└── WORKFLOW-before-split.md   ← pm's WORKFLOW before the doctrine split
+└── templates/REVIEW.md
 ```
+
+The 2026-09-03 riff this grew from, and pm's WORKFLOW before the doctrine
+split, are design notes and do not ship: `docs/sdlc/` at the repo root.
 
 Tests are in `tests/test_sdlc_plugin.py` at the repo root.

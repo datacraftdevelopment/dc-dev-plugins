@@ -158,7 +158,7 @@ Not the reverse. Teaching a stage that hasn't survived a real deploy is how the 
 - **`pm/SDLC.md`** (new) — doctrine layer. Stages by artifact, the three gates, the artifact chain, what must be proven and when, the three steering layers, shared-record vs personal-log, and a **"what a binding must supply"** checklist (7 rows) that makes a gap in any binding visible instead of implicit. Names no tool.
 - **`pm/WORKFLOW.md`** (rewritten) — Joe's binding. Opens by stating it is *not* generic and assumes Ringer + Codex + Matt's skills. Panel seats, escalation rule, and the consensus rule with their proving-round evidence now live here in full rather than by reference to the library skill.
 - **`pm/.claude-plugin/plugin.json`** → 0.12.0.
-- Pre-split copy preserved at `sdlc/WORKFLOW-before-split.md`. Twenty content markers from the old file checked present across the two new ones — nothing dropped.
+- Pre-split copy preserved at `docs/sdlc/WORKFLOW-before-split.md`. Twenty content markers from the old file checked present across the two new ones — nothing dropped.
 
 **Ship stays deliberately unbound.** The table's Ship row is an em-dash with a section under it naming exactly what's missing. An unowned row is visible; a vague sentence pretending to own it is not.
 

@@ -1,7 +1,7 @@
 {
   "name": "pm",
-  "version": "0.22.3",
-  "description": "DataCraft PM: outcome-sized tickets, economical Sol/Opus execution, Ringer-only Astra/Fable review seats (either may lead an orchestrated run, manager-only), dependency-graph orchestration on a context budget with an integration branch, proportionate verification, and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta.",
+  "version": "0.22.4",
+  "description": "DataCraft PM: outcome-sized tickets, a one-session default loop (whats-next, the work, stepping-away), sibling sessions for independent tickets, opt-in dependency-graph orchestration on a context budget with an integration branch, economical Sol/Opus execution with Ringer-only Astra/Fable review seats, proportionate verification, and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

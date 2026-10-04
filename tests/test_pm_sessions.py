@@ -54,6 +54,14 @@ class SessionTests(unittest.TestCase):
         p = self.run_cli('reaim', '--session', s['path'], '--id', s['id'], '--entry', 'late', ok=False)
         self.assertNotEqual(p.returncode, 0)
 
+    def test_close_does_not_double_a_supplied_heading(self):
+        s = self.open()
+        self.run_cli('close', '--session', s['path'], '--id', s['id'],
+                     '--entry', '## Session close\n\n## Session close\n\n## Shipped\n\n- one thing')
+        text = (self.repo / s['path']).read_text()
+        self.assertEqual(text.count('## Session close'), 1)
+        self.assertIn('## Session close\n\n## Shipped\n\n- one thing', text)
+
     def test_path_escape_and_invalid_name_refused(self):
         p = self.run_cli('open', '--name', '../escape', '--intent', 'no', ok=False)
         self.assertNotEqual(p.returncode, 0)

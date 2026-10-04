@@ -8,7 +8,7 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "DataCraft PM: outcome-sized tickets, one orchestrator, dependency-graph execution with up to six autonomous subagents, proportionate verification and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta. Existing project requirements and permissions remain binding."
+      "description": "DataCraft PM: outcome-sized tickets, one session per outcome by default, sibling sessions for independent tickets, opt-in dependency-graph orchestration with up to six subagents, proportionate verification and concise handoffs. Extra planning/review is conditional; automatic session succession is an opt-in beta. Existing project requirements and permissions remain binding."
     },
     {
       "name": "design-dc",
