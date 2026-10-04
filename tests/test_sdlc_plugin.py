@@ -491,6 +491,32 @@ class SelfProtectionTests(GateCase):
         self.assertAsks(self.hook(self.bash('cat .claude/sdlc/gates.json && rm .claude/sdlc/gates.json')))
 
 
+class ProofStepTests(GateCase):
+    """Step 4 of the gate-hooks skill tells the reader to run these. They must behave as it says."""
+
+    LIVE = 'true .claude/sdlc/gates.json'
+    ANCHORED = r'(?:^|[;&|]\s*)(?:(?:bash|sh)\s+)?(?:\S*/)?deploy\.sh\b'
+
+    def skill(self):
+        return (PLUGIN / 'skills/gate-hooks/SKILL.md').read_text()
+
+    def test_the_liveness_check_the_skill_names_is_stopped_by_a_live_gate(self):
+        self.assertAsks(self.hook(self.bash(self.LIVE)), 'gate')
+        self.assertIn(f'`{self.LIVE}`', self.skill())
+
+    def test_the_anchored_pattern_the_skill_shows_fires_on_a_run_and_not_on_a_mention(self):
+        rule = dict(CONFIG['production'][0], name='deploy-script', match=self.ANCHORED)
+        self.config_path.write_text(json.dumps(dict(CONFIG, production=[rule])))
+        for command in ('./deploy.sh', 'bash deploy.sh', 'cd ops && sh ./deploy.sh --prod',
+                        '/nonexistent/deploy.sh'):
+            with self.subTest(command=command):
+                self.assertDenied(self.hook(self.bash(command)), 'deploy-script')
+        for command in ('echo deploy.sh', 'echo bash deploy.sh', 'cat deploy.sh', 'git add deploy.sh'):
+            with self.subTest(command=command):
+                self.assertAllowed(self.hook(self.bash(command)))
+        self.assertIn(json.dumps(self.ANCHORED), self.skill())
+
+
 class TestLockTests(GateCase):
     def lock(self, *args):
         result = self.cli('lock', *args)

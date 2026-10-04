@@ -33,7 +33,11 @@ Gate only what must hold every time. A gate that prompts often puts a person bac
 
    Write the answers into `.claude/sdlc/gates.json`. Once the hooks are live, that edit asks the user. The prompt is the gate working.
 3. Validate: `python3 .claude/hooks/sdlc_gate.py check`
-4. Prove one gate with a harmless stand-in: `echo` followed by text a production rule matches. Read the refusal. Never prove it with the real command, because if the hooks are not loaded, it runs. If the `echo` goes through, start a new session in the repo root and prove it again.
+4. Prove it with two checks. Neither one runs anything real.
+   - Is the gate live in this session? Run `true .claude/sdlc/gates.json`. The command does nothing. A live gate stops it anyway, because it names a gate file. If it runs with no prompt and no refusal, the hooks are not loaded: start a new session in the repo root and check again.
+   - Does the rule match? Run a stand-in that the rule matches and that cannot do anything, then read the refusal. For a rule that matches text anywhere in a command, that is `echo` followed by the text. A rule anchored to the command being run is different: `echo` does not match it, so use the command at a path that does not exist, such as `/nonexistent/deploy.sh`. If the gate is live and the stand-in still goes through, the rule does not match it. Fix the pattern. A new session will not help.
+
+   Never prove a rule with the real command. If nothing stops it, it runs.
 5. Commit `.claude/hooks/sdlc_gate.py`, `.claude/sdlc/gates.json` and `.claude/settings.json`. The commit asks too, because gate files changed.
 
 ## Configuration
@@ -57,6 +61,7 @@ Gate only what must hold every time. A gate that prompts often puts a person bac
 
 - Every rule states its `reason` and its `approval` route. A block has to say why, and what to do instead.
 - `match` is a Python regex searched anywhere in the command, with case ignored. A mention inside a commit message or an echo command triggers it too, so keep the pattern tight, and use `ask` where a false hit would be noisy.
+- To fire only when a script is run, and not when it is read, staged or named in a message, anchor the pattern to the start of a command and allow a path in front: `"(?:^|[;&|]\\s*)(?:(?:bash|sh)\\s+)?(?:\\S*/)?deploy\\.sh\\b"`. `echo` does not match a rule like this.
 - `paths` are repo-relative globs: `**` spans directories, `*` and `?` stay inside one, a trailing `/` means the whole tree. Case is ignored.
 - `deny` is for what an agent never does. `ask` is for what a person may approve. In a headless run (`claude -p`) nobody can answer, so `ask` refuses. Whether `ask` still prompts in bypass-permissions mode is not documented and not tested here, so use `deny` for anything that must hold in that mode.
 
