@@ -63,7 +63,7 @@ Gate only what must hold every time. A gate that prompts often puts a person bac
 - `match` is a Python regex searched anywhere in the command, with case ignored. A mention inside a commit message or an echo command triggers it too, so keep the pattern tight, and use `ask` where a false hit would be noisy.
 - To fire only when a script is run, and not when it is read, staged or named in a message, anchor the pattern to the start of a command and allow a path in front: `"(?:^|[;&|]\\s*)(?:(?:bash|sh)\\s+)?(?:\\S*/)?deploy\\.sh\\b"`. `echo` does not match a rule like this.
 - `paths` are repo-relative globs: `**` spans directories, `*` and `?` stay inside one, a trailing `/` means the whole tree. Case is ignored.
-- `deny` is for what an agent never does. `ask` is for what a person may approve. In a headless run (`claude -p`) nobody can answer, so `ask` refuses. Whether `ask` still prompts in bypass-permissions mode is not documented and not tested here, so use `deny` for anything that must hold in that mode.
+- `deny` is for what an agent never does. `ask` is for what a person may approve, and it only reaches a person in a session in default permission mode. In a headless run (`claude -p`) nobody can answer, so `ask` refuses. In auto mode the one run on record (2.1.286, desktop app) showed no prompt: auto mode answered the `ask` itself and the command ran. Bypass-permissions mode is not documented and not tested here. So ask the user which mode their sessions run in, and use `deny` for anything that must hold whatever the mode. With `deny`, the person runs the command themselves in a terminal.
 
 ## The test lock
 

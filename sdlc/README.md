@@ -151,13 +151,25 @@ is the newest and least proven part of the gate.
 
 Not proven:
 
-- **The interactive approval prompt.** Every `ask` above ran headless, where it
-  refuses. Nobody has clicked Approve on one yet.
-- **`ask` in bypass-permissions mode.** The docs say a hook's `ask` still
-  prompts in auto mode. They do not say what happens in bypass mode. The
-  no-skill baseline session reported that its own gate's `ask` held in bypass,
-  auto and accept-edits modes on 2.1.285. That is one subagent's report and was
-  not re-run here. `deny` blocks in every mode.
+- **The interactive approval prompt.** Every `ask` in the table ran headless,
+  where it refuses. Nobody has seen the prompt in a session in default
+  permission mode yet.
+- **`ask` in auto mode does not reach the user.** Seen once, on 2.1.286 in the
+  desktop app (2026-10-04): the hook returned `ask` twice in a session in auto
+  mode, no prompt appeared, and each command ran, 18 and 67 seconds later. The
+  transcript carries auto mode's classifier records on both calls and no
+  record of a person's answer. So in auto mode an `ask` rule is answered by
+  the classifier, and only `deny` stops the call. This contradicts the docs,
+  which say a hook's `ask` still prompts in auto mode, and it contradicts the
+  no-skill baseline session's report that its own gate's `ask` held in auto
+  mode on 2.1.285.
+- **`ask` in bypass-permissions mode.** Not documented and not tested here.
+  `deny` blocks in every mode.
+- **The decision log in a worktree session.** In that same session neither
+  `ask` was written to the log, although the gate logs before it answers. The
+  same event fed to the same script from a terminal was logged. Cause not
+  found; a write the session was not allowed to make under the main repo's
+  `.git/` is the guess.
 - **Managed settings.** `skills/gate-hooks/managed-settings.md` is checked
   against the docs and deployed nowhere.
 - **The review skill on a real change.** The reviewer's read-only tool list is

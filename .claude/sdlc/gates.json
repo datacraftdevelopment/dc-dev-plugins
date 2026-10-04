@@ -4,9 +4,9 @@
     {
       "name": "public-editions",
       "match": "(?:^|[;&|(\\n`])\\s*(?:(?:bash|sh|zsh|then|do|else|time|exec|nohup|sudo|command|-(?!n\\b)\\S+|\\w+=\\S*)\\s+)*(?:\\S*/)?make-(?:fm-rcc|dc-plugins|tc-plugins)\\.sh\\b",
-      "action": "ask",
-      "reason": "This script cuts a public edition from the private repo.",
-      "approval": "The user approves the prompt after checking what the cut will publish."
+      "action": "deny",
+      "reason": "This script cuts a public edition from the private repo. An ask rule did not reach Joe in auto mode (2026-10-04), so this is refused outright.",
+      "approval": "Joe runs the script himself in a terminal, after checking what the cut will publish."
     }
   ],
   "protected": [],
