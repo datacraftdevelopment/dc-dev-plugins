@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Monitor|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/sdlc_gate.py\"; python3 \"$g\"; s=$?; case \"$s\" in 0|2) exit \"$s\" ;; *) echo \"sdlc-gate: BLOCKED [runtime] the gate could not run (python3 exit $s), so this call was not checked.\" >&2; exit 2 ;; esac",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/sdlc_gate.py\"; [ -f \"$g\" ] && command -v python3 >/dev/null 2>&1 || exit 0; python3 \"$g\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
