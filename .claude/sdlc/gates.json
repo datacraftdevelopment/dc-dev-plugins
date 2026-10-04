@@ -3,7 +3,7 @@
   "production": [
     {
       "name": "public-editions",
-      "match": "(?:(?:^|[;&|(\\n`])\\s*|(?<![\\w.-])(?:bash|sh|zsh|then|do|else|time|exec|nohup|sudo|command)\\s+)(?:(?:-(?!n\\b)\\S+|\\w+=\\S*)\\s+)*(?:\\S*/)?make-(?:fm-rcc|dc-plugins|tc-plugins)\\.sh\\b",
+      "match": "(?:^|[;&|(\\n`])\\s*(?:(?:bash|sh|zsh|then|do|else|time|exec|nohup|sudo|command|-(?!n\\b)\\S+|\\w+=\\S*)\\s+)*(?:\\S*/)?make-(?:fm-rcc|dc-plugins|tc-plugins)\\.sh\\b",
       "action": "ask",
       "reason": "This script cuts a public edition from the private repo.",
       "approval": "The user approves the prompt after checking what the cut will publish."
