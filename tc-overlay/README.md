@@ -19,6 +19,9 @@ Not ported, on purpose: `orchestrate` (2.6x usage as a default), `fast-grill`
 (its point is a second vendor), `session-succession` (beta, host-specific),
 `board` (reads `.scratch/` tickets; TC's tracker is `docs/TASKS.md`).
 
+Removed for TC by the build script: pm's `granola-transcript` skill and every
+mention of it. TC does not use Granola.
+
 Edit here, commit, then re-run the chain. The script aborts if any text it
 patches has drifted, and fails the build on any Ringer or private-path word in
 the TC tree.

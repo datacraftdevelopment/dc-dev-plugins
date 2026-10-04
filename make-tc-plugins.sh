@@ -13,6 +13,7 @@
 #   tc-overlay/pm/             WORKFLOW.md, the adversary-reviewer agent, the
 #                              adversary-review and ship-acceptance skills
 #   pm/scripts/session.py, pm/hooks/hooks.json   the private copies; pm takes the private version
+#   minus pm's granola-transcript skill (TC does not use Granola, 2026-10-04)
 # TC runs Claude Code only: no Ringer, no second vendor. The overlay's review is a
 # fresh Claude subagent. Every phrase-map entry must hit or the build aborts.
 #
@@ -177,7 +178,18 @@ edit("pm/README.md", "- **`okf`** skill *(utility)*",
 edit("pm/README.md", "├── commands/\n│   └── pm-scaffold.md       ← /pm:pm-scaffold\n",
      "├── agents/\n│   └── adversary-reviewer.md ← the read-only reviewer subagent\n├── commands/\n│   └── pm-scaffold.md       ← /pm:pm-scaffold\n")
 edit("pm/README.md", "│   ├── sibling-sessions/ · verify-before-done/ · okf/ · granola-transcript/\n",
-     "│   ├── sibling-sessions/ · verify-before-done/ · okf/ · granola-transcript/\n│   ├── adversary-review/ · ship-acceptance/\n")
+     "│   ├── sibling-sessions/ · verify-before-done/ · okf/\n│   ├── adversary-review/ · ship-acceptance/\n")
+
+# TC does not use Granola: the skill and every mention of it come out
+shutil.rmtree(build / "pm/skills/granola-transcript")
+edit("pm/README.md",
+     "- **`granola-transcript`** skill *(utility)* — fetches full verbatim Granola\n"
+     "  meeting transcripts (list-then-match; the notes.granola.ai link id is not\n"
+     "  the meeting id) and lands them in gitignored `_pm/transcripts/`.\n", "")
+edit("pm/template/CLAUDE.md", "first transcript kept (e.g. `granola-transcript` skill)", "first transcript kept")
+edit("pm/.claude-plugin/plugin.json",
+     "Utility skills: okf (knowledge-bundle format) and granola-transcript (verbatim meeting transcripts into gitignored _pm/transcripts/).",
+     "Utility skill: okf (knowledge-bundle format).")
 
 # marketplace + root README
 mp = build / ".claude-plugin/marketplace.json"; m = json.loads(mp.read_text())
@@ -215,8 +227,8 @@ SDLC_VER="$(python3 -c "import json;print(json.load(open('$BUILD/sdlc/.claude-pl
 echo "== verify"
 RESIDUE=$(grep -rIliE 'datacraft|richard|carlton|FMTrainingTV|rcc-fm|fm-rcc|\bRCC\b' "$BUILD" || true)
 [ -z "$RESIDUE" ] || { echo "BRAND RESIDUE:"; echo "$RESIDUE"; exit 1; }
-PRIVATE=$(grep -rIliE 'ringer|\bastra\b|build-swarm|cross-review-gate|dc-autonomy|dc-dev-plugins|Agentic-Mini|_Core/' "$BUILD" || true)
-[ -z "$PRIVATE" ] || { echo "PRIVATE-TOOLING RESIDUE (TC runs Claude Code only):"; echo "$PRIVATE"; exit 1; }
+PRIVATE=$(grep -rIliE 'granola|ringer|\bastra\b|build-swarm|cross-review-gate|dc-autonomy|dc-dev-plugins|Agentic-Mini|_Core/' "$BUILD" || true)
+[ -z "$PRIVATE" ] || { echo "PRIVATE-TOOLING RESIDUE (TC runs Claude Code only, and no Granola):"; echo "$PRIVATE"; exit 1; }
 LINKS=$(find "$BUILD" -type l || true)
 [ -z "$LINKS" ] || { echo "SYMLINKS:"; echo "$LINKS"; exit 1; }
 python3 -c "import json,glob; [json.load(open(f)) for f in glob.glob('$BUILD/**/.claude-plugin/*.json', recursive=True)]; print('manifests: valid JSON')"
