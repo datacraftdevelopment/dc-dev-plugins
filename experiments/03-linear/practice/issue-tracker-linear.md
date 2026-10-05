@@ -31,6 +31,19 @@ When publishing build tickets, apply `ready-for-agent` by default. Apply
 notice, picks between product options, or is hard to undo. Say why in the body,
 and say what "go" will do. Never put both labels on one ticket.
 
+## Reviewing decisions with Joe
+
+When Joe asks to review what's waiting on him, list the open `ready-for-human`
+issues labelled `needs-human` and walk through each one's latest Runway
+decision packet (the comment starting `🛫 runway`). Then:
+
+- Post `go <choice and any notes>` as a comment **only after Joe has said go
+  on that specific ticket in this conversation**, with his choice. Never
+  approve on your own judgment, a recommendation, or a general "looks fine".
+  The connector writes as Joe, so Runway can't tell the difference.
+- Post `drop` only when Joe says to drop that ticket.
+- Don't touch the labels; Runway manages `go` and `needs-human` itself.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a Linear issue in team {{TEAM}}, project {{PROJECT}}.
