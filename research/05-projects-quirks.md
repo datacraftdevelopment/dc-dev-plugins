@@ -19,9 +19,13 @@
 5. **Pushing files from the cloud container failed.** `device_commit_files` returned 404 for files staged in the container. Workaround: send a base64 tarball through `device_bash`. It's clumsy, but it works up to a few tens of KB per call.
 6. **No connector, no tracker.** The Linear connector's sign-in had expired, so threads can't read or write Linear until it's reconnected. That matters if Linear becomes the tracker.
 
+6a. **The first folder binding didn't match the brief** (seen from the coordinator side). The thread was started for the SoftwareFactory folder, but its first device connection reported using `_Core/_Plugins`, the project's other approved folder. Work went to the right place in the end, but a factory thread should confirm which folder it's bound to before it writes anything.
+
 ## Git in the folder VM
 
 7. **Every commit leaves lock files behind.** Deletes are off by default in connected folders, so git couldn't remove `.git/HEAD.lock`, `objects/maintenance.lock` or its `tmp_obj_*` files. A stale `HEAD.lock` would block Joe's next commit on the Mac. Workaround: ask for delete permission for the folder, which is one prompt, then clean up after each commit. The permission didn't survive a worker restart, so it was asked for twice.
+
+7a. **A permission prompt stalls the thread invisibly.** The thread stopped twice to wait on a delete-permission prompt, at 17:38 and 19:12. Nothing appeared in the thread itself. Joe only found out because the coordinator posted a pointer in the project chat. Factory impact: any step that can raise a prompt is a hidden human gate. Either grant it up front, or have the loop post "waiting on a permission prompt" wherever Joe looks.
 
 ## Approvals and decisions
 
