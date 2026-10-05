@@ -55,9 +55,9 @@ It builds a throwaway git repo with five tickets (03 is `Gate: human`, 04 depend
 
 ## Proposed first real run
 
-1. Pick a small, low-stakes TypeScript or Python repo with a real `npm test` / `pytest` check. Not a client repo, and not TokenUsage while Hermes is on it.
-2. Write 5–8 outcome tickets with `/to-tickets`, and mark the one or two that need you with `Gate: human`.
-3. `runway.json` with the real `check_cmd` and `claude -p` commands. Run `runway loop` and walk away.
+1. `bash practice/setup.sh` creates a practice repo (`hours`, a tiny billing-summary tool) at `~/Agentic-Mini/_Tools/runway-practice`, with 6 tickets (2 gated) and a real `runway.json`. See `practice/README.md`.
+2. Run `python3 runway.py --root ~/Agentic-Mini/_Tools/runway-practice loop` on your Mac and walk away.
+3. Expected: 4 tickets merged and 2 packets waiting. Then `go` both and run `loop` again.
 4. When you come back: `runway status`, read the packets, `go` them, `runway loop` again.
 5. Record touches per ticket, packet lead time, parked failures and their causes, and tokens, in this README.
 
