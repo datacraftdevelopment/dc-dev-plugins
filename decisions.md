@@ -5,3 +5,7 @@
 - 2026-10-05 · Judgment is declared on the ticket at planning time (`Gate: human`) rather than discovered by the agent mid-run. Discovered blockers still park as `needs-human`.
 - 2026-10-05 · Reuse pm's tracker format unchanged, adding only `Gate:` and `Branch:` header lines.
 - 2026-10-05 · Approvals must land in the tracker, not arrive as relayed messages. The first real run showed the Mac's auto-mode check rejects a go relayed through another Claude session. Experiment 03 has a decision tap edit the ticket (or a Linear/GitHub status), and Runway picks it up on its schedule.
+- 2026-10-05 · Linear is Runway's first real tracker, through an adapter (`linear_tracker.py`) behind the same ticket interface as markdown. Runway's queue is Matt's triage labels (`ready-for-agent` = auto, `ready-for-human` = gated), so `/to-tickets` output is runnable as published and Wayfinder decision tickets are ignored.
+- 2026-10-05 · Joe's go is a Linear comment starting `go` (or a `go` label). It lands in the tracker, so no Claude session relays it; the note after `go` reaches the agent. Runway's own comments carry a marker so they're never mistaken for Joe's.
+- 2026-10-05 · Runway authenticates to Linear with a personal API key in the macOS keychain, not the connector. A scheduled script can't use the connector's sign-in; the connector is for the planning skills.
+- 2026-10-05 · The trigger is a launchd LaunchAgent on the Mac running `runway loop` every 10 minutes, with a lock so runs never overlap. A cloud routine can't reach the Mac's checkouts or toolchain.

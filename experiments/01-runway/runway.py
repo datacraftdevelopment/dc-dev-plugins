@@ -3,13 +3,17 @@
 
 The loop never waits on Joe. Each tick it:
   1. Preps a decision packet for every human-gated ticket that is (or will soon be)
-     on the frontier, and parks it as needs-human. Joe answers with `runway go NN`.
+     on the frontier, and parks it as needs-human. Joe answers in the tracker
+     (or with `runway go NN`), and the next tick picks the answer up.
   2. Runs the next ready auto ticket: agent in a git worktree on its own branch,
      then the check command. Pass -> merged into the integration branch, resolved.
      Fail -> one retry with the failure output, then parked as needs-human.
 
-Tracker format is pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
-one extra header line: `Gate: human` (needs Joe's go) or `Gate: auto` (default).
+Trackers (config key "tracker"):
+  markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
+                      one extra header line: `Gate: human` or `Gate: auto` (default).
+  linear              Linear issues, through linear_tracker.py. See its docstring.
+
 The base branch is never touched; Joe merges the integration branch himself.
 
 No dependencies beyond Python 3.9+ and git.
@@ -27,7 +31,10 @@ from pathlib import Path
 
 HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch):\s*(.*)$", re.M)
 DONE = {"resolved", "done", "closed"}
+RUNNABLE_GATES = ("auto", "approved")
 DEFAULT_CONFIG = {
+    # "markdown" or "linear". Linear settings live under the "linear" key.
+    "tracker": "markdown",
     # Prompt goes to the agent on stdin. Headless Claude Code by default.
     "agent_cmd": "claude -p --permission-mode acceptEdits",
     # Read-only prep agent. Its stdout becomes the decision packet.
@@ -45,7 +52,8 @@ DEFAULT_CONFIG = {
 
 
 def now() -> str:
-    return dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    # Timezone-aware, so the log lines up with UTC timestamps elsewhere.
+    return dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
 
 
 def sh(cmd, cwd: Path, stdin: str | None = None, timeout: int | None = None, check=False):
@@ -65,11 +73,19 @@ def log(root: Path, msg: str) -> None:
         f.write(line + "\n")
 
 
+# ---------- markdown tracker ----------
+
 class Ticket:
-    def __init__(self, path: Path):
+    """A ticket in pm's local markdown tracker. Other trackers mirror this interface:
+    id, num, effort, slug, ref, title, text, status, gate, blocked_by, h(),
+    post_packet(), mark_claimed(), mark_resolved(), mark_needs_human(), approve(), decline()."""
+
+    def __init__(self, path: Path, root: Path | None = None):
         self.path = path
+        self.root = root or path.parents[3]
         self.num = path.name.split("-", 1)[0]
         self.effort = path.parent.parent.name
+        self.slug = path.stem
         self.text = path.read_text()
 
     def h(self, key: str, default: str = "") -> str:
@@ -81,6 +97,10 @@ class Ticket:
     @property
     def id(self) -> str:
         return f"{self.effort}/{self.num}"
+
+    @property
+    def ref(self) -> str:
+        return str(self.path.relative_to(self.root))
 
     @property
     def status(self) -> str:
@@ -122,21 +142,84 @@ class Ticket:
     def save(self) -> None:
         self.path.write_text(self.text)
 
+    # -- lifecycle (what the loop calls) --
 
-def load(root: Path) -> list[Ticket]:
-    return [Ticket(p) for p in sorted(root.glob(".scratch/*/issues/*.md"))]
+    def post_packet(self, packet: str) -> None:
+        self.text = self.text.rstrip() + (
+            f"\n\n## Decision packet\n\n_Prepared {now()} by runway. Answer with `runway go {self.num}` "
+            f"or `runway no {self.num} \"reason\"`._\n\n{packet}\n")
+        self.set("Status", "needs-human")
+        self.set("Waiting on", f"Joe, go/no-go on the decision packet, since {now()}")
+        self.save()
+
+    def mark_claimed(self, branch: str) -> None:
+        self.set("Status", "claimed")
+        self.set("Branch", branch)
+        self.save()
+
+    def mark_resolved(self, note: str) -> None:
+        self.set("Status", "resolved")
+        self.comment(note)
+        self.save()
+
+    def mark_needs_human(self, why: str, detail: str) -> None:
+        self.set("Status", "needs-human")
+        self.set("Waiting on", f"Joe, {why}, since {now()}")
+        self.comment(detail)
+        self.save()
+
+    def approve(self, note: str) -> None:
+        self.set("Status", "ready")
+        self.set("Gate", "approved")
+        self.set("Waiting on", None)
+        self.comment(f"Joe: go. {note}".strip())
+        self.save()
+
+    def decline(self, note: str) -> None:
+        drop = note.lower().startswith("drop")
+        self.set("Status", "resolved" if drop else "needs-human")
+        self.set("Waiting on", None if drop else f"Joe said no: {note}")
+        self.comment(f"Joe: no. {note}".strip())
+        self.save()
 
 
-def by_num(tickets: list[Ticket], t: Ticket) -> dict[str, Ticket]:
+class MarkdownTracker:
+    def __init__(self, root: Path, cfg: dict):
+        self.root = root
+
+    def load(self) -> list[Ticket]:
+        return [Ticket(p, self.root) for p in sorted(self.root.glob(".scratch/*/issues/*.md"))]
+
+    def reload(self, t: Ticket) -> Ticket:
+        return Ticket(t.path, self.root)
+
+    def sync(self) -> None:
+        """Pick up answers Joe left in the tracker. Markdown answers arrive via `runway go`."""
+
+
+def make_tracker(cfg: dict, root: Path):
+    kind = cfg.get("tracker", "markdown")
+    if kind == "markdown":
+        return MarkdownTracker(root, cfg)
+    if kind == "linear":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from linear_tracker import LinearTracker
+        return LinearTracker(root, cfg)
+    sys.exit(f"Unknown tracker {kind!r}; use 'markdown' or 'linear'.")
+
+
+# ---------- frontier ----------
+
+def by_num(tickets: list, t) -> dict:
     return {x.num: x for x in tickets if x.effort == t.effort}
 
 
-def unblocked(t: Ticket, tickets: list[Ticket]) -> bool:
+def unblocked(t, tickets: list) -> bool:
     peers = by_num(tickets, t)
     return all(peers.get(b) is None or peers[b].status in DONE for b in t.blocked_by)
 
 
-def will_unblock_without_joe(t: Ticket, tickets: list[Ticket], seen=None) -> bool:
+def will_unblock_without_joe(t, tickets: list, seen=None) -> bool:
     """True if every open blocker is auto work the loop can finish on its own."""
     seen = seen or set()
     peers = by_num(tickets, t)
@@ -144,7 +227,7 @@ def will_unblock_without_joe(t: Ticket, tickets: list[Ticket], seen=None) -> boo
         p = peers.get(b)
         if p is None or p.status in DONE:
             continue
-        if p.id in seen or p.gate == "human" or p.status == "needs-human":
+        if p.id in seen or p.gate not in RUNNABLE_GATES or p.status == "needs-human":
             return False
         if not will_unblock_without_joe(p, tickets, seen | {p.id}):
             return False
@@ -180,15 +263,12 @@ Ticket ({path}):
 """
 
 
-def prep(cfg: dict, root: Path, t: Ticket) -> None:
+def prep(cfg: dict, root: Path, t) -> None:
     log(root, f"prep  {t.id} {t.title}")
-    r = sh(cfg["prep_cmd"], root, stdin=PREP_PROMPT.format(path=t.path.relative_to(root), ticket=t.text),
+    r = sh(cfg["prep_cmd"], root, stdin=PREP_PROMPT.format(path=t.ref, ticket=t.text),
            timeout=cfg["agent_timeout_s"])
     packet = r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else f"Prep failed:\n\n```\n{r.stderr[-2000:]}\n```"
-    t.text = t.text.rstrip() + f"\n\n## Decision packet\n\n_Prepared {now()} by runway. Answer with `runway go {t.num}` or `runway no {t.num} \"reason\"`._\n\n{packet}\n"
-    t.set("Status", "needs-human")
-    t.set("Waiting on", f"Joe, go/no-go on the decision packet, since {now()}")
-    t.save()
+    t.post_packet(packet)
     notify(cfg, root, f"Decision ready: {t.id} {t.title}")
 
 
@@ -211,14 +291,11 @@ def ensure_integration(cfg: dict, root: Path) -> None:
         sh(["git", "branch", br, cfg["base_branch"]], root, check=True)
 
 
-def run_ticket(cfg: dict, root: Path, t: Ticket) -> None:
+def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     ensure_integration(cfg, root)
-    slug = t.path.stem
-    branch = f"runway/{t.effort}-{slug}"
-    wt = (root / cfg["worktree_dir"] / f"{t.effort}-{slug}").resolve()
-    t.set("Status", "claimed")
-    t.set("Branch", branch)
-    t.save()
+    branch = f"runway/{t.effort}-{t.slug}"
+    wt = (root / cfg["worktree_dir"] / f"{t.effort}-{t.slug}").resolve()
+    t.mark_claimed(branch)
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
     if wt.exists():
@@ -228,8 +305,8 @@ def run_ticket(cfg: dict, root: Path, t: Ticket) -> None:
 
     extra, ok, detail = "", False, ""
     for attempt in range(1, cfg["max_attempts"] + 1):
-        prompt = RUN_PROMPT.format(path=t.path.relative_to(root), ticket=t.text, extra=extra)
-        a = sh(cfg["agent_cmd"], wt, stdin=prompt, timeout=cfg["agent_timeout_s"])
+        prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
+        sh(cfg["agent_cmd"], wt, stdin=prompt, timeout=cfg["agent_timeout_s"])
         q = wt / "RUNWAY_QUESTION.md"
         if q.exists():
             detail = "Agent stopped with a question:\n\n" + q.read_text()
@@ -244,22 +321,17 @@ def run_ticket(cfg: dict, root: Path, t: Ticket) -> None:
         extra = f"\nThe previous attempt failed the check. Fix it:\n\n{detail}\n"
         log(root, f"fail  {t.id} attempt {attempt}")
 
-    t = Ticket(t.path)  # agent may not touch it, but reload to be safe
+    t = tracker.reload(t)  # agent may not touch it, but reload to be safe
     if ok:
-        merged = merge_into_integration(cfg, root, branch)
-        if merged:
-            t.set("Status", "resolved")
-            t.comment(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
+        if merge_into_integration(cfg, root, branch):
+            t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
             log(root, f"done  {t.id}")
         else:
             ok = False
             detail = f"Check passed but `{branch}` did not merge cleanly into `{cfg['integration_branch']}`."
     if not ok:
-        t.set("Status", "needs-human")
-        t.set("Waiting on", f"Joe, run failed or asked a question, since {now()}")
-        t.comment(detail or "Agent run failed with no detail.")
+        t.mark_needs_human("run failed or asked a question", detail or "Agent run failed with no detail.")
         notify(cfg, root, f"Blocked: {t.id} {t.title}")
-    t.save()
     sh(["git", "worktree", "remove", "--force", str(wt)], root)
 
 
@@ -277,28 +349,31 @@ def merge_into_integration(cfg: dict, root: Path, branch: str) -> bool:
 
 # ---------- commands ----------
 
-def tick(cfg: dict, root: Path) -> bool:
+def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything."""
     did = False
-    tickets = load(root)
+    tracker.sync()
+    tickets = tracker.load()
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
     for t in tickets:
         if t.gate == "human" and t.status == "ready" and will_unblock_without_joe(t, tickets):
             prep(cfg, root, t)
             did = True
     # 2. AFK lane: run the first ready auto (or approved) ticket.
-    tickets = load(root)
+    tickets = tracker.load()
     for t in tickets:
-        if t.status == "ready" and t.gate in ("auto", "approved") and unblocked(t, tickets):
-            run_ticket(cfg, root, t)
+        if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
+            run_ticket(cfg, root, tracker, t)
             return True
     return did
 
 
-def cmd_status(root: Path) -> None:
-    tickets = load(root)
+def cmd_status(tracker) -> None:
+    tickets = tracker.load()
     groups = {"Waiting on you": [], "Running": [], "Ready (auto)": [], "Ready (needs prep)": [], "Blocked": [], "Done": []}
     for t in tickets:
+        if t.gate not in RUNNABLE_GATES + ("human",):
+            continue  # not Runway's (e.g. a wayfinder decision ticket)
         if t.status == "needs-human":
             groups["Waiting on you"].append(t)
         elif t.status == "claimed":
@@ -314,36 +389,41 @@ def cmd_status(root: Path) -> None:
     for name, ts in groups.items():
         print(f"\n{name} ({len(ts)})")
         for t in ts:
-            extra = f"  [{t.h('Waiting on')}]" if name == "Waiting on you" else ""
+            extra = f"  [{t.h('Waiting on')}]" if name == "Waiting on you" and t.h("Waiting on") else ""
             print(f"  {t.id:<24} {t.title}{extra}")
 
 
-def find(root: Path, num: str) -> Ticket:
-    num = num.zfill(2)
-    hits = [t for t in load(root) if t.num == num or t.id == num or t.id.endswith("/" + num)]
+def find(tracker, num: str):
+    key = num.zfill(2) if num.isdigit() else num
+    hits = [t for t in tracker.load() if t.num == key or t.id == key or t.id.endswith("/" + key)]
     if len(hits) != 1:
         sys.exit(f"Expected one ticket for {num!r}, found {[t.id for t in hits]}. Use effort/NN.")
     return hits[0]
 
 
-def cmd_answer(root: Path, num: str, go: bool, note: str) -> None:
-    t = find(root, num)
-    if go:
-        t.set("Status", "ready")
-        t.set("Gate", "approved")
-        t.set("Waiting on", None)
-        t.comment(f"Joe: go. {note}".strip())
-    else:
-        t.set("Status", "resolved" if note.lower().startswith("drop") else "needs-human")
-        t.set("Waiting on", f"Joe said no: {note}" if not note.lower().startswith("drop") else None)
-        t.comment(f"Joe: no. {note}".strip())
-    t.save()
+def cmd_answer(root: Path, tracker, num: str, go: bool, note: str) -> None:
+    t = find(tracker, num)
+    t.approve(note) if go else t.decline(note)
     log(root, f"answer {t.id} {'go' if go else 'no'} {note}")
+
+
+def locked(root: Path):
+    """Non-blocking lock so a scheduled tick never overlaps a running one."""
+    import fcntl
+    p = root / "_pm" / "runway.lock"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    f = p.open("w")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=".", help="target repo (pm-style .scratch tracker)")
+    ap.add_argument("--root", default=".", help="target repo (git checkout Runway works in)")
     ap.add_argument("--config", help="JSON config (default: <root>/runway.json if present)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
@@ -352,6 +432,7 @@ def main() -> None:
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
+    sub.add_parser("setup", help="Linear only: check the key, team and project, and create Runway's labels")
     a = ap.parse_args()
 
     root = Path(a.root).resolve()
@@ -359,19 +440,29 @@ def main() -> None:
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():
         cfg.update(json.loads(cfg_path.read_text()))
+    tracker = make_tracker(cfg, root)
 
     if a.cmd == "status":
-        cmd_status(root)
-    elif a.cmd == "tick":
-        tick(cfg, root)
-    elif a.cmd == "loop":
-        for _ in range(a.max_ticks):
-            if not tick(cfg, root):
-                log(root, "idle  nothing ready without Joe")
-                break
-        cmd_status(root)
+        cmd_status(tracker)
+    elif a.cmd == "setup":
+        if not hasattr(tracker, "setup"):
+            sys.exit("setup is only needed for the linear tracker.")
+        tracker.setup()
+    elif a.cmd in ("tick", "loop"):
+        lock = locked(root)
+        if lock is None:
+            print("Another Runway run holds the lock; skipping.")
+            return
+        if a.cmd == "tick":
+            tick(cfg, root, tracker)
+        else:
+            for _ in range(a.max_ticks):
+                if not tick(cfg, root, tracker):
+                    log(root, "idle  nothing ready without Joe")
+                    break
+            cmd_status(tracker)
     elif a.cmd in ("go", "no"):
-        cmd_answer(root, a.ticket, a.cmd == "go", a.note)
+        cmd_answer(root, tracker, a.ticket, a.cmd == "go", a.note)
 
 
 if __name__ == "__main__":

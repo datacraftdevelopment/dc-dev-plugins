@@ -14,6 +14,7 @@ python3 runway.py --root <repo> loop       # tick until only Joe's decisions rem
 python3 runway.py --root <repo> tick       # one pass (for cron/launchd later)
 python3 runway.py --root <repo> go 03 "note"
 python3 runway.py --root <repo> no 03 "reason"     # "drop ..." resolves it instead
+python3 runway.py --root <repo> setup     # Linear only: check access, create labels
 ```
 
 Each tick:
@@ -25,7 +26,7 @@ Your checkout and base branch are never touched. Merge `runway/integration` your
 
 ## Config
 
-Put `runway.json` in the target repo root (all keys optional):
+Put `runway.json` in the target repo root (all keys optional). Set `"tracker": "linear"` to work a Linear project instead of `.scratch/`; see `linear_tracker.py` and `../03-linear/`.
 
 ```json
 {
