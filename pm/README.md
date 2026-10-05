@@ -144,7 +144,8 @@ pm/
 │   └── pm-scaffold.md       ← /pm:pm-scaffold
 ├── hooks/
 │   └── hooks.json · credential-guard.sh · test-credential-guard.sh
-├── scripts/                 ← session.py, succession.py, acceptance.py, credential guard and policy
+├── scripts/                 ← session.py, succession.py, acceptance.py, stacks.py, credential guard and policy
+├── stacks.json              ← stack table: which plugins a Vercel, Supabase or FileMaker repo gets (0.23)
 ├── skills/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
 │   ├── sibling-sessions/ · orchestrate/ · session-succession/

@@ -1,6 +1,6 @@
 ---
-description: Scaffold a project from the datacraft PM starter — client engagement, personal project, or in-place _pm/ for an existing folder — and run the skeleton interview.
-argument-hint: <ClientName> | self <ProjectName> | here
+description: Scaffold a project from the datacraft PM starter — client engagement, personal project, or in-place _pm/ for an existing folder — and run the skeleton interview. Also adds a stack's plugins to a repo (`stack vercel`).
+argument-hint: <ClientName> | self <ProjectName> | here | stack <name>…
 ---
 
 # /pm-scaffold
@@ -14,13 +14,14 @@ The argument is: **$ARGUMENTS**
 
 ## 1. Resolve the mode and name
 
-Three modes — read the argument (and the user's phrasing) to pick one:
+Four modes — read the argument (and the user's phrasing) to pick one:
 
 | Mode | Trigger | Target |
 |---|---|---|
 | **Client** (default) | A bare name: `Acme` | `datacraft-<ClientName>/` |
 | **Personal** | `self` / `personal` / "for me" / "no client", plus a name: `self HomeLab` | `<ProjectName>/` — no prefix; `datacraft-` is reserved for client work |
 | **In-place** | `here`, `.`, "this folder" | `_pm/` + `docs/` wiring added to the current directory |
+| **Stack** | `stack`, alone or with names: `stack vercel supabase`, "add the Vercel stack" | Only step 5b, in the current directory. Works on a repo that is already scaffolded and on one that never was |
 
 - If `$ARGUMENTS` is empty, ask ONE question: *"What are we standing up? A client name (→ `datacraft-<Client>/`), a personal project (`self <Name>` → plain `<Name>/`), or `here` to add `_pm/` to this folder."* **A missing client is never a blocker** — personal and in-place modes don't have one.
 - Normalise the name to a folder-safe token (strip spaces/punctuation, keep it readable — "Acme Corp" → `AcmeCorp`).
@@ -106,9 +107,52 @@ a *committed* file, so the project must be a repository.
   that block) and say you did.
 
 **In-place mutation contract:** the additive edits above (`.gitignore`
-lines, `CLAUDE.md` section, `docs/` stubs) are the ONLY changes allowed
+lines, `CLAUDE.md` section, `docs/` stubs, and step 5b's `enabledPlugins`
+entries in `.claude/settings.json`) are the ONLY changes allowed
 outside `_pm/`; never rewrite or reorganize existing content, and name every
 touched file in the sign-off.
+
+## 5b. Stacks — the plugins this repo needs
+
+Plugins for one kind of work (Vercel, Supabase, FileMaker) are kept out of
+the global setup and enabled per repo. The table is
+`${CLAUDE_PLUGIN_ROOT}/stacks.json`; edit that file to change what a stack
+gets, never this command.
+
+1. See which stacks the repo looks like (new-folder modes: run it in the
+   target folder; a fresh scaffold usually detects nothing, so ask instead):
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stacks.py" --root . detect
+   ```
+
+2. Name what was detected, or the stacks the user asked for, and get a yes.
+   One question, and "none" is a fine answer. `stacks.py list` shows the
+   table. In Stack mode with names given, the names are the yes.
+
+3. Apply the stacks the user confirmed:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stacks.py" --root . apply vercel supabase
+   ```
+
+   It adds the stack's plugins to `.claude/settings.json` under
+   `enabledPlugins` and changes nothing else. A plugin the repo already
+   lists, on or off, stays as the repo has it. Run again, it changes
+   nothing.
+
+4. Relay the result: what was added, what was already there, anything kept
+   disabled, any `notes`, and the `install_commands`. **Do not run the
+   install commands yourself** — hand them to the user, one per fenced block.
+   A machine that doesn't have a plugin yet needs its command run once; the
+   new plugins load in the next session.
+
+In a Claude Code Project (cloud threads), a repo's declared plugins do not
+load. Say so when the user mentions threads, and point them at Project
+settings > Plugins.
+
+**Stack mode ends here**: skip the interview, and sign off with step 4's
+relay and the files touched (`.claude/settings.json` only).
 
 ## 6. Run the skeleton interview
 
@@ -131,7 +175,7 @@ artifact scales with content.
 
 Confirm what you did in 3–4 lines: what was created (new folder or in-place
 `_pm/`), git state (initialized / existing / declined), renames done,
-skeleton captured, tracker preset (local) and inbox present, and — in-place —
+skeleton captured, tracker preset (local) and inbox present, stacks applied (or none), and — in-place —
 every file touched. Then point at the next step: *"Run `discovery` on the first piece
 of work — it writes `docs/intent/<slug>.md` and makes the size call. Then
 `whats-next` when you start a working session."*
