@@ -51,7 +51,19 @@ It builds a throwaway git repo with five tickets (03 is `Gate: human`, 04 depend
 ## Results
 
 - **2026-10-05, offline demo (fake agent):** works as designed. 03's packet was prepped before any work started; 01, 02 and 05 ran and merged; the loop stopped with only 03 waiting. After `go 03`, 03 then 04 ran. Joe touches: 1 (the go) for 5 tickets. The failure path (check always fails) retried once, then parked the ticket as `needs-human` with the log and kept its branch.
-- **Next: first real run.** See "Proposed first real run" below.
+- **2026-10-05, first real run (`claude -p`, Claude Code 2.1.285, Mac mini, practice repo `hours`):** worked first try with no config changes. The `--allowedTools` syntax and the read-only prep command both worked as written.
+  - **Pass 1** (2m54s): both decision packets were prepped first (03 and 05), then 01, 02, 04 and 06 ran and merged. The loop stopped with only the two decisions waiting. Tests on `runway/integration`: 10 OK.
+  - **Decisions:** Joe chose daily rounding for 03 and markdown only for 05, both on Projects decision cards.
+  - **Pass 2:** 03 ran in 27s and 05 in 51s, both merged. Tests: 20 OK. `main` untouched.
+  - **Totals:** 6/6 tickets done in about 4.5 min of agent time, with no failures or retries. Joe touched it 3 times: the 2 decisions, plus one typed "go" (see the first finding).
+  - **Packet quality:** better than expected. Both packets computed real numbers from the sample (raw 9.87 h; 10.20 / 10.50 / 10.25 h billed per rule), recommended an option with reasons, and caught a planning gap in the tickets: ticket 04's report prints raw hours and no ticket wires 03's rounding into it. Confirmed after the run, when Acme showed 4.03 h raw against 4.25 h billed. That became ticket 07.
+  - **Findings:**
+    1. **A relayed approval doesn't count on the Mac.** Claude Code's auto-mode check on the Mac blocked `runway go 03` when Joe's card tap reached it through another Claude session, and treated it as an unrequested commit. Joe's own typed "go" in the thread cleared it. Design consequence for experiment 03: approval has to land in the tracker (a ticket edit, a Linear or GitHub status), which Runway reads on a schedule, with no Claude session relaying the go.
+    2. **No token capture.** `runway.py` doesn't record usage from `claude -p`. Add it (e.g. `--output-format json`) before comparing against Hermes.
+    3. **Leftover worktree.** Runway leaves its merge worktree at `sandbox/.runway-worktrees/_integration` between runs. It's harmless, but should be cleaned up or documented.
+    4. **Ticket edits aren't tracked.** `.scratch/` is gitignored in the practice repo, so the needs-human edits and packets aren't in its git history. That's fine for practice. A real project should decide whether ticket history lives in git.
+    5. **Credential guard still fires.** pm's credential-guard hook fired on two git commands during the session. Hooks keep working under Runway, which is good.
+- **Next:** add ticket 07 (billed hours in the report) and token capture, then run on a real low-stakes project.
 
 ## Proposed first real run
 
