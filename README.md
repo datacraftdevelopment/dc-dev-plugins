@@ -18,4 +18,5 @@ Research and experiments for taking Joe's PM Dev workflow from "one session, Joe
 2. `research/02-judgment-lookahead.md`: the design for the "prep the next judgment" bottleneck.
 3. `research/03-sandcastle.md`: what Sandcastle is, verified details, and where it fits.
 4. `research/04-projects-as-factory.md`: whether Claude Code Projects already is the factory, and where the gap is.
-5. `experiments/01-runway/README.md`: the simplest thing to spin up first.
+5. `research/05-projects-quirks.md`: everything that went sideways running this from a Projects thread.
+6. `experiments/01-runway/README.md`: the simplest thing to spin up first.
