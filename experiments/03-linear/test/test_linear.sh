@@ -3,7 +3,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RUNWAY="$HERE/../../01-runway/runway.py"
-PORT=${PORT:-8765}
+PORT=${PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')}
 python3 "$HERE/fake_linear.py" $PORT & SRV=$!
 trap 'kill $SRV' EXIT
 sleep 1

@@ -43,7 +43,8 @@ DEFAULT_CONFIG = {
     "check_cmd": "true",
     "integration_branch": "runway/integration",
     "base_branch": "main",
-    "worktree_dir": "../.runway-worktrees",
+    # Per repo, so sibling repos never share a merge worktree. {repo} is the repo folder name.
+    "worktree_dir": "../.runway-worktrees/{repo}",
     "max_attempts": 2,
     # Optional, e.g. osascript -e 'display notification "{msg}" with title "Runway"'
     "notify_cmd": "",
@@ -291,10 +292,14 @@ def ensure_integration(cfg: dict, root: Path) -> None:
         sh(["git", "branch", br, cfg["base_branch"]], root, check=True)
 
 
+def worktrees(cfg: dict, root: Path) -> Path:
+    return root / cfg["worktree_dir"].replace("{repo}", root.name)
+
+
 def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     ensure_integration(cfg, root)
     branch = f"runway/{t.effort}-{t.slug}"
-    wt = (root / cfg["worktree_dir"] / f"{t.effort}-{t.slug}").resolve()
+    wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
     t.mark_claimed(branch)
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
@@ -337,7 +342,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
 def merge_into_integration(cfg: dict, root: Path, branch: str) -> bool:
     """Merge in a throwaway worktree so the user's checkout is never disturbed."""
-    tmp = (root / cfg["worktree_dir"] / "_integration").resolve()
+    tmp = (worktrees(cfg, root) / "_integration").resolve()
     if not tmp.exists():
         sh(["git", "worktree", "add", str(tmp), cfg["integration_branch"]], root, check=True)
     r = sh(["git", "merge", "--no-ff", "-m", f"runway: merge {branch}", branch], tmp)

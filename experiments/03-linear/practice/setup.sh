@@ -5,6 +5,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="${1:?repo path}"; TEAM="${2:?Linear team key, e.g. SF}"; PROJECT="${3:?Linear project name}"
+mkdir -p "$REPO"; REPO="$(cd "$REPO" && pwd)"
 fill() { sed -e "s#{{TEAM}}#$TEAM#g" -e "s#{{PROJECT}}#$PROJECT#g" "$1"; }
 
 if [ ! -d "$REPO/.git" ]; then

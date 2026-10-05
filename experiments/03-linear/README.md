@@ -72,10 +72,18 @@ The adapter's 7 GraphQL operations were also validated against Linear's publishe
 ## Results
 
 - **2026-10-05, offline (fake Linear, fake agent), in the cloud container and on the Mac's folder VM:** `setup` created the missing labels. Loop 1 prepped the gated issue's packet as a comment, ran and merged the two AFK issues, and stopped with the gated issue waiting and two blocked (one behind the gate, one behind a Wayfinder ticket, which Runway left alone). A Joe comment `go greet() please` was picked up by the next loop, which ran the gated issue (the agent saw the note) and then its dependent. The markdown tracker path still behaves as in experiment 01.
-- **Real Linear:** not run yet. Waiting on the Linear reconnect and an API key.
+- **2026-10-05, real Linear (DataCraft team `DAT`, project "Runway practice", real `claude -p` on the Mac mini):** 4 tickets planned through the Linear connector (3 `ready-for-agent`, 1 `ready-for-human` for the split-bill rounding rule). Works end to end.
+  - **Packet:** DAT-7's packet was posted as a Linear comment before any build started. It recommended "first" (leftover cents to the first people) with worked numbers ($50.15 / 3 → 16.72, 16.72, 16.71) and said a bare "go" would mean "first".
+  - **Joe's touch:** one threaded reply, `go`, in Linear. The next pass picked it up and posted "Approved". Joe asked whether he should also move the label to `ready-for-agent`; no, labels are Runway's job. Worth saying on the packet itself.
+  - **Run:** DAT-5 → DAT-6 → DAT-7 → DAT-8 in about 3 minutes, all Done in Linear, each merged to `runway/integration`. 28 tests pass in a clean clone of that branch; `main` untouched.
+  - **Touches:** 1 for 4 tickets (the go), plus the typed "run it" in the Projects thread that auto mode needs before a Claude session may start the loop.
+  - **Schedule:** the launchd job loaded, its first run exited 0 and read Linear with the keychain key. There was nothing to build, so `claude -p` under launchd is still unproven.
+  - **Bugs found and fixed:** (1) Linear rejected the queries as too complex (18,865 vs a 10,000 limit), because nested page sizes multiply; capped them. (2) `setup.sh` broke on a relative path for a new repo. (3) Two sandbox repos shared one `_integration` merge worktree, so DAT-5's merge ran in the wrong repo and was parked; `worktree_dir` now defaults to `../.runway-worktrees/{repo}`. (4) Linear's `duplicate` state type now counts as done.
 
 ## Known gaps
 
-- **(unverified)** launchd jobs reaching `claude -p` auth and the keychain. Expected to work for a LaunchAgent in Joe's login session; check `schedule.sh status` after the first run.
+- **(unverified)** launchd jobs reaching `claude -p` auth. The keychain works from launchd (first scheduled run); `claude -p` gets proven the first time a ticket is ready when the job fires.
+- Starting the loop from a Claude session needs Joe's own typed request (auto mode blocks unattended agent runs otherwise). The launchd job doesn't go through Claude Code, so once it's installed this stops mattering.
+- The older `sandbox/runway-practice` repo still has its merge worktree at the old shared path; remove it (`git worktree prune` after deleting `../.runway-worktrees/_integration`) before running Runway there again.
 - Anyone in the Linear workspace can comment `go`. Fine solo; with clients in the workspace, restrict to Joe's user id.
 - One AFK ticket at a time, as in 01. No token capture yet.

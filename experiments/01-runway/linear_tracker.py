@@ -10,7 +10,7 @@ Matt Pocock's triage labels, which /to-tickets already applies:
 
 Anything else in the project (wayfinder decision tickets, Joe's own issues) is ignored,
 except as a blocker. Status comes from the workflow state: completed or canceled is done,
-started is claimed, anything else is ready. Blocking uses Linear's native "blocks"
+started is claimed, anything else is ready (duplicate counts as done). Blocking uses Linear's native "blocks"
 relation, which is what /to-tickets and /wayfinder create.
 
 Joe answers in Linear, from any device, and the next tick picks it up:
@@ -50,13 +50,13 @@ DEFAULTS = {
 ISSUE_FIELDS = """
   id identifier number title description url
   state { id name type }
-  labels { nodes { id name } }
-  comments(first: 100) { nodes { body createdAt } }
-  inverseRelations(first: 50) { nodes { type issue { identifier number title state { type } } } }
+  labels(first: 20) { nodes { id name } }
+  comments(first: 25) { nodes { body createdAt } }
+  inverseRelations(first: 10) { nodes { type issue { identifier number title state { type } } } }
 """
 
 Q_ISSUES = """query($filter: IssueFilter, $after: String) {
-  issues(filter: $filter, first: 100, after: $after) {
+  issues(filter: $filter, first: 50, after: $after) {
     nodes { %s }
     pageInfo { hasNextPage endCursor }
   }
@@ -65,14 +65,14 @@ Q_ISSUES = """query($filter: IssueFilter, $after: String) {
 Q_ISSUE = """query($id: String!) { issue(id: $id) { %s } }""" % ISSUE_FIELDS
 
 Q_TEAM = """query($key: String!) {
-  teams(filter: { key: { eq: $key } }) {
+  teams(first: 1, filter: { key: { eq: $key } }) {
     nodes {
       id key name
-      states { nodes { id name type position } }
-      labels(first: 250) { nodes { id name } }
+      states(first: 50) { nodes { id name type position } }
+      labels(first: 100) { nodes { id name } }
     }
   }
-  issueLabels(filter: { team: { null: true } }, first: 250) { nodes { id name } }
+  issueLabels(filter: { team: { null: true } }, first: 100) { nodes { id name } }
 }"""
 
 Q_PROJECTS = """query($name: String!) { projects(filter: { name: { eq: $name } }) { nodes { id name } } }"""
@@ -146,7 +146,7 @@ class LinearTicket:
     def status(self) -> str:
         c = self.tr.c
         st = self.node["state"]["type"]
-        if st in ("completed", "canceled"):
+        if st in ("completed", "canceled", "duplicate"):
             return "resolved"
         if c["needs_human_label"] in self.labels:
             return "needs-human"
