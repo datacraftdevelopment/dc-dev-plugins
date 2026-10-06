@@ -15,7 +15,7 @@ cat > runway.json <<JSON
 {"tracker": "linear",
  "linear": {"team": "SF", "project": "Practice", "api_url": "$F/graphql"},
  "agent_cmd": "python3 $HERE/fake_agent.py", "prep_cmd": "python3 $HERE/fake_prep.py",
- "check_cmd": "true"}
+ "check_cmd": "true", "finish": "off"}
 JSON
 export LINEAR_API_KEY=test-key
 # 1 auto; 2 auto after 1; 3 gated after 2; 4 auto after 3; 5 a wayfinder ticket (ignored); 6 auto blocked by 5

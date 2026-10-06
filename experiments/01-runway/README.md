@@ -24,6 +24,8 @@ Each tick:
 
 Your checkout and base branch are never touched. Merge `runway/integration` yourself. Everything is logged to `_pm/runway.log`.
 
+Since experiment 04, `loop` also ends a finished build with a review, one fix pass and a PR body, logs every agent call with its tokens to `_pm/runway-runs.jsonl`, and has `runway finish` and `runway retro`. See `../04-finish/README.md`.
+
 ## Config
 
 Put `runway.json` in the target repo root (all keys optional). Set `"tracker": "linear"` to work a Linear project instead of `.scratch/`; see `linear_tracker.py` and `../03-linear/`.

@@ -1,6 +1,6 @@
 {
-  "agent_cmd": "claude -p --permission-mode acceptEdits --allowedTools \"Bash(python3 -m unittest:*),Bash(python3 -m hours:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*)\"",
-  "prep_cmd": "claude -p --allowedTools \"Read,Grep,Glob\"",
+  "agent_cmd": "claude -p --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3 -m unittest:*),Bash(python3 -m hours:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*)\"",
+  "prep_cmd": "claude -p --output-format json --allowedTools \"Read,Grep,Glob\"",
   "check_cmd": "python3 -m unittest discover -s tests",
   "base_branch": "main",
   "integration_branch": "runway/integration",

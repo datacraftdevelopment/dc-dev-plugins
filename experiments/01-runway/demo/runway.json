@@ -2,5 +2,6 @@
   "agent_cmd": "python3 DEMO/fake_agent.py",
   "prep_cmd": "python3 DEMO/fake_prep.py",
   "check_cmd": "sh -c 'ls *.txt >/dev/null'",
-  "base_branch": "main"
+  "base_branch": "main",
+  "finish": "off"
 }
