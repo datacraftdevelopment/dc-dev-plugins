@@ -100,6 +100,45 @@ class LinearClaims(unittest.TestCase):
         self.assertEqual(FakeLinear([n]).load()[0].claimed_by, "Mini-Two")
         self.assertIsNone(FakeLinear([node(2, ["ready-for-agent"], "unstarted")]).load()[0].claimed_by)
 
+    def _tick_linear(self, me, nodes):
+        ran = []
+        lg = mock.MagicMock()
+        with mock.patch.object(runway, "machine_name", return_value=me), \
+                mock.patch.object(runway, "run_ticket", side_effect=lambda cfg, r, tr, t: ran.append(t.id)), \
+                mock.patch.object(runway, "sync_base", return_value=True), \
+                mock.patch.object(runway, "log", lg):
+            tr = FakeLinear(nodes)
+            tr.sync = lambda: None
+            runway.tick(dict(runway.DEFAULT_CONFIG), Path("/r"), tr)
+        return ran, [c.args[1] for c in lg.call_args_list]
+
+    def test_pause_stop_then_other_machine_claims(self):
+        claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."
+        running = node(1, ["ready-for-agent"], "started", [claim])
+        ran, logs = self._tick_linear("Mini-Two", [running])
+        self.assertEqual(ran, [])
+        self.assertEqual(FakeLinear([running]).load()[0].claimed_by, "Mini-One")
+        # mark_ready (stopped by pause) puts it back to unstarted; the old stamp must not hold it
+        stopped = node(1, ["ready-for-agent"], "unstarted", [claim, "\U0001f6eb runway · stopped by pause"])
+        ran, logs = self._tick_linear("Mini-Two", [stopped])
+        self.assertEqual(ran, ["DAT-1"])
+        self.assertFalse([l for l in logs if "claimed by" in l])
+
+    def test_park_go_retry_on_another_machine(self):
+        claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."
+        parked = "\U0001f6eb runway · Parked: x. Remove `needs-human` or comment `go` to retry."
+        # parked: unstarted + needs-human, then Joe says go and the label clears: ready again
+        retry = node(1, ["ready-for-agent"], "unstarted", [claim, parked, "go"])
+        self.assertIsNone(FakeLinear([retry]).load()[0].claimed_by)
+        ran, _ = self._tick_linear("Mini-Two", [retry])
+        self.assertEqual(ran, ["DAT-1"])
+        # once Mini-Two claims it, Mini-One is the one that skips
+        again = node(1, ["ready-for-agent"], "started",
+                     [claim, parked, "go", "\U0001f6eb runway · Claimed-by: Mini-Two · Started on `b`."])
+        ran, _ = self._tick_linear("Mini-One", [again])
+        self.assertEqual(ran, [])
+        self.assertEqual(FakeLinear([again]).load()[0].claimed_by, "Mini-Two")
+
     def test_claim_comment_names_machine(self):
         import linear_tracker as L
         t = L.LinearTicket(node(1, [], "unstarted"), mock.MagicMock())
