@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.joe.runway.demo</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string><string>-lc</string>
+    <string>cd "/Users/joe/Agentic-Mini/_Sandbox/runway/demo repo" &amp;&amp; python3 "/x/runway.py" --root "/Users/joe/Agentic-Mini/_Sandbox/runway/demo repo" loop --max-ticks 20</string>
+  </array>
+  <key>StartInterval</key><integer>600</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/joe/Agentic-Mini/_Sandbox/runway/demo repo/_pm/launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/joe/Agentic-Mini/_Sandbox/runway/demo repo/_pm/launchd.log</string>
+</dict></plist>

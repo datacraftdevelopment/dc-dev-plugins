@@ -11,6 +11,7 @@ let package = Package(
     targets: [
         .target(name: "RunwayCore"),
         .executableTarget(name: "RunwayBar", dependencies: ["RunwayCore"]),
-        .testTarget(name: "RunwayCoreTests", dependencies: ["RunwayCore"]),
+        .testTarget(name: "RunwayCoreTests", dependencies: ["RunwayCore"],
+                    resources: [.copy("Fixtures")]),
     ]
 )

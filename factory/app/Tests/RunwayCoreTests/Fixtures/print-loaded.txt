@@ -1,0 +1,12 @@
+gui/501/com.joe.runway.demo = {
+	active count = 0
+	path = /Users/joe/Library/LaunchAgents/com.joe.runway.demo.plist
+	type = LaunchAgent
+	state = not running
+
+	program = /bin/zsh
+	run interval = 600 seconds
+	last exit code = 0
+
+	properties = runatload | inferred program
+}
