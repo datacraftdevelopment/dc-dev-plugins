@@ -61,6 +61,10 @@ Develop **in place** in each plugin's subfolder — this repo is the single sour
 
 Per-plugin dev cruft (`.venv/`, `sandbox/`) is gitignored via each plugin's own nested `.gitignore`, so it never publishes.
 
+## `factory/` — research, not a plugin
+
+`factory/` is the software-factory research and the Runway experiments (was `_Tools/SoftwareFactory`, folded in 2026-10-07 by subtree merge, history kept), plus the factory site in `factory/site/`. It is not a plugin: `marketplace.json` doesn't list it, and neither the `make-*.sh` cuts nor `scripts/build_codex.py` copy it. Its own `factory/CLAUDE.md` governs work inside it. Practice repos stay outside git in `~/Agentic-Mini/_Sandbox/runway/`.
+
 ## Tracking (`_pm/`, local-only)
 
 Root `_pm/` holds personal dev tracking (skeleton, TASKS, sessions) via the `pm` plugin's `whats-next` / `stepping-away` skills. It is **gitignored** (`/_pm/`, anchored so it doesn't touch `pm/template/_pm/`) — never published. This repo moved out of Dropbox to `~/Agentic-Mini` on 2026-09-12 (Dropbox was causing too many issues); `_pm/` no longer syncs between machines on its own, so it rides on whatever backup covers `~/Agentic-Mini`.

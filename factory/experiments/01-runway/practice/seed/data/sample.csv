@@ -1,0 +1,7 @@
+date,client,project,start,end,note
+2026-09-29,Acme,Website,09:00,10:20,Kickoff call
+2026-09-29,Acme,Website,13:05,15:40,Build nav
+2026-09-30,Birch & Co,FileMaker sync,08:30,09:10,Debug import
+2026-09-30,Acme,Website,10:00,10:07,Quick fix
+2026-10-01,Birch & Co,FileMaker sync,14:00,17:25,Script rewrite
+2026-10-01,Cobalt Labs,Audit,09:15,11:00,Review

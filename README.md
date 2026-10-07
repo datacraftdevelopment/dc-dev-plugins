@@ -101,6 +101,10 @@ Update everything later with:
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
 | **sdlc** | `gate-hooks`, `review-policy`; agent `policy-reviewer` | Repo-level enforcement kits: gate hooks installed into a repo's `.claude/` (production gate, protected paths, test lock) and a `REVIEW.md` policy with a read-only reviewer. Claude Code only: no Codex edition, no `pm` or Ringer dependency. See [`sdlc/README.md`](sdlc/README.md). |
 
+### Not a plugin: `factory/`
+
+[`factory/`](factory/README.md) holds the software-factory research and the Runway experiments, plus the factory site (`factory/site/`). It isn't listed in `marketplace.json` and none of the `make-*.sh` cuts or Codex builds ship it.
+
 ## Adding a new plugin
 
 1. Create a subfolder `<plugin-name>/` with its own `.claude-plugin/plugin.json`.
