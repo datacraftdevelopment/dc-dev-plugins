@@ -43,6 +43,8 @@ struct RunwayWindow: View {
                         NowTab(store: store, entry: entry).id(entry.project.label)
                     } else if tab == .queue {
                         QueueTab(store: store, entry: entry)
+                    } else if tab == .runs {
+                        RunsTab(store: store, entry: entry)
                     } else {
                         Text("\(tab.rawValue): coming soon")
                             .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)

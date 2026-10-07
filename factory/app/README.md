@@ -13,6 +13,8 @@ Window (`RunwayBar/RunwayWindow.swift`, opened from the menu's "Open Runway wind
 
 `schedule.sh` and `runway.py` are found from the Scripts setting (a dc-dev-plugins checkout), else from the `runway.py` path in the LaunchAgent plists. The script path is remembered, so a stopped loop keeps its row and can be started again. Decisions waiting come from `runway.py status --json`, polled at most once a minute. "Until tomorrow 08:00" means the next 08:00, so before 08:00 it ends this morning.
 
+Runs tab (`RunwayCore/RunsTab.swift`, `RunwayBar/RunsTabView.swift`): `_pm/runway-runs.jsonl` as a table, newest first (when, ticket, kind, harness, attempt, result, minutes, tokens = input+output, cost) with a totals footer summed from the same rows. Result: an agent call passes on exit 0, `finish` on `check_exit` 0, `outcome` reads `done` as pass and `needs-human`/`stopped` as park. Missing fields show "—" and bad lines are skipped. Session reveals `~/.claude/projects/*/<session_id>.jsonl` in Finder. "Write retro prompt" runs `runway retro` and opens `_pm/runway-retro-prompt.md`. `_pm/runway-pr.md`, when present, shows under "Finish". The log is parsed off the main actor and re-read every 10 seconds.
+
 ## Build, run, test
 
 ```bash
