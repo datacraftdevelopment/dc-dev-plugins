@@ -1,0 +1,5 @@
+.DS_Store
+__pycache__/
+_pm/
+.runway-worktrees/
+sandbox/

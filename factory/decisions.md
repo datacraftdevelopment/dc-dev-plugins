@@ -1,0 +1,14 @@
+# Decisions
+
+- 2026-10-05 · Start with a deterministic script as the manager, not an LLM manager. Management by script costs no tokens and is readable; PM's own pm-021 measured 2.6x usage when an orchestrator was the default. Hermes stays the LLM-manager comparison.
+- 2026-10-05 · First experiment runs headless `claude -p` on the host in git worktrees, not Sandcastle in Docker. It removes container auth and Docker from the first test; Sandcastle is experiment 02 once the loop shape is proven.
+- 2026-10-05 · Judgment is declared on the ticket at planning time (`Gate: human`) rather than discovered by the agent mid-run. Discovered blockers still park as `needs-human`.
+- 2026-10-05 · Reuse pm's tracker format unchanged, adding only `Gate:` and `Branch:` header lines.
+- 2026-10-05 · Approvals must land in the tracker, not arrive as relayed messages. The first real run showed the Mac's auto-mode check rejects a go relayed through another Claude session. Experiment 03 has a decision tap edit the ticket (or a Linear/GitHub status), and Runway picks it up on its schedule.
+- 2026-10-05 · Linear is Runway's first real tracker, through an adapter (`linear_tracker.py`) behind the same ticket interface as markdown. Runway's queue is Matt's triage labels (`ready-for-agent` = auto, `ready-for-human` = gated), so `/to-tickets` output is runnable as published and Wayfinder decision tickets are ignored.
+- 2026-10-05 · Joe's go is a Linear comment starting `go` (or a `go` label). It lands in the tracker, so no Claude session relays it; the note after `go` reaches the agent. Runway's own comments carry a marker so they're never mistaken for Joe's.
+- 2026-10-05 · Runway authenticates to Linear with a personal API key in the macOS keychain, not the connector. A scheduled script can't use the connector's sign-in; the connector is for the planning skills.
+- 2026-10-05 · The trigger is a launchd LaunchAgent on the Mac running `runway loop` every 10 minutes, with a lock so runs never overlap. A cloud routine can't reach the Mac's checkouts or toolchain.
+- 2026-10-06 · Runway stays the engine; Matt's `/implement-spec` isn't adopted. It's started by hand, managed by an LLM, and has no human gates, so it doesn't touch the trigger bottleneck. Runway borrows its whole-branch review instead (`research/06`).
+- 2026-10-06 · Runway ends each build with a finish step: review against the tickets, one fix pass kept only if the check passes, and a `/pr`-shaped body. The PR is written to a file by default; pushing and opening a draft PR is opt-in per repo (`"pr": "draft"`) because it's an outside action.
+- 2026-10-06 · Every agent call is logged with its session id and tokens, and `runway retro` feeds the struggling runs to `/retro`. That's the factory's learning loop, with retries and parks per ticket as the metric.
