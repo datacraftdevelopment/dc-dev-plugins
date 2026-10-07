@@ -128,6 +128,9 @@ DEFAULT_CONFIG = {
     "review_cmd": "claude -p --output-format json --allowedTools \"Read,Grep,Glob,Skill,Bash(git diff:*),Bash(git log:*)\"",
     "fix_cmd": "",
     "pr_cmd": "",
+    # "single": review_cmd reviews the integration branch. "panel": Joe's two-seat review (codex +
+    # claude) through Ringer, see ringer_panel.py. Without Ringer or any seat report it falls back to single.
+    "review": "single",
     # Which harness runs tickets by default: "claude" (the top-level commands above) or a key of
     # "harnesses". A ticket overrides it: Linear label `harness:<name>` or header `Harness: <name>`.
     "harness": "claude",
@@ -1003,6 +1006,47 @@ def runway_tickets(tickets: list) -> list:
     return [t for t in tickets if t.gate in RUNNABLE_GATES + ("human",)]
 
 
+def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
+    """The two-seat Ringer review. Returns (findings, has_findings), or None when Ringer is missing or
+    no seat wrote a report (the caller then runs the single review)."""
+    pm = root / "_pm"
+    out = pm / "runway-panel"
+    out.mkdir(parents=True, exist_ok=True)
+    brief = out / "brief.md"
+    brief.write_text(f"Runway integration branch `{cfg['integration_branch']}`, reviewed against "
+                     f"`{cfg['base_branch']}`.\n{spec}\nTickets:\n{tlist}\n")
+    t0 = time.time()
+    r = sh([sys.executable, str(Path(__file__).resolve().parent / "ringer_panel.py"), "--repo", str(wt),
+            "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out)], root,
+           timeout=cfg["agent_timeout_s"])
+    if r.returncode == 3:
+        log(root, "ringer not found; falling back to the single review.")
+        return None
+    try:
+        seats = json.loads(r.stdout.strip().splitlines()[-1])["seats"]
+    except (ValueError, KeyError, IndexError):
+        seats = {}
+    sections, statuses = [], {}
+    for seat in ("codex", "claude"):
+        info = seats.get(seat) or {}
+        statuses[seat] = info.get("status", "MISSING")
+        report = Path(info["report"]) if info.get("report") else None
+        if report and report.is_file():
+            text = report.read_text().strip()
+            (pm / f"runway-review-{seat}.md").write_text(text + "\n")
+            note = ("\n(Ringer's check rejected this report; its findings are still worth reading.)\n"
+                    if statuses[seat] == "FAIL" else "")
+            sections.append(f"### {seat}{note}\n{text}")
+    if not sections:
+        log(root, f"ringer panel wrote no reports (exit {r.returncode}); falling back to the single review.")
+        return None
+    record(root, {"kind": "review", "ticket": "finish", "harness": "ringer-panel", "exit": r.returncode,
+                  "secs": round(time.time() - t0), "seats": statuses})
+    log(root, "ringer panel seats: " + ", ".join(f"{k} {v}" for k, v in statuses.items()))
+    has_findings = any(re.search(r"^\W*Finding:", s, re.M) for s in sections)
+    return "\n\n".join(sections), has_findings
+
+
 def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     """Review the integration branch as a whole, fix once, check, and write the PR body.
     Runs once per integration head unless forced. Returns True if it ran."""
@@ -1036,14 +1080,18 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 1. Review the whole branch against the tickets.
     hp = resolve_harness(cfg)
-    r, text = run_agent(cfg, root, hp["review_cmd"], wt,
-                        REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
-                        "finish", "review", harness=hp)
-    findings = text.strip()
-    if r.returncode != 0 or not findings:
-        findings, has_findings = f"Review failed (exit {r.returncode}).", False
+    panel = panel_review(cfg, root, wt, tlist, spec) if cfg.get("review") == "panel" else None
+    if panel:
+        findings, has_findings = panel
     else:
-        has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
+        r, text = run_agent(cfg, root, hp["review_cmd"], wt,
+                            REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
+                            "finish", "review", harness=hp)
+        findings = text.strip()
+        if r.returncode != 0 or not findings:
+            findings, has_findings = f"Review failed (exit {r.returncode}).", False
+        else:
+            has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
 
     # 2. One fix pass. Kept only if the check still passes.
     fix_note = "No fix pass needed."
