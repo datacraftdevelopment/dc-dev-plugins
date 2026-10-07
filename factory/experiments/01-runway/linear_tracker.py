@@ -177,6 +177,15 @@ class LinearTicket:
     def blocked_by(self) -> list[str]:
         return [r["issue"]["identifier"] for r in self.node["inverseRelations"]["nodes"] if r["type"] == "blocks"]
 
+    @property
+    def claimed_by(self) -> str | None:
+        """The machine named in Runway's latest claim comment, or None."""
+        for cm in reversed(self.comments):
+            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
+            if m:
+                return m.group(1).strip()
+        return None
+
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
             return "Joe (see the latest runway comment)"
@@ -213,9 +222,9 @@ class LinearTicket:
             f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
         self._labels(add=[self.tr.c["needs_human_label"]])
 
-    def mark_claimed(self, branch: str) -> None:
+    def mark_claimed(self, branch: str, machine: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
-        self._comment(f"Started on `{branch}`.")
+        self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
 
     def mark_resolved(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["done_state"]))
