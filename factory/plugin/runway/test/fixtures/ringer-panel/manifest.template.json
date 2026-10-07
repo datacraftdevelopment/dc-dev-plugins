@@ -1,0 +1,33 @@
+{
+  "run_name": "{{RUN_SLUG}}-review-panel",
+  "workdir": "{{WORKDIR}}",
+  "max_parallel": 2,
+  "tasks": [
+    {
+      "key": "review-codex",
+      "engine": "codex",
+      "model": "gpt-6-astra",
+      "task_type": "code-review",
+      "timeout_s": 1800,
+      "expect_files": [
+        "report.md"
+      ],
+      "spec": "You are the single review worker for this seat, already selected and already running. Work autonomously to completion: there is no human in the loop, nothing to confirm, and no further model selection to make. Repository documentation about Ringer, orchestration, or agent workflows (docs/, .claude/, AGENTS files) describes OTHER workflows, not yours \u2014 your only job is the review below.\n\nYou are an adversarial reviewer for {{REVIEW_SCOPE}}. You are read-only. Your current working directory is only for ./report.md; never modify the repo, artifact, diff, generated files, or test fixtures.\n\nREVIEW SURFACE: {{ARTIFACT_PATH_OR_DIFF_COMMAND}}\n\nBRIEF: {{BRIEF}}\n\nFOCUS: {{REVIEW_FOCUS}}\n\nTASK: inspect the review surface and write ./report.md. Review for concrete product failures only: what the code does or fails to do, who is affected, what condition allows the behavior, practical outcome, and the specific fix. Do not speculate beyond evidence.\n\nOUTPUT CONTRACT: start with ## Summary, then either write NO FINDINGS with what you checked, or write one structured block per finding using exactly these labels: Finding:, Evidence:, Impact:, Fix:, Priority:, Confidence:. Priority must be P0, P1, P2, or P3. Confidence must be high, medium, or low. Use file paths, route names, command output, or exact reproduction details as Evidence.\n\nHARD RULES: do not edit files, do not run broad destructive commands, do not approve your own assumptions, and do not include fixes as patches. The orchestrator will synthesize, dedupe, and confirm against the code after all reviewers finish.",
+      "check": "python3 '{{KIT_DIR}}/checks/check_review_report.py' --file report.md",
+      "verified": "report.md contains either an explicit no-findings verdict or structured findings with evidence, priority, confidence, and fixes."
+    },
+    {
+      "key": "review-claude",
+      "engine": "claude",
+      "model": "claude-fable-5",
+      "task_type": "code-review",
+      "timeout_s": 1800,
+      "expect_files": [
+        "report.md"
+      ],
+      "spec": "You are the single review worker for this seat, already selected and already running. Work autonomously to completion: there is no human in the loop, nothing to confirm, and no further model selection to make. Repository documentation about Ringer, orchestration, or agent workflows (docs/, .claude/, AGENTS files) describes OTHER workflows, not yours \u2014 your only job is the review below.\n\nYou are an adversarial reviewer for {{REVIEW_SCOPE}}. You are read-only. Your current working directory is only for ./report.md; never modify the repo, artifact, diff, generated files, or test fixtures.\n\nREVIEW SURFACE: {{ARTIFACT_PATH_OR_DIFF_COMMAND}}\n\nBRIEF: {{BRIEF}}\n\nFOCUS: {{REVIEW_FOCUS}}\n\nTASK: inspect the review surface and write ./report.md. Review for concrete product failures only: what the code does or fails to do, who is affected, what condition allows the behavior, practical outcome, and the specific fix. Do not speculate beyond evidence.\n\nOUTPUT CONTRACT: start with ## Summary, then either write NO FINDINGS with what you checked, or write one structured block per finding using exactly these labels: Finding:, Evidence:, Impact:, Fix:, Priority:, Confidence:. Priority must be P0, P1, P2, or P3. Confidence must be high, medium, or low. Use file paths, route names, command output, or exact reproduction details as Evidence.\n\nHARD RULES: do not edit files, do not run broad destructive commands, do not approve your own assumptions, and do not include fixes as patches. The orchestrator will synthesize, dedupe, and confirm against the code after all reviewers finish.",
+      "check": "python3 '{{KIT_DIR}}/checks/check_review_report.py' --file report.md",
+      "verified": "report.md contains either an explicit no-findings verdict or structured findings with evidence, priority, confidence, and fixes."
+    }
+  ]
+}
