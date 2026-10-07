@@ -17,6 +17,21 @@ Every agent call is logged to _pm/runway-runs.jsonl with its session id and toke
 usage when the agent prints Claude Code's JSON output. `runway retro` turns that log
 into a /retro prompt pointing at the runs that struggled.
 
+While it works, Runway keeps `_pm/runway-state.json` current, so the app can show what it is
+doing right now. Written atomically (temp file + rename) at every phase change:
+
+  {"version": 1, "phase": "sync|prep|agent|check|merge|finish|idle|stopped", "ticket": "DAT-11 or null",
+   "attempt": 1, "since": "ISO-8601", "pid": 12345, "agent_pid": 12346, "tick_started": "ISO-8601",
+   "last_result": "pass|fail|park|null"}
+
+  since        When this phase began. tick_started: when the current tick began.
+  attempt      Agent attempt number during agent and check, else null.
+  agent_pid    The agent's child process while one runs (agent, prep, finish), else null.
+  last_result  pass = last ticket merged, fail = a check failed (a retry may follow), park = last
+               ticket parked as needs-human.
+  idle         Written on a normal exit. A crash leaves the last phase behind, so a reader tells a
+               stale file from a live one by whether `pid` is still running. stopped = Ctrl-C.
+
 `runway status --json` prints the queue as one JSON object, the contract the Mac app reads.
 Version 1 (additive changes keep the version; renames or removals bump it):
 
@@ -103,12 +118,24 @@ def now() -> str:
     return dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
 
 
-def sh(cmd, cwd: Path, stdin: str | None = None, timeout: int | None = None, check=False):
+def sh(cmd, cwd: Path, stdin: str | None = None, timeout: int | None = None, check=False, on_start=None):
+    """Run a command. on_start(pid) is called once the child is running."""
     args = shlex.split(cmd) if isinstance(cmd, str) else cmd
     try:
-        r = subprocess.run(args, cwd=cwd, input=stdin, text=True, capture_output=True, timeout=timeout)
+        p = subprocess.Popen(args, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             stdin=subprocess.PIPE if stdin is not None else None)
     except FileNotFoundError as e:  # e.g. claude or gh not installed
         r = subprocess.CompletedProcess(args, 127, "", str(e))
+    else:
+        if on_start:
+            on_start(p.pid)
+        try:
+            out, err = p.communicate(stdin, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.communicate()
+            raise
+        r = subprocess.CompletedProcess(args, p.returncode, out, err)
     if check and r.returncode != 0:
         raise RuntimeError(f"{' '.join(args)} failed in {cwd}:\n{r.stdout}\n{r.stderr}")
     return r
@@ -121,6 +148,41 @@ def log(root: Path, msg: str) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("a") as f:
         f.write(line + "\n")
+
+
+# ---------- heartbeat: _pm/runway-state.json ----------
+
+_STATE: dict = {}
+STATE_KEYS = ("version", "phase", "ticket", "attempt", "since", "pid", "agent_pid", "tick_started", "last_result")
+
+
+def write_state(root: Path, state: dict) -> None:
+    """Atomic: write a temp file in the same folder, then rename over the real one."""
+    p = root / "_pm" / "runway-state.json"
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(state, indent=2) + "\n")
+        os.replace(tmp, p)
+    except OSError:
+        pass  # the heartbeat must never take the loop down
+
+
+def beat(root: Path, phase: str, ticket: str | None = None, attempt: int | None = None, **extra) -> None:
+    """Record a phase change. extra can set last_result or tick_started."""
+    iso = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+    s = _STATE.setdefault(str(root), {"tick_started": iso, "last_result": None})
+    s.update(extra)
+    s.update(version=1, phase=phase, ticket=ticket, attempt=attempt, since=iso, pid=os.getpid(), agent_pid=None)
+    write_state(root, {k: s[k] for k in STATE_KEYS})
+
+
+def beat_update(root: Path, **fields) -> None:
+    """Change agent_pid or last_result without starting a new phase."""
+    s = _STATE.get(str(root))
+    if s:
+        s.update(fields)
+        write_state(root, {k: s[k] for k in STATE_KEYS})
 
 
 # ---------- markdown tracker ----------
@@ -311,7 +373,10 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     """Run one agent call and log it. Returns (process, text). With Claude Code's
     --output-format json, text is the result field; otherwise it's raw stdout."""
     t0 = time.time()
-    r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"])
+    try:
+        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=lambda pid: beat_update(root, agent_pid=pid))
+    finally:
+        beat_update(root, agent_pid=None)
     text, meta = r.stdout, {}
     try:
         d = json.loads(r.stdout)
@@ -350,6 +415,7 @@ Ticket ({path}):
 
 
 def prep(cfg: dict, root: Path, t) -> None:
+    beat(root, "prep", t.id)
     log(root, f"prep  {t.id} {t.title}")
     r, text = run_agent(cfg, root, cfg["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep")
     packet = text.strip() if r.returncode == 0 and text.strip() else f"Prep failed:\n\n```\n{r.stderr[-2000:]}\n```"
@@ -396,6 +462,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
     extra, ok, detail, attempt = "", False, "", 0
     for attempt in range(1, cfg["max_attempts"] + 1):
+        beat(root, "agent", t.id, attempt)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
         run_agent(cfg, root, cfg["agent_cmd"], wt, prompt, t.id, "run", attempt)
         q = wt / "RUNWAY_QUESTION.md"
@@ -404,6 +471,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             break
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-m", f"runway: {t.title} (auto-commit)"], wt)
+        beat(root, "check", t.id, attempt)
         c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
         if c.returncode == 0:
             ok = True
@@ -411,9 +479,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         detail = f"Check failed on attempt {attempt}:\n\n```\n{(c.stdout + c.stderr)[-3000:]}\n```"
         extra = f"\nThe previous attempt failed the check. Fix it:\n\n{detail}\n"
         log(root, f"fail  {t.id} attempt {attempt}")
+        beat_update(root, last_result="fail")
 
     t = tracker.reload(t)  # agent may not touch it, but reload to be safe
     if ok:
+        beat(root, "merge", t.id)
         if merge_into_integration(cfg, root, branch):
             t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
             log(root, f"done  {t.id}")
@@ -423,6 +493,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     if not ok:
         t.mark_needs_human("run failed or asked a question", detail or "Agent run failed with no detail.")
         notify(cfg, root, f"Blocked: {t.id} {t.title}")
+    beat_update(root, last_result="pass" if ok else "park")
     record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt,
                   "result": "done" if ok else "needs-human", "detail": detail[:500]})
     sh(["git", "worktree", "remove", "--force", str(wt)], root)
@@ -518,6 +589,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if not force and state.get("head") == head:
         return False
 
+    beat(root, "finish")
     log(root, f"finish {integ} ({ahead} commits ahead of {base})")
     wt = integration_worktree(cfg, root)
     sh(["git", "reset", "--hard", "-q"], wt)
@@ -688,6 +760,7 @@ def cmd_retro(root: Path, last: int) -> None:
 def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything."""
     did = False
+    beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
     tickets = tracker.load()
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
@@ -828,17 +901,22 @@ def main() -> None:
         if lock is None:
             print("Another Runway run holds the lock; skipping.")
             return
-        if a.cmd == "tick":
-            tick(cfg, root, tracker)
-        elif a.cmd == "finish":
-            finish(cfg, root, tracker, force=True)
-        else:
-            for _ in range(a.max_ticks):
-                if not tick(cfg, root, tracker):
-                    log(root, "idle  nothing ready without Joe")
-                    finish(cfg, root, tracker)
-                    break
-            cmd_status(tracker)
+        try:
+            if a.cmd == "tick":
+                tick(cfg, root, tracker)
+            elif a.cmd == "finish":
+                finish(cfg, root, tracker, force=True)
+            else:
+                for _ in range(a.max_ticks):
+                    if not tick(cfg, root, tracker):
+                        log(root, "idle  nothing ready without Joe")
+                        finish(cfg, root, tracker)
+                        break
+                cmd_status(tracker)
+        except KeyboardInterrupt:
+            beat(root, "stopped")
+            raise
+        beat(root, "idle")
     elif a.cmd in ("go", "no"):
         cmd_answer(root, tracker, a.ticket, a.cmd == "go", a.note)
 
