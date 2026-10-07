@@ -5,9 +5,15 @@ import RunwayCore
 @main
 struct RunwayBarApp: App {
     @State private var store: ProjectStore
+    private let notifier: Notifier
 
     init() {
-        let store = ProjectStore()
+        // The store needs the notifier to deliver and the notifier needs the store to route clicks.
+        var deliver: (([NotificationEvent]) -> Void)?
+        let store = ProjectStore(deliver: { deliver?($0) })
+        let notifier = Notifier(store: store)
+        deliver = { notifier.deliver($0) }
+        self.notifier = notifier
         store.start()
         _store = State(initialValue: store)
     }
@@ -17,9 +23,20 @@ struct RunwayBarApp: App {
             RunwayMenu(store: store)
         } label: {
             HStack(spacing: 2) {
-                Image(systemName: iconName(store.overall))
+                icon
                 if store.badge > 0 { Text("\(store.badge)") }
             }
+        }
+    }
+
+    /// Amber when a project has ready tickets but its loop is off. Errors and decisions waiting keep their own icon.
+    @ViewBuilder private var icon: some View {
+        let amber = store.readyWhileOff && (store.overall == .allOff || store.overall == .running)
+        if amber, let image = NSImage(systemSymbolName: "airplane.departure", accessibilityDescription: "Ready work, loop off")?
+            .withSymbolConfiguration(.init(paletteColors: [.systemOrange])) {
+            Image(nsImage: image)
+        } else {
+            Image(systemName: iconName(store.overall))
         }
     }
 

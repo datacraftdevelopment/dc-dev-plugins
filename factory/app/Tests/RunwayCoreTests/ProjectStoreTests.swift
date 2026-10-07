@@ -153,4 +153,37 @@ final class ProjectStoreTests: XCTestCase {
         store.setCheckout(nil)
         XCTAssertNil(store.tools)
     }
+
+    // MARK: notifications
+
+    private func storeWithNotifications(ledger: URL, delivered: @escaping ([NotificationEvent]) -> Void) -> ProjectStore {
+        let discovery = ProjectDiscovery(launchAgentsDir: agents, launchctlPrint: { _ in "svc = {\n\tstate = waiting\n}" })
+        return ProjectStore(discovery: discovery, defaults: defaults, pauseURL: pauseURL,
+                            run: { [unowned self] _ in self.nextResult },
+                            pidAlive: { _ in true }, ledgerURL: ledger,
+                            machineURL: pauseURL.deletingLastPathComponent().appendingPathComponent("no-machine.json"),
+                            deliver: delivered)
+    }
+
+    func testRestartDoesNotRepeatANotification() async throws {
+        try installPlist()
+        nextResult = CommandResult(status: 0, stdout: """
+        {"groups":{"waiting":["DAT-1"],"ready_auto":[],"ready_prep":[]},
+         "tickets":[{"id":"DAT-1","title":"Pick","status":"needs-human","gate":"human"}]}
+        """, stderr: "")
+        let ledger = pauseURL.deletingLastPathComponent().appendingPathComponent("support/notified.json")
+        var delivered: [NotificationEvent] = []
+
+        let first = storeWithNotifications(ledger: ledger) { delivered += $0 }
+        first.refresh()
+        for _ in 0..<100 where delivered.isEmpty { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(delivered.map(\.ticketID), ["DAT-1"])
+        first.stop()
+
+        let second = storeWithNotifications(ledger: ledger) { delivered += $0 }
+        second.refresh()
+        for _ in 0..<15 { try await Task.sleep(nanoseconds: 20_000_000); second.refresh() }
+        XCTAssertEqual(delivered.count, 1, "a restart with the saved ledger must not notify again")
+        second.stop()
+    }
 }
