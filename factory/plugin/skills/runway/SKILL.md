@@ -138,10 +138,12 @@ A harness is the agent CLI that does a ticket's work. The default is Claude
   `"harnesses"`.
 - `"harnesses"` maps a name to a profile (`agent_cmd`, `prep_cmd`, `review_cmd`,
   `fix_cmd`, `pr_cmd`, `parser`). A profile overlays the top-level commands;
-  anything it leaves out falls back to them. Each key must be a profile object.
+  anything it leaves out falls back to them. Each key must be a profile object;
+  keys starting with `_` and non-object values are ignored, so keep notes in a
+  top-level `_harness_note`, not inside `"harnesses"`.
 - One ticket can override the default: a `harness:<name>` label in Linear, or a
-  `Harness: <name>` header in a markdown ticket. An unknown name falls back to
-  the project default.
+  `Harness: <name>` header in a markdown ticket. An unknown name is logged
+  (`park ... unknown harness`) and the ticket is parked as needs-human, not run.
 - `RUNWAY status --json` shows each ticket's effective `harness`.
 - `RUNWAY whoami` prints this Mac's name, the one stamped on claims
   (`claimed_by`). A ticket claimed by another Mac is skipped here; the claim
@@ -168,4 +170,5 @@ a human, never scheduled.
 0.1.0 was the first cut. 0.4.0 adds the two-seat review panel, machine-wide
 pause, quiet-time rules and per-project and per-ticket harnesses. No notes were
 kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
-across repos, and the app's script paths after the engine move.
+across repos, and the app's script paths after the engine move. 0.4.2 ignores `_` notes in `"harnesses"` and parks a
+ticket with an unknown harness label instead of crashing the tick.
