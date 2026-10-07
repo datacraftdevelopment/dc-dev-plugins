@@ -11,6 +11,9 @@ Research and experiments for taking Joe's PM Dev workflow from "one session, Joe
 | `experiments/` | One folder per experiment, numbered. Each has a README with the question, how to run it, and results. |
 | `experiments/01-runway/` | The first experiment: a judgment-aware task runner for a pm-style tracker. |
 | `decisions.md` | Short log of choices made in this repo and why. |
+| `site/` | The DataCraft Software Factory static site (was `_Core/_Plugins/datacraft-factory-site`). |
+
+Lives in `dc-dev-plugins/factory/` since 2026-10-07 (was `_Tools/SoftwareFactory`; history kept by a subtree merge). Practice repos live outside git in `~/Agentic-Mini/_Sandbox/runway/`.
 
 ## Reading order
 

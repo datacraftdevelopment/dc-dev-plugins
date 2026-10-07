@@ -3,9 +3,9 @@
 A tiny Python tool (no dependencies) with six tickets for Runway's first real run. Four are AFK, and two are marked `Gate: human` because they're real judgment calls: how billing rounds time, and which report formats are worth having.
 
 ```bash
-bash setup.sh                       # creates ~/Agentic-Mini/_Tools/runway-practice
-python3 ../runway.py --root ~/Agentic-Mini/_Tools/runway-practice loop
-python3 ../runway.py --root ~/Agentic-Mini/_Tools/runway-practice status
+bash setup.sh                       # creates ~/Agentic-Mini/_Sandbox/runway/runway-practice
+python3 ../runway.py --root ~/Agentic-Mini/_Sandbox/runway/runway-practice loop
+python3 ../runway.py --root ~/Agentic-Mini/_Sandbox/runway/runway-practice status
 ```
 
 `runway.json` is copied into the practice repo; edit it there. The prepared order is:

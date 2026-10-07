@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Creates the practice repo for Runway's first real run.
-# Usage: bash setup.sh [destination]   (default: ~/Agentic-Mini/_Tools/runway-practice)
+# Usage: bash setup.sh [destination]   (default: ~/Agentic-Mini/_Sandbox/runway/runway-practice)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DEST="${1:-$HOME/Agentic-Mini/_Tools/runway-practice}"
+DEST="${1:-$HOME/Agentic-Mini/_Sandbox/runway/runway-practice}"
 if [ -e "$DEST" ]; then echo "$DEST already exists; pick another path or remove it." >&2; exit 1; fi
 mkdir -p "$DEST"
 cp -R "$HERE/seed/." "$DEST/"

@@ -48,14 +48,14 @@ Per project:
 3. In Linear, create a **project** for it in your team (note the team key, e.g. `DC`).
 4. Point a repo at it (creates a tiny Python repo if the path doesn't exist):
    ```bash
-   cd ~/Agentic-Mini/_Tools/SoftwareFactory
-   bash experiments/03-linear/practice/setup.sh sandbox/linear-practice DC "Runway practice"
-   python3 experiments/01-runway/runway.py --root sandbox/linear-practice setup   # checks key/team/project, creates labels
+   cd ~/Agentic-Mini/_Core/_Plugins/dc-dev-plugins/factory
+   bash experiments/03-linear/practice/setup.sh ~/Agentic-Mini/_Sandbox/runway/linear-practice DC "Runway practice"
+   python3 experiments/01-runway/runway.py --root ~/Agentic-Mini/_Sandbox/runway/linear-practice setup   # checks key/team/project, creates labels
    ```
-5. **Plan it.** `cd sandbox/linear-practice && claude`, describe the project, then `/to-spec` and `/to-tickets`. Approve the breakdown; the tickets land in Linear. Flag anything that needs your judgment as `ready-for-human` (the tracker doc tells the skill when). Use `/wayfinder` first only if there are open questions that depend on each other.
+5. **Plan it.** `cd ~/Agentic-Mini/_Sandbox/runway/linear-practice && claude`, describe the project, then `/to-spec` and `/to-tickets`. Approve the breakdown; the tickets land in Linear. Flag anything that needs your judgment as `ready-for-human` (the tracker doc tells the skill when). Use `/wayfinder` first only if there are open questions that depend on each other.
 6. **Start the schedule:**
    ```bash
-   bash experiments/03-linear/schedule.sh install sandbox/linear-practice 10
+   bash experiments/03-linear/schedule.sh install ~/Agentic-Mini/_Sandbox/runway/linear-practice 10
    ```
    It runs `runway loop` now and every 10 minutes. `schedule.sh status <repo>` shows the last log lines.
 7. **Answer from Linear.** Packets arrive as comments on `ready-for-human` issues (and a Mac notification). Comment `go` plus any choice; the next run picks it up. Failed runs park with `needs-human` and the log in a comment.
@@ -84,6 +84,6 @@ The adapter's 7 GraphQL operations were also validated against Linear's publishe
 
 - **(unverified)** launchd jobs reaching `claude -p` auth. The keychain works from launchd (first scheduled run); `claude -p` gets proven the first time a ticket is ready when the job fires.
 - Starting the loop from a Claude session needs Joe's own typed request (auto mode blocks unattended agent runs otherwise). The launchd job doesn't go through Claude Code, so once it's installed this stops mattering.
-- The older `sandbox/runway-practice` repo still has its merge worktree at the old shared path; remove it (`git worktree prune` after deleting `../.runway-worktrees/_integration`) before running Runway there again.
+- The older `~/Agentic-Mini/_Sandbox/runway/runway-practice` repo still has its merge worktree at the old shared path; remove it (`git worktree prune` after deleting `../.runway-worktrees/_integration`) before running Runway there again.
 - Anyone in the Linear workspace can comment `go`. Fine solo; with clients in the workspace, restrict to Joe's user id.
 - One AFK ticket at a time, as in 01. No token capture yet.
