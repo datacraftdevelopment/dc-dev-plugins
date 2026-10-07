@@ -174,6 +174,14 @@ class LinearTicket:
         return "none"
 
     @property
+    def harness(self) -> str | None:
+        """Per-ticket harness override from a `harness:<name>` label, or None."""
+        for name in self.labels:
+            if name.lower().startswith("harness:"):
+                return name.split(":", 1)[1].strip().lower() or None
+        return None
+
+    @property
     def blocked_by(self) -> list[str]:
         return [r["issue"]["identifier"] for r in self.node["inverseRelations"]["nodes"] if r["type"] == "blocks"]
 

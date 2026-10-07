@@ -63,7 +63,7 @@ class StatusJson(unittest.TestCase):
         self.assertEqual(w["waiting_on"], "Joe, go/no-go")
         self.assertIn("Pick A or B", w["packet"])
         self.assertNotIn("Old one", w["packet"])
-        self.assertIsNone(w["harness"])
+        self.assertEqual(w["harness"], "claude")
         self.assertEqual(by["eff/07"]["blocked_by"], ["eff/02", "eff/04"])
         self.assertIsNone(by["eff/07"]["packet"])
         self.assertIsNone(by["eff/07"]["waiting_on"])

@@ -6,6 +6,16 @@
   },
   "agent_cmd": "claude -p --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3:*),Bash(python3 -m pytest:*),Bash(pytest:*),Bash(bash factory/:*),Bash(swift build:*),Bash(swift test:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)\"",
   "prep_cmd": "claude -p --output-format json --allowedTools \"Read,Grep,Glob,Bash(codex --help),Bash(codex exec --help),Bash(cursor-agent --help)\"",
+  "harness": "claude",
+  "harnesses": {
+    "_note": "codex profile UNVERIFIED: written from memory of Codex CLI docs, `codex exec --help` was not run. Check flags before relying on it.",
+    "codex": {
+      "agent_cmd": "codex exec --json --full-auto -",
+      "prep_cmd": "codex exec --json --sandbox read-only -",
+      "review_cmd": "codex exec --json --sandbox read-only -",
+      "parser": "codex"
+    }
+  },
   "check_cmd": "bash factory/scripts/check.sh",
   "base_branch": "main",
   "integration_branch": "runway/integration",

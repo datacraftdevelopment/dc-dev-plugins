@@ -60,7 +60,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   waiting_on  Who or what the ticket waits on, or null.
   packet   Latest decision packet text for waiting tickets (Linear: Runway's latest comment;
            markdown: the last "## Decision packet" section), else null.
-  harness  Reserved, always null for now.
+  harness  The ticket's effective harness name (its override, else the project default).
 
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
@@ -98,7 +98,7 @@ import sys
 import time
 from pathlib import Path
 
-HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by):\s*(.*)$", re.M)
+HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by|Harness):\s*(.*)$", re.M)
 DONE = {"resolved", "done", "closed"}
 RUNNABLE_GATES = ("auto", "approved")
 DEFAULT_CONFIG = {
@@ -113,6 +113,12 @@ DEFAULT_CONFIG = {
     "review_cmd": "claude -p --output-format json --allowedTools \"Read,Grep,Glob,Skill,Bash(git diff:*),Bash(git log:*)\"",
     "fix_cmd": "",
     "pr_cmd": "",
+    # Which harness runs tickets by default: "claude" (the top-level commands above) or a key of
+    # "harnesses". A ticket overrides it: Linear label `harness:<name>` or header `Harness: <name>`.
+    "harness": "claude",
+    # Named profiles. Each may set agent_cmd, prep_cmd, review_cmd, fix_cmd, pr_cmd and "parser"
+    # (claude | codex | raw); missing keys fall back to the top-level ones.
+    "harnesses": {},
     # When loop runs the finish step: "all_done" (every Runway ticket done), "idle"
     # (whenever the queue stops, even with decisions waiting) or "off".
     "finish": "all_done",
@@ -363,6 +369,11 @@ class Ticket:
         return self.h("Gate", "auto").lower()
 
     @property
+    def harness(self) -> str | None:
+        """Per-ticket harness override from a `Harness: <name>` header, or None."""
+        return self.h("Harness").lower() or None
+
+    @property
     def blocked_by(self) -> list[str]:
         raw = self.h("Blocked by")
         return [b.strip().zfill(2) for b in re.split(r"[,\s]+", raw) if b.strip().isdigit()]
@@ -511,25 +522,74 @@ def record(root: Path, rec: dict) -> None:
         f.write(json.dumps({"at": now(), **rec}) + "\n")
 
 
-def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: str, kind: str, attempt: int = 1):
-    """Run one agent call and log it. Returns (process, text). With Claude Code's
-    --output-format json, text is the result field; otherwise it's raw stdout."""
+def resolve_harness(cfg: dict, t=None) -> dict:
+    """The effective profile for a ticket (the project default when t is None): the ticket's
+    override, else cfg["harness"]. Top-level commands are the base; the named profile overlays them.
+    An unknown override falls back to the project default."""
+    profiles = cfg.get("harnesses") or {}
+    default = (cfg.get("harness") or "claude").lower()
+    name = (getattr(t, "harness", None) or default).lower()
+    if name != "claude" and name not in profiles:
+        name = default
+    prof = {k: cfg.get(k, "") for k in ("agent_cmd", "prep_cmd", "review_cmd", "fix_cmd", "pr_cmd")}
+    prof["parser"] = "claude"
+    prof.update({k: v for k, v in (profiles.get(name) or {}).items() if v})
+    prof["name"] = name
+    return prof
+
+
+def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
+    """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns and usage,
+    each None when the harness doesn't report it. Unparseable output comes back as text unchanged."""
+    meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None}
+    if parser == "claude":
+        try:
+            d = json.loads(stdout)
+        except ValueError:
+            return stdout, meta
+        if isinstance(d, dict) and "result" in d:
+            meta.update(session_id=d.get("session_id"), cost_usd=d.get("total_cost_usd"),
+                        num_turns=d.get("num_turns"), usage=d.get("usage"))
+            return d.get("result") or "", meta
+    elif parser == "codex":
+        # `codex exec --json` prints one event per line: thread.started, item.completed, turn.completed.
+        text, seen = "", False
+        for line in stdout.splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(e, dict):
+                continue
+            seen = True
+            item = e.get("item") or {}
+            if e.get("type") == "thread.started":
+                meta["session_id"] = e.get("thread_id")
+            elif e.get("type") == "item.completed" and item.get("type") == "agent_message":
+                text = item.get("text") or text
+            elif e.get("type") == "turn.completed" and e.get("usage"):
+                prev = meta["usage"] or {}
+                meta["usage"] = {k: prev.get(k, 0) + v for k, v in e["usage"].items() if isinstance(v, int)}
+        if seen:
+            return text, meta
+    return stdout, meta
+
+
+def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: str, kind: str, attempt: int = 1,
+              harness: dict | None = None):
+    """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
+    the text, session id and usage out of stdout; unparseable output is returned raw."""
+    harness = harness or resolve_harness(cfg)
     t0 = time.time()
     try:
         r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=lambda pid: beat_update(root, agent_pid=pid))
     finally:
         beat_update(root, agent_pid=None)
-    text, meta = r.stdout, {}
-    try:
-        d = json.loads(r.stdout)
-        if isinstance(d, dict) and "result" in d:
-            text, meta = d.get("result") or "", d
-    except ValueError:
-        pass
-    record(root, {"kind": kind, "ticket": ticket, "attempt": attempt, "cwd": str(cwd),
+    text, meta = parse_output(harness["parser"], r.stdout)
+    record(root, {"kind": kind, "ticket": ticket, "attempt": attempt, "cwd": str(cwd), "harness": harness["name"],
                   "exit": r.returncode, "secs": round(time.time() - t0),
-                  "session_id": meta.get("session_id"), "cost_usd": meta.get("total_cost_usd"),
-                  "num_turns": meta.get("num_turns"), "usage": meta.get("usage")})
+                  "session_id": meta["session_id"], "cost_usd": meta["cost_usd"],
+                  "num_turns": meta["num_turns"], "usage": meta["usage"]})
     return r, text
 
 
@@ -559,7 +619,9 @@ Ticket ({path}):
 def prep(cfg: dict, root: Path, t) -> None:
     beat(root, "prep", t.id)
     log(root, f"prep  {t.id} {t.title}")
-    r, text = run_agent(cfg, root, cfg["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep")
+    hp = resolve_harness(cfg, t)
+    r, text = run_agent(cfg, root, hp["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep",
+                        harness=hp)
     if stop_requested():
         log(root, f"stopped by pause  prep {t.id}")
         return
@@ -606,6 +668,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     sh(["git", "worktree", "add", "-b", branch, str(wt), cfg["integration_branch"]], root, check=True)
 
     extra, ok, detail, attempt = "", False, "", 0
+    hp = resolve_harness(cfg, t)
     stopped = False
     for attempt in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
@@ -613,7 +676,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             break
         beat(root, "agent", t.id, attempt)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
-        run_agent(cfg, root, cfg["agent_cmd"], wt, prompt, t.id, "run", attempt)
+        run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
         if stop_requested():
             stopped = True
             break
@@ -758,9 +821,10 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     spec = f"\nSpec: {cfg['spec']}\n" if cfg.get("spec") else ""
 
     # 1. Review the whole branch against the tickets.
-    r, text = run_agent(cfg, root, cfg["review_cmd"], wt,
+    hp = resolve_harness(cfg)
+    r, text = run_agent(cfg, root, hp["review_cmd"], wt,
                         REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
-                        "finish", "review")
+                        "finish", "review", harness=hp)
     findings = text.strip()
     if r.returncode != 0 or not findings:
         findings, has_findings = f"Review failed (exit {r.returncode}).", False
@@ -771,8 +835,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     fix_note = "No fix pass needed."
     if has_findings:
         before = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
-        run_agent(cfg, root, cfg["fix_cmd"] or cfg["agent_cmd"], wt, FIX_PROMPT.format(findings=findings),
-                  "finish", "fix")
+        run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt, FIX_PROMPT.format(findings=findings),
+                  "finish", "fix", harness=hp)
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-qm", "runway: review fixes (auto-commit)"], wt)
         after = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
@@ -792,10 +856,10 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 4. The PR body, /pr style.
     review_line = f"{fix_note}\n\n{findings}" if has_findings else fix_note
-    r, body = run_agent(cfg, root, cfg["pr_cmd"] or cfg["review_cmd"], wt,
+    r, body = run_agent(cfg, root, hp["pr_cmd"] or hp["review_cmd"], wt,
                         PR_PROMPT.format(integration=integ, base=base, tickets=tlist, stat=stat,
                                          check=cfg["check_cmd"], code=c.returncode, check_out=check_out,
-                                         review=review_line), "finish", "pr")
+                                         review=review_line), "finish", "pr", harness=hp)
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
@@ -843,10 +907,17 @@ def open_draft_pr(cfg: dict, root: Path, body_file: Path, n: int) -> str | None:
 
 # ---------- retro: feed the struggles to /retro ----------
 
-def transcript(session_id: str) -> str | None:
-    """Claude Code keeps each session as ~/.claude/projects/<cwd as a folder name>/<id>.jsonl."""
-    home = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
-    hits = list((home / "projects").glob(f"*/{session_id}.jsonl"))
+def transcript(session_id: str, harness: str = "claude") -> str | None:
+    """Where a harness keeps a session, or None. Claude Code: ~/.claude/projects/<cwd as a folder name>/<id>.jsonl.
+    Codex: ~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<id>.jsonl. Other harnesses: none we can find."""
+    if harness == "claude":
+        home = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+        hits = list((home / "projects").glob(f"*/{session_id}.jsonl"))
+    elif harness == "codex":
+        home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+        hits = list((home / "sessions").glob(f"**/rollout-*-{session_id}.jsonl"))
+    else:
+        return None
     return str(hits[0]) if hits else None
 
 
@@ -898,7 +969,7 @@ def cmd_retro(root: Path, last: int) -> None:
     for r, why in pick:
         if not r.get("session_id"):
             continue
-        path = transcript(r["session_id"]) or f"session {r['session_id']} (transcript not found on this machine)"
+        path = transcript(r["session_id"], r.get("harness") or "claude") or f"session {r['session_id']} (transcript not found on this machine)"
         lines.append(f"- {path}: {r['ticket']} {r['kind']}" + (f", {why}" if why else ""))
     prompt = ("/retro Read these sessions from Runway's unattended runs on this repo. Each ran headless "
               "in its own worktree from a ticket prompt, with no human to ask. Find what made them "
@@ -991,7 +1062,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return {"id": t.id, "title": t.title, "url": t.url or None, "status": t.status, "gate": t.gate,
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
-                "packet": t.packet if waiting else None, "harness": None, "claimed_by": t.claimed_by}
+                "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(),
