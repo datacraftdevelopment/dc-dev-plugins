@@ -236,6 +236,10 @@ class LinearTicket:
         self._labels(add=[self.tr.c["needs_human_label"]])
         self._comment(f"Parked: {why}. Remove `{self.tr.c['needs_human_label']}` or comment `go` to retry.\n\n{detail}")
 
+    def mark_ready(self, note: str) -> None:
+        self._update(stateId=self.tr.state_id(None, "unstarted"))
+        self._comment(note)
+
     def approve(self, note: str) -> None:
         add = [self.tr.c["approve_label"]] if self.gate == "human" else []
         self._labels(add=add, remove=[self.tr.c["needs_human_label"]])
