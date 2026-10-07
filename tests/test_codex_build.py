@@ -19,7 +19,7 @@ class CodexBuildTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             out = Path(tmp)
-            for name in ('pm', 'design-dc', 'fm-dc', 'ui-test', 'basecamp-dc'):
+            for name in ('pm', 'design-dc', 'fm-dc', 'ui-test', 'basecamp-dc', 'sdlc', 'factory'):
                 plugin = out / name
                 manifest = json.loads((plugin / '.codex-plugin/plugin.json').read_text())
                 self.assertEqual(manifest['name'], name)
@@ -66,16 +66,26 @@ class CodexBuildTests(unittest.TestCase):
                           (pm / 'WORKFLOW.md').read_text())
             sync = (out / 'design-dc/skills/design-sync/SKILL.md').read_text()
             self.assertIn('If DesignSync is unavailable', sync)
-            self.assertIn('PLUGIN_ROOT', (pm / 'hooks/hooks.json').read_text())
+            # The credential guard ships in sdlc's Codex edition, and only the guard.
+            sdlc = out / 'sdlc'
+            self.assertFalse((pm / 'hooks').exists())
+            self.assertEqual(sorted(p.name for p in (sdlc / 'skills').iterdir()), ['credential-guard'])
+            self.assertFalse((sdlc / 'kit').exists())
+            self.assertFalse((sdlc / 'scripts/install_gates.py').exists())
+            factory = out / 'factory'
+            self.assertTrue((factory / 'skills/runway/SKILL.md').is_file())
+            self.assertEqual((factory / 'runway/runway.py').read_bytes(),
+                             (ROOT / 'factory/plugin/runway/runway.py').read_bytes())
+            self.assertIn('PLUGIN_ROOT', (sdlc / 'hooks/hooks.json').read_text())
             # Exercise the declared Codex hook command and event shape in a path with spaces.
             fixture = out / 'hook fixture'
             fixture.mkdir()
             subprocess.run(['git', 'init', '-q', str(fixture)], check=True)
             (fixture / '.env').write_text('DUMMY=value\n')
-            hook = json.loads((pm / 'hooks/hooks.json').read_text())
+            hook = json.loads((sdlc / 'hooks/hooks.json').read_text())
             command = hook['hooks']['PreToolUse'][0]['hooks'][0]['command']
             guard = subprocess.run(['bash', '-c', command], cwd=fixture,
-                                   env={**os.environ, 'PLUGIN_ROOT': str(pm)},
+                                   env={**os.environ, 'PLUGIN_ROOT': str(sdlc)},
                                    input=json.dumps({'hook_event_name': 'PreToolUse',
                                                      'tool_name': 'Bash', 'cwd': str(fixture),
                                                      'tool_input': {'command': 'git add .env'}}),
@@ -83,7 +93,7 @@ class CodexBuildTests(unittest.TestCase):
             self.assertEqual(guard.returncode, 2, guard.stderr)
             self.assertIn('credential-guard: BLOCKED', guard.stderr)
             safe = subprocess.run(['bash', '-c', command], cwd='/',
-                                  env={**os.environ, 'PLUGIN_ROOT': str(pm)},
+                                  env={**os.environ, 'PLUGIN_ROOT': str(sdlc)},
                                   input=json.dumps({'cwd': str(fixture),
                                                     'tool_input': {'command': 'git add safe.txt'}}),
                                   capture_output=True, text=True)

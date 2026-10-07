@@ -35,4 +35,4 @@ fi
 git add docs/agents/issue-tracker.md CLAUDE.md runway.json
 git commit -qm "Track issues in Linear ($TEAM / $PROJECT); add runway.json" || true
 echo "Repo ready: $REPO"
-echo "Next: python3 $(cd "$HERE/../../01-runway" && pwd)/runway.py --root \"$REPO\" setup"
+echo "Next: python3 \"$HERE/runway.py\" --root \"$REPO\" setup"

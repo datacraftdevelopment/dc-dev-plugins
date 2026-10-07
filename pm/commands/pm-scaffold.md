@@ -76,7 +76,7 @@ a *committed* file, so the project must be a repository.
   (`chore: scaffold from pm starter`). If it IS inside an existing worktree
   (e.g. a monorepo), say so and skip the init.
 - **In-place mode:** don't init anything — but if the folder isn't a git
-  repo, tell the user plainly that discovery and the credential-guard hook
+  repo, tell the user plainly that discovery and the credential-guard hook (sdlc plugin)
   both assume one, and ask whether to `git init`.
 
 ## 5. Wire the shared record
@@ -97,7 +97,7 @@ a *committed* file, so the project must be a repository.
   if absent, same rule.
 - **`.gitignore`** — the template's covers new-folder modes. In-place mode:
   ensure `.env`, `account.md`, and `_pm/transcripts/` are ignored (append
-  additively; the `credential-guard` hook blocks staging them, but the
+  additively; the sdlc plugin's `credential-guard` hook blocks staging them, but the
   ignore is the belt to that brace).
 - **Verification block** — the template `CLAUDE.md` already carries
   `## Verifying your work`. In-place mode: if `CLAUDE.md` exists without
