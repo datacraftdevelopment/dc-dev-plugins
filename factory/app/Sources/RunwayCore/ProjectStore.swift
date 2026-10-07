@@ -18,6 +18,10 @@ public final class ProjectStore {
     public private(set) var pause: PauseInfo?
     public private(set) var overall: OverallState = .allOff
     public private(set) var badge = 0
+    /// A project has ready tickets but its loop is off. Drives the amber icon; independent of notifications.
+    public private(set) var readyWhileOff = false
+    /// Set when a notification is clicked: the tab the window should open on.
+    public var requestedRoute: NotificationRoute?
     /// The last command's stderr when it failed; cleared by the next success or `dismissError()`.
     public private(set) var lastError: String?
     /// The dc-dev-plugins checkout holding `schedule.sh` and `runway.py`; nil means the one the plists point at.
@@ -35,20 +39,30 @@ public final class ProjectStore {
     @ObservationIgnored private let pidAlive: (Int) -> Bool
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var watchers: [String: DispatchSourceFileSystemObject] = [:]
-    @ObservationIgnored private var waitingCounts: [String: Int] = [:]
+    @ObservationIgnored private var snapshots: [String: StatusSnapshot] = [:]
+    @ObservationIgnored private var ledger: NotificationLedger
+    @ObservationIgnored private let ledgerURL: URL
+    @ObservationIgnored private let machineURL: URL
+    @ObservationIgnored private let deliver: (([NotificationEvent]) -> Void)?
     @ObservationIgnored private var waitingFetchedAt: Date = .distantPast
     @ObservationIgnored private var fetchingWaiting = false
 
     public init(discovery: ProjectDiscovery = ProjectDiscovery(), interval: TimeInterval = 5,
                 defaults: UserDefaults = .standard, pauseURL: URL = PauseInfo.defaultURL,
                 run: @escaping (Command) async -> CommandResult = { await CommandRunner.run($0) },
-                pidAlive: @escaping (Int) -> Bool = StatusResolver.systemPidAlive) {
+                pidAlive: @escaping (Int) -> Bool = StatusResolver.systemPidAlive,
+                ledgerURL: URL = NotificationLedger.defaultURL, machineURL: URL = QuietHours.defaultURL,
+                deliver: (([NotificationEvent]) -> Void)? = nil) {
         self.discovery = discovery
         self.interval = interval
         self.defaults = defaults
         self.pauseURL = pauseURL
         self.run = run
         self.pidAlive = pidAlive
+        self.ledgerURL = ledgerURL
+        self.machineURL = machineURL
+        self.deliver = deliver
+        self.ledger = deliver == nil ? NotificationLedger() : NotificationLedger.load(from: ledgerURL)
         self.checkout = defaults.string(forKey: Self.checkoutKey)
     }
 
@@ -80,7 +94,7 @@ public final class ProjectStore {
         let newEntries = found.map { project -> ProjectEntry in
             let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
             let status = StatusResolver.resolve(project: project, heartbeat: heartbeat, pause: pause,
-                                                waiting: project.loaded ? waitingCounts[project.label] ?? 0 : 0,
+                                                waiting: project.loaded ? snapshots[project.label]?.tickets.count ?? 0 : 0,
                                                 now: now, pidAlive: pidAlive)
             return ProjectEntry(project: project, status: status)
         }
@@ -89,6 +103,9 @@ public final class ProjectStore {
         let statuses = newEntries.map(\.status)
         overall = OverallState.resolve(statuses, pause: pause, now: now)
         badge = OverallState.badge(statuses)
+        let planned = found.map { ProjectSnapshot(label: $0.label, name: $0.name, loopOn: $0.loaded, status: snapshots[$0.label]) }
+        readyWhileOff = ProjectSnapshot.readyWhileOff(planned)
+        notify(planned, now: now)
         updateWatchers(for: found)
         if now.timeIntervalSince(waitingFetchedAt) > 60 { refreshWaiting() }
     }
@@ -170,16 +187,29 @@ public final class ProjectStore {
             .map { discovery.stoppedProject(repoPath: $0.key, interval: $0.value, runwayScript: script) }
     }
 
+    // MARK: notifications
+
+    /// Plans from the latest snapshots, saves the ledger first, then delivers. A failed save means no delivery,
+    /// so a restart can't repeat what was already shown.
+    private func notify(_ planned: [ProjectSnapshot], now: Date) {
+        guard let deliver else { return }
+        let result = NotificationPlanner.plan(planned, ledger: ledger, now: now, quiet: QuietHours.load(machineURL))
+        guard result.ledger != ledger else { return }
+        do { try result.ledger.save(to: ledgerURL) } catch { return }
+        ledger = result.ledger
+        if !result.events.isEmpty { deliver(result.events) }
+    }
+
     // MARK: decisions waiting
 
-    /// Asks `runway status --json` how many decisions wait in each loaded project. It can hit a tracker over the
+    /// Asks `runway status --json` what waits and what is ready in each project, loop on or off. It can hit a tracker over the
     /// network, so it runs off the main thread at most once a minute and keeps the last answer if a call fails.
     private func refreshWaiting() {
         guard !fetchingWaiting, let tools else { return }
         fetchingWaiting = true
         waitingFetchedAt = Date()
         let targets = projects.compactMap { project -> (String, String)? in
-            guard project.loaded, project.error == nil, let repo = project.repoPath else { return nil }
+            guard project.error == nil, let repo = project.repoPath else { return nil }
             return (project.label, repo)
         }
         Task {
@@ -187,9 +217,9 @@ public final class ProjectStore {
             for (label, repo) in targets {
                 let result = await run(tools.status(repo: repo))
                 guard result.succeeded,
-                      let count = StatusResolver.waitingCount(statusJSON: Data(result.stdout.utf8)) else { continue }
-                if waitingCounts[label] != count {
-                    waitingCounts[label] = count
+                      let snapshot = StatusSnapshot.parse(Data(result.stdout.utf8)) else { continue }
+                if snapshots[label] != snapshot {
+                    snapshots[label] = snapshot
                     changed = true
                 }
             }
