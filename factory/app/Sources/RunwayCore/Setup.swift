@@ -246,9 +246,10 @@ public enum SetupPlan {
 }
 
 extension RunwayTools {
-    /// `setup.sh`, next to the Linear practice templates it fills in.
+    /// `setup.sh`, next to `schedule.sh`; in the old `experiments/03-linear/` layout it sat under `practice/`.
     public var setupScript: String {
-        URL(fileURLWithPath: scheduleScript).deletingLastPathComponent().appendingPathComponent("practice/setup.sh").path
+        let dir = URL(fileURLWithPath: scheduleScript).deletingLastPathComponent()
+        return dir.appendingPathComponent(dir.lastPathComponent == "03-linear" ? "practice/setup.sh" : "setup.sh").path
     }
 }
 
@@ -369,7 +370,7 @@ extension SetupChecks {
         "-e", "tell application \"Terminal\" to activate",
         "-e", "tell application \"Terminal\" to do script \"claude\""])
 
-    /// The checkout a `runway.py` path belongs to: `<checkout>/factory/experiments/01-runway/runway.py`.
+    /// The checkout a `runway.py` path belongs to: `<checkout>/factory/plugin/runway/runway.py` (or the old `…/factory/experiments/01-runway/runway.py`).
     public static func checkout(ofRunwayScript path: String) -> String {
         var url = URL(fileURLWithPath: path)
         for _ in 0..<4 { url.deleteLastPathComponent() }

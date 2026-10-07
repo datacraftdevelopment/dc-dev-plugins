@@ -248,18 +248,27 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
     os.replace(tmp, p)
     print("paused until " + (end.isoformat(timespec="seconds") if end else "resumed") + (" (stop)" if stop_now else ""))
     if stop_now:
+        pids = set()  # every live agent on this Mac, plus this repo's heartbeat pid
+        for f in agents_dir().glob("*"):
+            try:
+                pids.add(int(f.name))
+            except ValueError:
+                pass
         try:
             pid = json.loads((root / "_pm" / "runway-state.json").read_text()).get("agent_pid")
+            if pid:
+                pids.add(int(pid))
         except (OSError, ValueError):
-            pid = None
-        if not pid:
+            pass
+        if not pids:
             print("no agent running; nothing to stop")
             return
-        try:
-            os.kill(int(pid), signal.SIGTERM)
-            print(f"stopped agent {pid}")
-        except ProcessLookupError:
-            print(f"agent {pid} already gone")
+        for pid in sorted(pids):
+            try:
+                os.kill(pid, signal.SIGTERM)
+                print(f"stopped agent {pid}")
+            except ProcessLookupError:
+                print(f"agent {pid} already gone")
 
 
 def cmd_resume() -> None:
@@ -712,7 +721,8 @@ def resolve_harness(cfg: dict, t=None) -> dict:
         name = default
     prof = {k: cfg.get(k, "") for k in ("agent_cmd", "prep_cmd", "review_cmd", "fix_cmd", "pr_cmd")}
     prof["parser"] = "claude"
-    prof.update({k: v for k, v in (profiles.get(name) or {}).items() if v})
+    override = profiles.get(name)
+    prof.update({k: v for k, v in (override if isinstance(override, dict) else {}).items() if v})
     prof["name"] = name
     return prof
 
@@ -1407,7 +1417,7 @@ def main() -> None:
     pz.add_argument("--stop-now", action="store_true", help="also stop the running agent and return its ticket to ready")
     sub.add_parser("resume", help="delete the pause")
     sub.add_parser("machine", help="print this Mac's quiet-time rules and whether a tick would run now")
-    lp =sub.add_parser("loop")
+    lp = sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")

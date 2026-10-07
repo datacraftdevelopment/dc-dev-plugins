@@ -151,13 +151,13 @@ final class SetupTests: XCTestCase {
         let steps = SetupPlan.steps(config(), tools: tools)
         XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/experiments/03-linear/practice/setup.sh", "/r/demo", "DAT", "Runway app"])))
+            "/co/factory/plugin/runway/setup.sh", "/r/demo", "DAT", "Runway app"])))
         XCTAssertEqual(steps[1].action, .run(Command(executable: "/usr/bin/env", arguments: [
-            "python3", "/co/factory/experiments/01-runway/runway.py", "--root", "/r/demo", "setup"])))
+            "python3", "/co/factory/plugin/runway/runway.py", "--root", "/r/demo", "setup"])))
         XCTAssertEqual(steps[2].action, .claimCheck(Command(executable: "/usr/bin/env", arguments: [
-            "python3", "/co/factory/experiments/01-runway/runway.py", "--root", "/r/demo", "status", "--json"])))
+            "python3", "/co/factory/plugin/runway/runway.py", "--root", "/r/demo", "status", "--json"])))
         XCTAssertEqual(steps[3].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/experiments/03-linear/schedule.sh", "install", "/r/demo", "15"])))
+            "/co/factory/plugin/runway/schedule.sh", "install", "/r/demo", "15"])))
     }
 
     func testGitPlanOnlyInstalls() {
@@ -175,8 +175,8 @@ final class SetupTests: XCTestCase {
     func testDisplayShowsEachCommandQuoted() {
         let steps = SetupPlan.steps(config(), tools: tools)
         XCTAssertEqual(steps[0].display,
-                       "bash /co/factory/experiments/03-linear/practice/setup.sh /r/demo DAT 'Runway app'")
-        XCTAssertEqual(steps[3].display, "bash /co/factory/experiments/03-linear/schedule.sh install /r/demo 15")
+                       "bash /co/factory/plugin/runway/setup.sh /r/demo DAT 'Runway app'")
+        XCTAssertEqual(steps[3].display, "bash /co/factory/plugin/runway/schedule.sh install /r/demo 15")
     }
 
     func testValidation() {

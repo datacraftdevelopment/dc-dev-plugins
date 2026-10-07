@@ -148,7 +148,7 @@ final class ProjectStoreTests: XCTestCase {
     func testCheckoutSettingWinsAndPersists() async throws {
         let store = makeStore()
         store.setCheckout("/mine")
-        XCTAssertEqual(store.tools?.runwayScript, "/mine/factory/experiments/01-runway/runway.py")
+        XCTAssertEqual(store.tools?.runwayScript, "/mine/factory/plugin/runway/runway.py")
         XCTAssertEqual(defaults.string(forKey: ProjectStore.checkoutKey), "/mine")
         store.setCheckout(nil)
         XCTAssertNil(store.tools)

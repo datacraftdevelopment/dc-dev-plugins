@@ -187,7 +187,9 @@ class LinearTicket:
 
     @property
     def claimed_by(self) -> str | None:
-        """The machine named in Runway's latest claim comment, or None."""
+        """The machine named in Runway's latest claim comment while the ticket is claimed, else None."""
+        if self.status != "claimed":
+            return None  # parked, paused or retried: the old stamp no longer holds the ticket
         for cm in reversed(self.comments):
             m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
             if m:

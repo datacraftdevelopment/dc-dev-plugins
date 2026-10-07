@@ -86,18 +86,23 @@ final class CommandTests: XCTestCase {
 
     func testToolsFromCheckout() {
         XCTAssertEqual(RunwayTools(checkout: "/co"),
-                       RunwayTools(scheduleScript: "/co/factory/experiments/03-linear/schedule.sh",
-                                   runwayScript: "/co/factory/experiments/01-runway/runway.py"))
+                       RunwayTools(scheduleScript: "/co/factory/plugin/runway/schedule.sh",
+                                   runwayScript: "/co/factory/plugin/runway/runway.py"))
     }
 
     func testToolsFromRunwayScriptPath() {
+        let t = RunwayTools(runwayScript: "/co/factory/plugin/runway/runway.py")
+        XCTAssertEqual(t.scheduleScript, "/co/factory/plugin/runway/schedule.sh")
+    }
+
+    func testToolsFromOldLayoutRunwayScriptPath() {
         let t = RunwayTools(runwayScript: "/co/factory/experiments/01-runway/runway.py")
         XCTAssertEqual(t.scheduleScript, "/co/factory/experiments/03-linear/schedule.sh")
     }
 
     func testLocatePrefersSettingOverPlist() {
         let t = RunwayTools.locate(checkoutSetting: "/mine", projects: [])
-        XCTAssertEqual(t?.runwayScript, "/mine/factory/experiments/01-runway/runway.py")
+        XCTAssertEqual(t?.runwayScript, "/mine/factory/plugin/runway/runway.py")
     }
 
     func testLocateFallsBackToPlistPath() {

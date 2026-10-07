@@ -80,16 +80,19 @@ public struct RunwayTools: Equatable, Sendable {
 
     /// A dc-dev-plugins checkout.
     public init(checkout: String) {
-        let experiments = URL(fileURLWithPath: checkout).appendingPathComponent("factory/experiments")
-        self.init(scheduleScript: experiments.appendingPathComponent("03-linear/schedule.sh").path,
-                  runwayScript: experiments.appendingPathComponent("01-runway/runway.py").path)
+        let engine = URL(fileURLWithPath: checkout).appendingPathComponent("factory/plugin/runway")
+        self.init(scheduleScript: engine.appendingPathComponent("schedule.sh").path,
+                  runwayScript: engine.appendingPathComponent("runway.py").path)
     }
 
-    /// The `runway.py` a LaunchAgent plist points at; `schedule.sh` is its sibling under `experiments/`.
+    /// The `runway.py` a LaunchAgent plist points at. `schedule.sh` is its sibling, except in a plist written
+    /// before the engine moved, where `runway.py` sits in `experiments/01-runway/` and `schedule.sh` in `experiments/03-linear/`.
     public init(runwayScript: String) {
-        let experiments = URL(fileURLWithPath: runwayScript).deletingLastPathComponent().deletingLastPathComponent()
-        self.init(scheduleScript: experiments.appendingPathComponent("03-linear/schedule.sh").path,
-                  runwayScript: runwayScript)
+        let dir = URL(fileURLWithPath: runwayScript).deletingLastPathComponent()
+        let schedule = dir.lastPathComponent == "01-runway"
+            ? dir.deletingLastPathComponent().appendingPathComponent("03-linear/schedule.sh")
+            : dir.appendingPathComponent("schedule.sh")
+        self.init(scheduleScript: schedule.path, runwayScript: runwayScript)
     }
 
     /// The checkout from the setting if there is one, else the one the first plist points at.

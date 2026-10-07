@@ -129,6 +129,24 @@ Edit that file only when Joe asks for a specific change, show him the result
 with `RUNWAY machine`, and never change it to get a ticket moving. The rules
 stop new starts only; a running agent is never touched.
 
+## Harnesses
+
+A harness is the agent CLI that does a ticket's work. The default is Claude
+(`agent_cmd`, `prep_cmd` and the rest at the top of `runway.json`).
+
+- `runway.json` `"harness"` sets the project default: `claude` or a key of
+  `"harnesses"`.
+- `"harnesses"` maps a name to a profile (`agent_cmd`, `prep_cmd`, `review_cmd`,
+  `fix_cmd`, `pr_cmd`, `parser`). A profile overlays the top-level commands;
+  anything it leaves out falls back to them. Each key must be a profile object.
+- One ticket can override the default: a `harness:<name>` label in Linear, or a
+  `Harness: <name>` header in a markdown ticket. An unknown name falls back to
+  the project default.
+- `RUNWAY status --json` shows each ticket's effective `harness`.
+- `RUNWAY whoami` prints this Mac's name, the one stamped on claims
+  (`claimed_by`). A ticket claimed by another Mac is skipped here; the claim
+  clears when the ticket is parked, paused or retried.
+
 ## Decisions
 
 A `ready-for-human` ticket gets a decision packet as a comment (it starts
@@ -144,3 +162,10 @@ and `RUNWAY no <ticket> "<note>"` do the same from the command line.
 a `/retro` prompt pointing at the runs that struggled. It also asks the retro
 to compare what each ticket asked for with what landed. Retros are started by
 a human, never scheduled.
+
+## Versions
+
+0.1.0 was the first cut. 0.4.0 adds the two-seat review panel, machine-wide
+pause, quiet-time rules and per-project and per-ticket harnesses. No notes were
+kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
+across repos, and the app's script paths after the engine move.
