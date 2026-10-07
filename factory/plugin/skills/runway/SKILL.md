@@ -1,6 +1,6 @@
 ---
 name: runway
-description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule or stop the loop, or run a retro on its runs.
+description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
 ---
 
 # Runway
@@ -60,15 +60,48 @@ run side by side. Give them a blocks relation in landing order.
 
 ## Running and watching
 
-- `RUNWAY status`: what's waiting on Joe, running, ready, blocked and done.
+- `RUNWAY status --json`: the queue as one JSON object (`groups`: waiting,
+  running, ready_auto, ready_prep, blocked, done; `tickets` with `packet`,
+  `blocked_by`, `claimed_by`; `paused`; `machine`). Prefer it over plain
+  `RUNWAY status`, and summarize it for Joe as running, next, blocked and
+  waiting on him (read each waiting ticket's `packet`).
+- "What is it doing right now" comes from the heartbeat, `<repo>/_pm/runway-state.json`:
+  `phase` (`sync|prep|agent|check|merge|finish|idle|stopped`, plus `paused` and
+  `waiting` with a `reason`), `ticket`, `attempt`, `since`, `last_result`. A
+  non-idle phase only counts as live if its `pid` is still running; otherwise
+  it's a crash's leftovers, so say so.
 - `RUNWAY tick` runs one step; `RUNWAY loop` runs until nothing is ready.
 - `bash .../schedule.sh status|run|uninstall <repo>`: the scheduled job.
 - The log is `<repo>/_pm/runway.log`; each agent call is in `_pm/runway-runs.jsonl`.
 - `RUNWAY finish` forces the finish step; its PR body lands in `_pm/runway-pr.md`.
 
 Closing a chat never pauses the loop, and nothing here should say it does.
-Stop it with `schedule.sh uninstall`, and say it's stopped only once
-`schedule.sh status` shows it unloaded.
+To hold it for a while, pause it (below). To remove it, `schedule.sh uninstall`,
+and say it's stopped only once `schedule.sh status` shows it unloaded.
+
+## Pause and resume
+
+A pause is machine-wide (`~/.runway/pause`), holds with the app closed and
+leaves the LaunchAgent loaded. Only on Joe's ask:
+
+- `RUNWAY pause --for 1h` or `--until <ISO-8601>`: a running ticket finishes,
+  nothing new starts. With neither flag it holds until `resume`.
+- `RUNWAY pause --stop-now` also stops the running agent; its ticket goes back
+  to ready with a "stopped by pause" comment and keeps its worktree.
+- `RUNWAY resume` lifts it.
+
+Say it's paused only after `RUNWAY status --json` shows `paused` set or the
+heartbeat phase reads `paused`.
+
+## Quiet time
+
+`RUNWAY machine` prints this Mac's quiet-time rules and whether a tick would run
+now, and why not. Show it when Joe asks why nothing is starting (the heartbeat
+phase `waiting` carries the same reason). The rules live in
+`~/.runway/machine.json` (quiet hours, idle only, not on battery, max agents).
+Edit that file only when Joe asks for a specific change, show him the result
+with `RUNWAY machine`, and never change it to get a ticket moving. The rules
+stop new starts only; a running agent is never touched.
 
 ## Decisions
 
