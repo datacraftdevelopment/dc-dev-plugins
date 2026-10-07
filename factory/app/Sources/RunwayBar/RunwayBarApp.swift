@@ -84,6 +84,20 @@ struct RunwayMenu: View {
                     .disabled(!project.loaded)
             }
         }
+        let waiting = store.entries.flatMap { entry in
+            (store.snapshot(for: entry.project.label)?.tickets ?? []).map { (entry, $0) }
+        }
+        if !waiting.isEmpty {
+            Divider()
+            Text("Decisions waiting")
+            ForEach(waiting, id: \.1.id) { entry, ticket in
+                Button("\(ticket.id) \(ticket.title)") {
+                    store.requestedRoute = NotificationRoute(projectLabel: entry.project.label, ticketID: ticket.id, tab: .decisions)
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    openWindow(id: "runway")
+                }
+            }
+        }
         Divider()
         if store.pause != nil {
             Button("Resume") { Task { await store.resume() } }

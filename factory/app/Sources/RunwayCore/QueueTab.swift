@@ -11,6 +11,8 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public let blockedBy: [String]
     public let waitingOn: String?
     public let harness: String?
+    /// The decision packet (Markdown) for a waiting ticket; nil for any other.
+    public let packet: String?
 }
 
 public struct QueueSections: Equatable, Sendable {
@@ -37,11 +39,18 @@ public struct QueueStatus: Equatable, Sendable {
             return QueueTicket(id: id, title: raw["title"] as? String ?? "", url: raw["url"] as? String,
                                status: raw["status"] as? String ?? "", gate: raw["gate"] as? String ?? "",
                                blockedBy: raw["blocked_by"] as? [String] ?? [],
-                               waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String)
+                               waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String,
+                               packet: raw["packet"] as? String)
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }
         return QueueStatus(tickets: tickets, groups: groups)
+    }
+
+    /// Tickets waiting on a go or no (the `waiting` group, not tickets that merely need prep).
+    public var decisions: [QueueTicket] {
+        let byID = Dictionary(tickets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return (groups["waiting"] ?? []).compactMap { byID[$0] }
     }
 
     public var sections: QueueSections {

@@ -125,6 +125,14 @@ public struct RunwayTools: Equatable, Sendable {
         return Command(executable: "/usr/bin/env", arguments: args)
     }
 
+    /// `runway go|no <ticket> "<note>"`. The note is one argument; a leading dash goes after `--` so argparse can't read it as an option.
+    public func answer(go: Bool, ticket: String, note: String, repo: String) -> Command {
+        var args = ["python3", runwayScript, "--root", repo, go ? "go" : "no", ticket]
+        if note.hasPrefix("-") { args.append("--") }
+        args.append(note)
+        return Command(executable: "/usr/bin/env", arguments: args)
+    }
+
     public func resume() -> Command {
         Command(executable: "/usr/bin/env", arguments: ["python3", runwayScript, "resume"])
     }

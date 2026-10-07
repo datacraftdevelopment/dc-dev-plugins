@@ -54,6 +54,8 @@ struct RunwayWindow: View {
                         NowTab(store: store, entry: entry).id(entry.project.label)
                     } else if tab == .queue {
                         QueueTab(store: store, entry: entry)
+                    } else if tab == .decisions {
+                        DecisionsTab(store: store, entry: entry).id(entry.project.label)
                     } else if tab == .runs {
                         RunsTab(store: store, entry: entry)
                     } else {
@@ -68,12 +70,16 @@ struct RunwayWindow: View {
             }
         }
         .frame(minWidth: 760, minHeight: 480)
-        .onChange(of: store.requestedRoute) { _, route in
-            guard let route else { return }
-            selection = route.projectLabel
-            tab = route.tab == .decisions ? .decisions : .now
-            store.requestedRoute = nil
-        }
+        .onChange(of: store.requestedRoute) { _, _ in applyRoute() }
+        // A route set from the menu while the window was closed is already there when the window opens.
+        .onAppear { applyRoute() }
+    }
+
+    private func applyRoute() {
+        guard let route = store.requestedRoute else { return }
+        selection = route.projectLabel
+        tab = route.tab == .decisions ? .decisions : .now
+        store.requestedRoute = nil
     }
 
     @ToolbarContentBuilder private func toolbar(for entry: ProjectEntry) -> some ToolbarContent {
