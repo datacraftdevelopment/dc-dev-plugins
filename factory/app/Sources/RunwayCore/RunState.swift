@@ -15,6 +15,12 @@ public struct Heartbeat: Equatable, Sendable {
     public let pid: Int?
     /// Why a tick was skipped (phase `waiting`).
     public let reason: String?
+    /// Agent attempt number during agent and check.
+    public let attempt: Int?
+    /// When the current tick began (`since` is when this phase began).
+    public let tickStarted: Date?
+    /// `pass`, `fail` or `park`: how the last ticket ended.
+    public let lastResult: String?
 
     /// Phases that mean a tick is in flight. `idle`, `stopped`, `paused` and `waiting` are resting states.
     public static let activePhases: Set<String> = ["sync", "prep", "agent", "check", "merge", "finish"]
@@ -26,7 +32,10 @@ public struct Heartbeat: Equatable, Sendable {
               let phase = json["phase"] as? String else { return nil }
         return Heartbeat(phase: phase, ticket: json["ticket"] as? String,
                          since: (json["since"] as? String).flatMap(parseISO),
-                         pid: json["pid"] as? Int, reason: json["reason"] as? String)
+                         pid: json["pid"] as? Int, reason: json["reason"] as? String,
+                         attempt: json["attempt"] as? Int,
+                         tickStarted: (json["tick_started"] as? String).flatMap(parseISO),
+                         lastResult: json["last_result"] as? String)
     }
 
     public static func load(repoPath: String) -> Heartbeat? {

@@ -79,9 +79,13 @@ public struct StatusSnapshot: Equatable, Sendable {
     /// Tickets the loop could pick up: `ready_auto` plus `ready_prep`.
     public let readyCount: Int
 
-    public init(tickets: [Ticket], readyCount: Int) {
+    /// Every ticket's title by id, so the Now tab can name what the loop is working on.
+    public let titles: [String: String]
+
+    public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:]) {
         self.tickets = tickets
         self.readyCount = readyCount
+        self.titles = titles
     }
 
     public static func parse(_ data: Data) -> StatusSnapshot? {
@@ -95,7 +99,9 @@ public struct StatusSnapshot: Equatable, Sendable {
             return Ticket(id: id, title: (entry["title"] as? String) ?? "", status: (entry["status"] as? String) ?? "needs-human",
                           gate: (entry["gate"] as? String) ?? "")
         }
-        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"))
+        var titles: [String: String] = [:]
+        for entry in all { if let id = entry["id"] as? String { titles[id] = entry["title"] as? String } }
+        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles)
     }
 }
 
