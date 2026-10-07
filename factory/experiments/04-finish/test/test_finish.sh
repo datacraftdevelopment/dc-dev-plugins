@@ -3,7 +3,7 @@
 # one fix pass, check, PR body, draft PR through a fake gh) and `runway retro`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNWAY="$HERE/../../01-runway/runway.py"
+RUNWAY="$HERE/../../../plugin/runway/runway.py"
 TMP="$(mktemp -d)"
 export CLAUDE_CONFIG_DIR="$TMP/claude-home" GH_LOG="$TMP/gh.log"
 mkdir -p "$TMP/bin"; ln -s "$HERE/fake_gh.sh" "$TMP/bin/gh"; export PATH="$TMP/bin:$PATH"

@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import runway  # noqa: E402
 from test_status_json import FakeLinear, node  # noqa: E402
 
@@ -59,6 +60,7 @@ class Claims(unittest.TestCase):
         ran = []
         with mock.patch.object(runway, "machine_name", return_value=me), \
                 mock.patch.object(runway, "run_ticket", side_effect=lambda cfg, r, tr, t: ran.append(t.id)), \
+                mock.patch.object(runway, "sync_base", return_value=True), \
                 mock.patch.object(runway, "log", log or mock.MagicMock()):
             runway.tick(dict(runway.DEFAULT_CONFIG), root, tracker(root))
         return ran

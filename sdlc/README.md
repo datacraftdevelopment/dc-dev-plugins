@@ -21,6 +21,7 @@ managed settings       lock        the admin's layer; mapped here, not deployed
 
 | Piece | What it does |
 |---|---|
+| hook `credential-guard` (`hooks/`, `scripts/credential_guard.py`, `scripts/credential-policy.json`) and skill `credential-guard` | Machine-wide, no per-repo setup: a PreToolUse hook on Bash that blocks `git add`, `git stage` and `git commit` when a credential-shaped file would be staged or committed. Moved here from pm on 2026-10-07 (sdlc 0.2.0). Tests: `bash sdlc/hooks/test-credential-guard.sh` and `tests/test_sdlc_credential_guard.py`. The Codex edition of sdlc carries this guard and nothing else. |
 | skill `gate-hooks` | Installs the gate kit into a repo and writes its rules with the user. |
 | `kit/sdlc_gate.py` | The gate. A PreToolUse and Stop hook: production commands, protected paths, a test lock for fix tasks, a commit backstop, and protection for its own files. It also provides the `lock`, `unlock`, `status` and `check` commands. The lock and the decision log are kept in `.git/sdlc-gate/`, where `git clean` cannot remove them. |
 | `scripts/install_gates.py` | Copies the kit into `<repo>/.claude/`, merges the hook entries into `settings.json`, backs up what it replaces. Safe to repeat. |

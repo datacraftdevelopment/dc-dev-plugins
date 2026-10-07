@@ -2,7 +2,7 @@
 # Offline end-to-end test of Runway's Linear adapter against fake_linear.py.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNWAY="$HERE/../../01-runway/runway.py"
+RUNWAY="$HERE/../../../plugin/runway/runway.py"
 PORT=${PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')}
 python3 "$HERE/fake_linear.py" $PORT & SRV=$!
 trap 'kill $SRV' EXIT

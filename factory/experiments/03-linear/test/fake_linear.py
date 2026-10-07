@@ -9,7 +9,7 @@ import json, sys, itertools
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "01-runway"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugin" / "runway"))
 import linear_tracker as lt
 
 ids = itertools.count(1)

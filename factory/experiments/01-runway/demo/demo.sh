@@ -2,7 +2,7 @@
 # Builds a throwaway repo with five tickets (one human-gated) and runs the loop offline.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNWAY="$HERE/../runway.py"
+RUNWAY="$HERE/../../../plugin/runway/runway.py"
 REPO="${1:-$(mktemp -d)/demo-repo}"
 mkdir -p "$REPO/.scratch/demo/issues"
 cd "$REPO"

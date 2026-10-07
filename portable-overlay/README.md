@@ -15,7 +15,7 @@ subagent.
 ## How it reaches the editions
 
 ```
-portable-overlay/ + sdlc/ + pm/scripts/session.py + pm/hooks/hooks.json   (here, private)
+portable-overlay/ + sdlc/ + pm/scripts/session.py              (here, private)
         │  hand pass, like the rest of the RCC pm cut
         ▼
 rcc-plugins/pm, rcc-plugins/sdlc        (RCC credit, public once pushed)
@@ -31,8 +31,10 @@ From 2026-10-04 RCC and TC carry the same pm and sdlc. The hand pass into
 `rcc-plugins`:
 
 - copy the files in this folder over `rcc-plugins/pm/`, and the private
-  `pm/scripts/session.py` and `pm/hooks/hooks.json`; set the pm version to the
-  private one;
+  `pm/scripts/session.py`; set the pm version to the private one. The
+  credential guard moved from pm to sdlc on 2026-10-07 (pm 0.24.0, sdlc 0.2.0),
+  so the next pass deletes `rcc-plugins/pm/hooks/` and the guard arrives with
+  `sdlc/`;
 - copy `sdlc/` to `rcc-plugins/sdlc/`, then in that copy: the author becomes
   "Joe DaSilva and Richard Carlton", the install lines name
   `FMTrainingTV-AI/rcc-fm`, the README keeps only the intro, What is in it,
