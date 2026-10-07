@@ -2,8 +2,12 @@
 
 Menu bar app for Runway. Swift package, no Xcode project, no third-party dependencies. macOS 14+.
 
-- `RunwayCore`: models and file parsing, no SwiftUI. Unit tested.
-- `RunwayBar`: SwiftUI `MenuBarExtra` app. Placeholder menu for now ("Runway" + Quit).
+- `RunwayCore`: models, file parsing, state logic and command builders, no SwiftUI. Unit tested.
+  - `RunState.swift`: heartbeat + launchctl + pause file + decisions waiting → per-project and overall state. A heartbeat in an active phase whose pid is gone is an error, not running.
+  - `Commands.swift`: Start = `schedule.sh install <repo> <minutes>`, Stop = `schedule.sh uninstall <repo>`, Run now = `launchctl kickstart gui/<uid>/<label>`, Pause/Resume = `runway.py pause|resume`. A failed command shows its stderr at the top of the menu.
+- `RunwayBar`: SwiftUI `MenuBarExtra` app. Icon follows the overall state (airplane running, bell waiting on you, pause, moon all off, triangle error) with a count of decisions waiting. One submenu per project; Pause all loops / Resume; Scripts.
+
+`schedule.sh` and `runway.py` are found from the Scripts setting (a dc-dev-plugins checkout), else from the `runway.py` path in the LaunchAgent plists. The script path is remembered, so a stopped loop keeps its row and can be started again. Decisions waiting come from `runway.py status --json`, polled at most once a minute. "Until tomorrow 08:00" means the next 08:00, so before 08:00 it ends this morning.
 
 ## Build, run, test
 
