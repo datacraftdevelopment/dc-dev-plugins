@@ -10,6 +10,7 @@ struct RunwayWindow: View {
     let store: ProjectStore
     @State private var selection: String?
     @State private var tab: RunwayTab = .now
+    @State private var showSetup = false
 
     private var entry: ProjectEntry? {
         store.entries.first { $0.project.label == selection } ?? store.entries.first
@@ -31,6 +32,11 @@ struct RunwayWindow: View {
                 .tag(entry.project.label)
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
+            .safeAreaInset(edge: .bottom) {
+                Button("Set up a loop…") { showSetup = true }
+                    .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .sheet(isPresented: $showSetup) { SetupSheet(store: store) }
         } detail: {
             if let entry {
                 VStack(spacing: 0) {
