@@ -17,4 +17,4 @@ git commit -qm "Seed hours practice repo"
 python3 -m unittest discover -s tests -q
 echo
 echo "Practice repo ready at $DEST"
-echo "Run:  python3 \"$HERE/../runway.py\" --root \"$DEST\" loop"
+echo "Run:  python3 \"$HERE/../../../plugin/runway/runway.py\" --root \"$DEST\" loop"

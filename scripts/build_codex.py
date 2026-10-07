@@ -21,9 +21,20 @@ PLUGINS = {
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
     'ui-test': ('DataCraft UI Tests', 'Run macOS UI tests with evidence receipts and independent verification.'),
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
+    'sdlc': ('DataCraft SDLC', 'The credential guard: blocks committing credential-shaped files.'),
+    'factory': ('DataCraft Factory', 'Runway: run ready Linear tickets unattended and gate the rest for a human.'),
 }
-# Local plugins with no Codex edition: sdlc installs Claude Code hooks into a repo's .claude/.
-CLAUDE_ONLY = {'sdlc'}
+# Local plugins with no Codex edition.
+CLAUDE_ONLY = set()
+# Plugin source folders that differ from the plugin name.
+SOURCES = {'factory': 'factory/plugin'}
+# Codex packages only these paths of a plugin. sdlc's gate kit and review policy install
+# Claude Code hooks into a repo's .claude/, so its Codex edition is the credential guard alone.
+CODEX_PARTS = {'sdlc': ('hooks/', 'scripts/credential', 'skills/credential-guard/')}
+
+
+def source_dir(name):
+    return SOURCES.get(name, name)
 
 RUNTIME = '''## Codex runtime
 
@@ -123,7 +134,7 @@ def run(*args, **kwargs):
 
 def source_metadata(name):
     """Fingerprint exactly the tracked inputs used by this local adapter."""
-    tracked = run('git', '-C', str(ROOT), 'ls-files', '-z', '--', name,
+    tracked = run('git', '-C', str(ROOT), 'ls-files', '-z', '--', source_dir(name),
                   'scripts/build_codex.py', capture_output=True).stdout.split('\0')
     digest = hashlib.sha256()
     for filename in sorted(filter(None, tracked)):
@@ -135,7 +146,7 @@ def source_metadata(name):
         for value in (filename.encode(), str(path.stat().st_mode & 0o111).encode(), content):
             digest.update(len(value).to_bytes(8, 'big'))
             digest.update(value)
-    manifest = json.loads((ROOT / name / '.claude-plugin/plugin.json').read_text())
+    manifest = json.loads((ROOT / source_dir(name) / '.claude-plugin/plugin.json').read_text())
     return {'upstreamVersion': manifest['version'], 'sourceFingerprint': digest.hexdigest()}
 
 
@@ -229,15 +240,17 @@ def build_one(name, parent):
     dest = parent / name
     if dest.exists() and (dest.is_symlink() or not (dest / MARKER).is_file()):
         raise ValueError(f'Refusing to replace unowned destination: {dest}')
-    tracked = run('git', '-C', str(ROOT), 'ls-files', '-z', '--', name,
+    tracked = run('git', '-C', str(ROOT), 'ls-files', '-z', '--', source_dir(name),
                   capture_output=True).stdout.split('\0')
     with tempfile.TemporaryDirectory(prefix=f'.{name}-', dir=parent) as temporary:
         stage = Path(temporary) / name
         stage.mkdir()
         for filename in filter(None, tracked):
             source = ROOT / filename
-            relative = source.relative_to(ROOT / name)
+            relative = source.relative_to(ROOT / source_dir(name))
             if relative.parts[0] in {'.claude-plugin', '.claude'}:
+                continue
+            if name in CODEX_PARTS and not relative.as_posix().startswith(CODEX_PARTS[name]):
                 continue
             if source.is_symlink():
                 raise ValueError(f'Cannot package symlink: {source}')
@@ -277,7 +290,7 @@ def build_one(name, parent):
             # Codex documents Bash matcher and tool_input.command compatibility.
             hooks.write_text(hooks.read_text().replace('\\"${CLAUDE_PLUGIN_ROOT}/hooks/credential-guard.sh\\"',
                                                        'bash \\"${PLUGIN_ROOT}/hooks/credential-guard.sh\\"'))
-        manifest = json.loads((ROOT / name / '.claude-plugin/plugin.json').read_text())
+        manifest = json.loads((ROOT / source_dir(name) / '.claude-plugin/plugin.json').read_text())
         display, description = PLUGINS[name]
         manifest['description'] = description
         manifest['skills'] = './skills/'

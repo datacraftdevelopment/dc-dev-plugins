@@ -26,10 +26,23 @@ below are load-bearing: they decide what runs without Joe.
 | `go` | Joe approved a `ready-for-human` ticket. | Joe (or a comment starting `go`) |
 | `needs-human` | Parked, waiting on Joe. Runway never picks it. | Runway |
 
-When publishing build tickets, apply `ready-for-agent` by default. Apply
-`ready-for-human` **instead** when the ticket changes something a client will
-notice, picks between product options, or is hard to undo. Say why in the body,
-and say what "go" will do. Never put both labels on one ticket.
+When publishing build tickets, sort each one into a bucket before labelling it.
+Precedence runs top to bottom: the first bucket that fits wins.
+
+| Bucket | Looks like | Label |
+|---|---|---|
+| **One-way door** | Migrations or transforms on live data, deletes, anything public or production-facing, spend, credentials, client data, an architecture choice that would take more than a session to unwind. | `ready-for-human` |
+| **User challenge** | The ticket's plan contradicts something Joe already said (in the spec, the conversation or an earlier decision). | `ready-for-human`, and quote what he said |
+| **Taste** | Anything a user sees or feels: flow order, wording, defaults a client will notice, what ships first, what "done enough" means. | `ready-for-human` |
+| **Technical** | Library or pattern inside the chosen stack, file layout, naming, error handling, test seams, endpoint shape: anything the codebase or the spec can settle. | `ready-for-agent` |
+
+Unsure between technical and taste: `ready-for-agent`, and name the assumption in
+the body so the finish review can catch it. Unsure whether something is
+reversible: treat it as a door. For a `ready-for-human` ticket, say why in the
+body and what "go" will do. Never put both labels on one ticket.
+
+**Size floor.** Work under about an hour of solo effort is not its own ticket.
+Fold it into the ticket it serves.
 
 ## Reviewing decisions with Joe
 
@@ -57,6 +70,12 @@ Fetch the Linear issue by its identifier (e.g. `{{TEAM}}-12`) or URL, with comme
 Use Linear's native **blocks** relation (Linear shows it as "Blocked by" on the
 blocked issue). Publish blockers first so the relation can point at real issues.
 Runway treats an issue as unblocked when every blocker is Done or Canceled.
+
+**Conflict screen.** Two tickets that touch the same files (lockfiles, generated
+code, migrations, schema and config registries count), write the same database,
+or need the same port or dev server must not run side by side. Give them a
+blocks relation in the order they should land, even when neither needs the
+other's output.
 
 ## Wayfinding operations
 

@@ -97,12 +97,8 @@ Provides:
   gitignored `_pm/transcripts/`.
 - **`ship-acceptance`** — closes the delivery gap with an accepted-intent snapshot, independent checks before and after delivery, exact revisions, human deployment, and a shared `docs/shipped/` record. Missing checks and exceptions stay visible.
 - **Session helpers** — `scripts/session.py` allocates distinct session files and closes by exact path/ID with an explicit closure marker; no newest-file guessing.
-- **`credential-guard` hook** — a bounded filename guard: a
-  `PreToolUse` hook on Bash that blocks `git add` / `git stage` /
-  `git commit` when a credential-shaped file would be staged or committed —
-  including literal directory changes, scoped subshells, explicit commit paths, forced adds, and quoted/chained `-C` paths. Removing tracked credentials remains allowed. Relevant inspection failures block with a supported-command explanation; unrelated commands and known nonrepos remain allowed. This protects tool invocations, not arbitrary subprocesses or file contents. Build-swarm uses a versioned policy snapshot at its own commit boundary, checked for parity at release (0.16.0; regression tests in
-  [`hooks/test-credential-guard.sh`](./hooks/test-credential-guard.sh)).
-  Examples/templates (`*.example`, `*.sample`) pass.
+- **Credential guard** — moved to the **sdlc** plugin in 0.24.0. Install sdlc
+  alongside pm to keep the hook that blocks staging credential-shaped files.
 
 > Upgrading to 0.17 (tracker preset, inbox, `TASKS.md` retirement rubric,
 > repos that keep `TASKS.md` as their tracker)? See
@@ -142,9 +138,7 @@ pm/
 │   └── plugin.json          ← plugin manifest (marketplace.json is one level up)
 ├── commands/
 │   └── pm-scaffold.md       ← /pm:pm-scaffold
-├── hooks/
-│   └── hooks.json · credential-guard.sh · test-credential-guard.sh
-├── scripts/                 ← session.py, succession.py, acceptance.py, stacks.py, credential guard and policy
+├── scripts/                 ← session.py, succession.py, acceptance.py, stacks.py
 ├── stacks.json              ← stack table: which plugins a Vercel, Supabase or FileMaker repo gets (0.23)
 ├── skills/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
@@ -164,13 +158,9 @@ pm/
 Edit `commands/pm-scaffold.md` to change what the command does; edit
 `skills/` to change the session workflow. Bump `version` in
 `plugin.json`, commit, push — machines pick it up on
-`/plugin marketplace update dc-dev-plugins`. Run
-`bash hooks/test-credential-guard.sh` after touching the hook.
+`/plugin marketplace update dc-dev-plugins`.
 
 ## Release checks
 
-Run `python3 -m pytest tests -q` from the marketplace root and
-`bash pm/hooks/test-credential-guard.sh`. Credential policy parity between pm
-and the build-swarm source is checked with
-`python3 scripts/sync_pm_policy.py --build-swarm <source-dir> --check`.
+Run `python3 -m pytest tests -q` from the marketplace root.
 Stack-specific delivery still needs its own real evidence.
