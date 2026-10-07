@@ -35,11 +35,18 @@ doing right now. Written atomically (temp file + rename) at every phase change:
 `runway status --json` prints the queue as one JSON object, the contract the Mac app reads.
 Version 1 (additive changes keep the version; renames or removals bump it):
 
-  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear", "generated_at": "ISO-8601",
+  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear", "machine": "Mini-One",
+   "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
-                "waiting_on", "packet", "harness"}]}
+                "waiting_on", "packet", "harness", "claimed_by"}]}
+
+  machine     This Mac's name (`scutil --get LocalHostName`, else the hostname), what `runway whoami`
+              prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
+              comment). A ready ticket claimed by another machine is skipped and logged
+              `skip <id> claimed by <machine>`.
+  claimed_by  The machine that holds the ticket's claim, or null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
            text output: waiting = "Waiting on you", ready_prep = "Ready (needs prep)".
@@ -72,12 +79,13 @@ import os
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch):\s*(.*)$", re.M)
+HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by):\s*(.*)$", re.M)
 DONE = {"resolved", "done", "closed"}
 RUNNABLE_GATES = ("auto", "approved")
 DEFAULT_CONFIG = {
@@ -111,6 +119,17 @@ DEFAULT_CONFIG = {
     "notify_cmd": "",
     "agent_timeout_s": 3600,
 }
+
+
+def machine_name() -> str:
+    """This Mac's name (`scutil --get LocalHostName`), else the hostname."""
+    try:
+        r = subprocess.run(["scutil", "--get", "LocalHostName"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return socket.gethostname()
 
 
 def now() -> str:
@@ -274,9 +293,14 @@ class Ticket:
         self.set("Waiting on", f"Joe, go/no-go on the decision packet, since {now()}")
         self.save()
 
-    def mark_claimed(self, branch: str) -> None:
+    @property
+    def claimed_by(self) -> str | None:
+        return self.h("Claimed-by") or None
+
+    def mark_claimed(self, branch: str, machine: str) -> None:
         self.set("Status", "claimed")
         self.set("Branch", branch)
+        self.set("Claimed-by", machine)
         self.save()
 
     def mark_resolved(self, note: str) -> None:
@@ -452,7 +476,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     ensure_integration(cfg, root)
     branch = f"runway/{t.effort}-{t.slug}"
     wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
-    t.mark_claimed(branch)
+    t.mark_claimed(branch, machine_name())
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
     if wt.exists():
@@ -770,8 +794,12 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
             did = True
     # 2. AFK lane: run the first ready auto (or approved) ticket.
     tickets = tracker.load()
+    me = machine_name()
     for t in tickets:
         if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
+            if t.claimed_by and t.claimed_by != me:
+                log(root, f"skip {t.id} claimed by {t.claimed_by}")
+                continue
             run_ticket(cfg, root, tracker, t)
             return True
     return did
@@ -824,9 +852,10 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return {"id": t.id, "title": t.title, "url": t.url or None, "status": t.status, "gate": t.gate,
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
-                "packet": t.packet if waiting else None, "harness": None}
+                "packet": t.packet if waiting else None, "harness": None, "claimed_by": t.claimed_by}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
+            "machine": machine_name(),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "tickets": [entry(t) for ts in groups.values() for t in ts]}
@@ -867,8 +896,9 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     st = sub.add_parser("status")
     st.add_argument("--json", action="store_true", help="machine-readable queue (shape in the module docstring)")
+    sub.add_parser("whoami", help="print this Mac's name, as stamped on claims")
     sub.add_parser("tick")
-    lp = sub.add_parser("loop")
+    lp =sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
@@ -877,6 +907,9 @@ def main() -> None:
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
     a = ap.parse_args()
+    if a.cmd == "whoami":
+        print(machine_name())
+        return
 
     root = Path(a.root).resolve()
     cfg = dict(DEFAULT_CONFIG)
