@@ -27,6 +27,9 @@ struct RunwayBarApp: App {
                 if store.badge > 0 { Text("\(store.badge)") }
             }
         }
+        Window("Runway", id: "runway") {
+            RunwayWindow(store: store)
+        }
     }
 
     /// Amber when a project has ready tickets but its loop is off. Errors and decisions waiting keep their own icon.
@@ -53,8 +56,14 @@ struct RunwayBarApp: App {
 
 struct RunwayMenu: View {
     let store: ProjectStore
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        Button("Open Runway window") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            openWindow(id: "runway")
+        }
+        Divider()
         if let error = store.lastError {
             Text("⚠︎ \(String(error.prefix(300)))")
             Button("Dismiss") { store.dismissError() }

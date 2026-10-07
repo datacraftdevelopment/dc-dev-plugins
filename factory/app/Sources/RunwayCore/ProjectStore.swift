@@ -139,6 +139,9 @@ public final class ProjectStore {
 
     public func dismissError() { lastError = nil }
 
+    /// The last `runway status --json` answer for a project; nil before the first one (or if every call failed).
+    public func snapshot(for label: String) -> StatusSnapshot? { snapshots[label] }
+
     public func setCheckout(_ path: String?) {
         let value = path.flatMap { $0.isEmpty ? nil : $0 }
         checkout = value
