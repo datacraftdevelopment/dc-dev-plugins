@@ -73,6 +73,21 @@ way (no finish step). An expired pause file is removed. Mode finish (default): a
 finishes, nothing new starts. Mode stop (`--stop-now`): also SIGTERMs the running agent (agent_pid from
 the heartbeat); the tick returns the ticket to ready with a "stopped by pause" comment and keeps its worktree.
 
+`~/.runway/machine.json` holds this Mac's quiet-time rules, read at the start of every tick next to the
+pause check. A missing file is no rules; an unreadable one waits (never runs on a guess):
+
+  {"version": 1,
+   "quiet_hours": {"enabled": true, "from": "09:00", "to": "17:00", "days": ["mon", ...]},
+   "idle_only": {"enabled": false, "minutes": 10},
+   "not_on_battery": true, "max_agents": 1}
+
+A rule only stops a NEW start; a running agent is never touched. quiet_hours `days` are the days a window
+starts on (a 22:00-06:00 window on fri runs into Saturday morning). idle_only compares HIDIdleTime
+(`ioreg -c IOHIDSystem`). max_agents counts live pid files in ~/.runway/agents/ (one per running agent,
+any repo; dead pids are swept). A reader that can't answer (no battery info, no ioreg) lets that rule pass.
+A skipped tick logs `waiting: <reason>` and writes heartbeat phase `waiting` with a `reason` field.
+`runway machine` prints the rules and whether a tick would run now, and why not.
+
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
                       one extra header line: `Gate: human` or `Gate: auto` (default).
@@ -249,6 +264,160 @@ def cmd_resume() -> None:
     print("resumed")
 
 
+# ---------- quiet-time rules: ~/.runway/machine.json ----------
+
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def runway_home() -> Path:
+    return Path(os.environ.get("RUNWAY_HOME") or Path.home() / ".runway")
+
+
+def load_machine_rules() -> dict:
+    """The rules in machine.json; a missing file is no rules. Raises ValueError if unreadable."""
+    try:
+        data = json.loads((runway_home() / "machine.json").read_text())
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as e:
+        raise ValueError(f"machine.json unreadable ({e.__class__.__name__})")
+    if not isinstance(data, dict):
+        raise ValueError("machine.json unreadable (not an object)")
+    return data
+
+
+# Readers. Tests replace these; each returns None when the answer can't be read (that rule then lets the tick run).
+def read_clock() -> dt.datetime:
+    return dt.datetime.now().astimezone()
+
+
+def read_on_battery() -> bool | None:
+    try:
+        out = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if "Battery Power" in out:
+        return True
+    return False if "AC Power" in out else None
+
+
+def read_idle_seconds() -> float | None:
+    try:
+        out = subprocess.run(["ioreg", "-c", "IOHIDSystem"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    m = re.search(r'"HIDIdleTime"\s*=\s*(\d+)', out)
+    return int(m.group(1)) / 1e9 if m else None
+
+
+def agents_dir() -> Path:
+    return runway_home() / "agents"
+
+
+def register_agent(pid: int, root: Path) -> None:
+    """Mark an agent as running on this Mac: a file named for its pid, holding the repo path."""
+    try:
+        agents_dir().mkdir(parents=True, exist_ok=True)
+        (agents_dir() / str(pid)).write_text(str(root) + "\n")
+    except OSError:
+        pass  # counting is best effort; it must never take the loop down
+
+
+def unregister_agent(pid: int) -> None:
+    (agents_dir() / str(pid)).unlink(missing_ok=True)
+
+
+def running_agents() -> int:
+    """Live agents across every Runway repo on this Mac. Files of dead pids are removed here."""
+    n = 0
+    for f in agents_dir().glob("*"):
+        try:
+            os.kill(int(f.name), 0)
+            n += 1
+        except ProcessLookupError:
+            f.unlink(missing_ok=True)
+        except PermissionError:
+            n += 1  # alive, just not ours
+        except ValueError:
+            pass  # not a pid file
+    return n
+
+
+def in_quiet_hours(q: dict, when: dt.datetime) -> bool:
+    """Is `when` inside the window? `days` are the days a window starts on, so a window that
+    runs past midnight belongs to the day it began."""
+    start, end = (dt.time.fromisoformat(q["from"]), dt.time.fromisoformat(q["to"]))
+    days = [d.lower()[:3] for d in q.get("days", DAYS)]
+    today, yesterday = DAYS[when.weekday()], DAYS[(when.weekday() - 1) % 7]
+    t = when.time().replace(second=0, microsecond=0)
+    if start <= end:
+        return today in days and start <= t < end
+    return (t >= start and today in days) or (t < end and yesterday in days)
+
+
+def machine_block() -> str | None:
+    """Why no new ticket may start on this Mac right now, else None."""
+    try:
+        rules = load_machine_rules()
+    except ValueError as e:
+        return str(e)  # unreadable: wait, never run on a guess
+    q = rules.get("quiet_hours") or {}
+    if q.get("enabled"):
+        try:
+            if in_quiet_hours(q, read_clock()):
+                return f"quiet hours {q['from']}-{q['to']}"
+        except (KeyError, ValueError):
+            return "machine.json quiet_hours unreadable"
+    if rules.get("not_on_battery") and read_on_battery():
+        return "on battery"
+    idle = rules.get("idle_only") or {}
+    if idle.get("enabled"):
+        secs = read_idle_seconds()
+        if secs is not None and secs <= float(idle.get("minutes", 0)) * 60:
+            return f"not idle ({round(secs / 60, 1)} min of {idle.get('minutes')} needed)"
+    cap = rules.get("max_agents")
+    if cap:
+        n = running_agents()
+        if n >= int(cap):
+            return f"max agents ({n} running, limit {cap})"
+    return None
+
+
+def machine_waiting(root: Path) -> bool:
+    """True (after logging the reason and writing heartbeat phase waiting) while a rule blocks a start."""
+    reason = machine_block()
+    if not reason:
+        return False
+    log(root, f"waiting: {reason}")
+    beat(root, "waiting", reason=reason)
+    return True
+
+
+def describe_machine() -> str:
+    """What `runway machine` prints: the rules and whether a tick would run now."""
+    try:
+        rules = load_machine_rules()
+    except ValueError as e:
+        rules = None
+        lines = [str(e)]
+    else:
+        lines = []
+        q, idle = rules.get("quiet_hours") or {}, rules.get("idle_only") or {}
+        if q.get("enabled"):
+            lines.append(f"quiet hours  {q.get('from')}-{q.get('to')} on {','.join(q.get('days', DAYS))}")
+        if idle.get("enabled"):
+            lines.append(f"idle only  start after {idle.get('minutes')} min idle")
+        if rules.get("not_on_battery"):
+            lines.append("not on battery")
+        if rules.get("max_agents"):
+            lines.append(f"max agents  {rules['max_agents']}")
+        if not lines:
+            lines.append("no rules" + ("" if (runway_home() / "machine.json").exists() else " (no machine.json)"))
+    reason = machine_block()
+    lines.append("would not run now: " + reason if reason else "would run now: no rule blocks a start")
+    return "\n".join(lines)
+
+
 def now() -> str:
     # Timezone-aware, so the log lines up with UTC timestamps elsewhere.
     return dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
@@ -308,9 +477,12 @@ def beat(root: Path, phase: str, ticket: str | None = None, attempt: int | None 
     """Record a phase change. extra can set last_result or tick_started."""
     iso = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     s = _STATE.setdefault(str(root), {"tick_started": iso, "last_result": None})
-    s.update(extra)
+    s.update({k: v for k, v in extra.items() if k != "reason"})
     s.update(version=1, phase=phase, ticket=ticket, attempt=attempt, since=iso, pid=os.getpid(), agent_pid=None)
-    write_state(root, {k: s[k] for k in STATE_KEYS})
+    out = {k: s[k] for k in STATE_KEYS}
+    if phase == "waiting":
+        out["reason"] = extra.get("reason")
+    write_state(root, out)
 
 
 def beat_update(root: Path, **fields) -> None:
@@ -581,10 +753,18 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     the text, session id and usage out of stdout; unparseable output is returned raw."""
     harness = harness or resolve_harness(cfg)
     t0 = time.time()
+    pids: list = []
+
+    def started(pid):
+        pids.append(pid)
+        register_agent(pid, root)
+        beat_update(root, agent_pid=pid)
     try:
-        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=lambda pid: beat_update(root, agent_pid=pid))
+        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started)
     finally:
         beat_update(root, agent_pid=None)
+        if pids:
+            unregister_agent(pids[0])
     text, meta = parse_output(harness["parser"], r.stdout)
     record(root, {"kind": kind, "ticket": ticket, "attempt": attempt, "cwd": str(cwd), "harness": harness["name"],
                   "exit": r.returncode, "secs": round(time.time() - t0),
@@ -988,7 +1168,7 @@ def cmd_retro(root: Path, last: int) -> None:
 def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything."""
     did = False
-    if paused_now(root):
+    if paused_now(root) or machine_waiting(root):
         return False
     beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
@@ -1003,6 +1183,8 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     # 2. AFK lane: run the first ready auto (or approved) ticket.
     if active_pause():
         return did
+    if machine_waiting(root):
+        return did  # a rule began (or the cap filled) during prep: start nothing new
     tickets = tracker.load()
     me = machine_name()
     for t in tickets:
@@ -1113,6 +1295,7 @@ def main() -> None:
     pz.add_argument("--for", dest="span", help="resume after this long, e.g. 30m, 1h, 2d")
     pz.add_argument("--stop-now", action="store_true", help="also stop the running agent and return its ticket to ready")
     sub.add_parser("resume", help="delete the pause")
+    sub.add_parser("machine", help="print this Mac's quiet-time rules and whether a tick would run now")
     lp =sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
@@ -1132,6 +1315,9 @@ def main() -> None:
         return
     if a.cmd == "resume":
         cmd_resume()
+        return
+    if a.cmd == "machine":
+        print(describe_machine())
         return
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
@@ -1163,8 +1349,8 @@ def main() -> None:
             else:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
-                        if active_pause():
-                            return  # paused: no finish step, keep heartbeat phase paused
+                        if active_pause() or machine_block():
+                            return  # paused or waiting: no finish step, keep that heartbeat phase
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
