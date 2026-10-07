@@ -1,0 +1,6 @@
+gui/501/com.joe.runway.demo = {
+	active count = 0
+	state = not running
+	run interval = 600 seconds
+	last exit code = 78
+}
