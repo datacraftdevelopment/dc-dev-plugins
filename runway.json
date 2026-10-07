@@ -12,6 +12,7 @@
   "integration_branch": "runway/integration",
   "finish": "all_done",
   "pr": "file",
+  "review": "panel",
   "notify_cmd": "osascript -e 'display notification \"{msg}\" with title \"Runway\"'",
   "agent_timeout_s": 2700
 }
