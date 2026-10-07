@@ -710,11 +710,26 @@ def record(root: Path, rec: dict) -> None:
         f.write(json.dumps({"at": now(), **rec}) + "\n")
 
 
+def harness_profiles(cfg: dict) -> dict:
+    """The usable named profiles: dict values only, and no key starting with `_` (notes live there)."""
+    return {k.lower(): v for k, v in (cfg.get("harnesses") or {}).items()
+            if isinstance(v, dict) and not str(k).startswith("_")}
+
+
+def harness_error(cfg: dict, t) -> str | None:
+    """A message when the ticket's harness override names no known harness, else None."""
+    name = getattr(t, "harness", None)
+    if name and name.lower() != "claude" and name.lower() not in harness_profiles(cfg):
+        known = ", ".join(["claude", *sorted(harness_profiles(cfg))])
+        return f"unknown harness '{name}' (known: {known})"
+    return None
+
+
 def resolve_harness(cfg: dict, t=None) -> dict:
     """The effective profile for a ticket (the project default when t is None): the ticket's
     override, else cfg["harness"]. Top-level commands are the base; the named profile overlays them.
-    An unknown override falls back to the project default."""
-    profiles = cfg.get("harnesses") or {}
+    An unknown override falls back to the project default (tick parks such tickets first)."""
+    profiles = harness_profiles(cfg)
     default = (cfg.get("harness") or "claude").lower()
     name = (getattr(t, "harness", None) or default).lower()
     if name != "claude" and name not in profiles:
@@ -1284,6 +1299,16 @@ def cmd_retro(root: Path, last: int) -> None:
 
 # ---------- commands ----------
 
+def park_bad_harness(cfg: dict, root: Path, t) -> bool:
+    """Park a ready ticket whose harness override is unknown: log it and hand it to Joe. True if parked."""
+    err = harness_error(cfg, t) if t.status == "ready" else None
+    if not err:
+        return False
+    log(root, f"park  {t.id} {err}")
+    t.mark_needs_human("fix the harness label", f"Runway parked this ticket: {err}. Fix the harness override, then `runway go`.")
+    return True
+
+
 def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything."""
     did = False
@@ -1296,6 +1321,9 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     for t in tickets:
         if active_pause():
             return did  # a pause landed mid-tick: finish what is running, start nothing new
+        if park_bad_harness(cfg, root, t):
+            did = True
+            continue
         if t.gate == "human" and t.status == "ready" and will_unblock_without_joe(t, tickets):
             prep(cfg, root, t)
             did = True
@@ -1310,6 +1338,9 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     me = machine_name()
     for t in tickets:
         if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
+            if park_bad_harness(cfg, root, t):
+                did = True
+                continue
             if t.claimed_by and t.claimed_by != me:
                 log(root, f"skip {t.id} claimed by {t.claimed_by}")
                 continue

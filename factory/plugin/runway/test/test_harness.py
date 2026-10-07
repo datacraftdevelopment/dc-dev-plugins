@@ -83,6 +83,42 @@ class Resolve(unittest.TestCase):
         self.assertEqual(runway.resolve_harness(self.CFG)["name"], "claude")
 
 
+class BadConfig(unittest.TestCase):
+    CFG = dict(runway.DEFAULT_CONFIG, harnesses={"_note": "unverified", "codex": {"parser": "codex"}, "junk": "str"})
+
+    class T:
+        def __init__(self, harness=None):
+            self.harness = harness
+
+    def test_note_key_and_non_dict_values_ignored(self):
+        self.assertEqual(runway.resolve_harness(self.CFG, self.T("_note"))["name"], "claude")
+        self.assertEqual(runway.resolve_harness(self.CFG, self.T("junk"))["name"], "claude")
+        self.assertEqual(runway.resolve_harness(self.CFG, self.T("codex"))["parser"], "codex")
+
+    def test_unknown_harness_error(self):
+        for bad in ("_note", "junk", "nope"):
+            self.assertIn(bad, runway.harness_error(self.CFG, self.T(bad)))
+        for ok in (None, "claude", "codex"):
+            self.assertIsNone(runway.harness_error(self.CFG, self.T(ok)))
+
+    def test_tick_parks_ticket_with_unknown_harness(self):
+        os.environ["RUNWAY_HOME"] = tempfile.mkdtemp()
+        try:
+            root = make_repo({"01-bad": "Harness: _note", "02-ok": ""})
+            agent = fake(root / "fc.py", json.dumps(CLAUDE_OUT))
+            cfg = dict(runway.DEFAULT_CONFIG, **json.loads((root / "runway.json").read_text()))
+            cfg.update(agent_cmd=agent, prep_cmd=agent, review_cmd=agent, harnesses=self.CFG["harnesses"])
+            tracker = runway.make_tracker(cfg, root)
+            self.assertTrue(runway.tick(cfg, root, tracker))
+            st = {t.id: t.status for t in tracker.load()}
+            self.assertEqual(st["eff/01"], "needs-human")
+            self.assertNotEqual(st["eff/02"], "ready")
+            log_text = (root / "_pm" / "runway.log").read_text() if (root / "_pm" / "runway.log").exists() else ""
+            self.assertIn("unknown harness", log_text)
+        finally:
+            os.environ.pop("RUNWAY_HOME", None)
+
+
 class Overrides(unittest.TestCase):
     def test_markdown_header(self):
         root = Path(tempfile.mkdtemp())
