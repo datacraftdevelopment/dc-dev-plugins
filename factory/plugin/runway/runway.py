@@ -265,7 +265,11 @@ def will_unblock_without_joe(t, tickets: list, seen=None) -> bool:
 def notify(cfg: dict, root: Path, msg: str) -> None:
     log(root, msg)
     if cfg.get("notify_cmd"):
-        sh(cfg["notify_cmd"].replace("{msg}", msg.replace('"', "'")), root)
+        # Split first, then fill {msg} into each argument, so the message is never
+        # re-parsed by shlex (an apostrophe in a title used to crash the tick).
+        # Double quotes become single so an AppleScript string stays closed.
+        safe = msg.replace('"', "'")
+        sh([a.replace("{msg}", safe) for a in shlex.split(cfg["notify_cmd"])], root)
 
 
 def record(root: Path, rec: dict) -> None:
@@ -348,6 +352,32 @@ def ensure_integration(cfg: dict, root: Path) -> None:
     br = cfg["integration_branch"]
     if sh(["git", "rev-parse", "--verify", br], root).returncode != 0:
         sh(["git", "branch", br, cfg["base_branch"]], root, check=True)
+
+
+def sync_base(cfg: dict, root: Path) -> bool:
+    """Merge the base branch into the integration branch when base has commits it lacks,
+    so tickets build on current base. Returns False on a conflict (merge aborted)."""
+    ensure_integration(cfg, root)
+    base, integ = cfg["base_branch"], cfg["integration_branch"]
+    ahead = sh(["git", "rev-list", "--count", f"{integ}..{base}"], root)
+    if ahead.returncode != 0 or ahead.stdout.strip() == "0":
+        return True
+    tmp = integration_worktree(cfg, root)
+    r = sh(["git", "merge", "--no-ff", "-m", f"runway: merge {base} into {integ}", base], tmp)
+    if r.returncode == 0:
+        log(root, f"sync  merged {base} into {integ}")
+        return True
+    sh(["git", "merge", "--abort"], tmp)
+    head = sh(["git", "rev-parse", base], root).stdout.strip()
+    seen = root / "_pm" / "runway-sync-conflict"
+    msg = f"Blocked: {base} does not merge cleanly into {integ}; no tickets run until it is merged by hand"
+    if seen.exists() and seen.read_text().strip() == head:
+        log(root, msg)  # already notified for this base head
+    else:
+        seen.parent.mkdir(parents=True, exist_ok=True)
+        seen.write_text(head + "\n")
+        notify(cfg, root, msg)
+    return False
 
 
 def worktrees(cfg: dict, root: Path) -> Path:
@@ -669,7 +699,9 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
         if t.gate == "human" and t.status == "ready" and will_unblock_without_joe(t, tickets):
             prep(cfg, root, t)
             did = True
-    # 2. AFK lane: run the first ready auto (or approved) ticket.
+    # 2. AFK lane: bring base into integration, then run the first ready auto (or approved) ticket.
+    if not sync_base(cfg, root):
+        return did
     tickets = tracker.load()
     for t in tickets:
         if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
