@@ -143,6 +143,16 @@ class LinearTicket:
         return "\n".join(out) + "\n"
 
     @property
+    def url(self) -> str:
+        return self.node.get("url") or ""
+
+    @property
+    def packet(self) -> str | None:
+        """Runway's latest comment (the decision packet, or why it parked), without the marker."""
+        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)]
+        return mine[-1][len(MARK):].lstrip(" ·\n").strip() if mine else None
+
+    @property
     def status(self) -> str:
         c = self.tr.c
         st = self.node["state"]["type"]
