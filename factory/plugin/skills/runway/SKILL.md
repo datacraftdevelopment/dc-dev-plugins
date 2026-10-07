@@ -79,6 +79,32 @@ Closing a chat never pauses the loop, and nothing here should say it does.
 To hold it for a while, pause it (below). To remove it, `schedule.sh uninstall`,
 and say it's stopped only once `schedule.sh status` shows it unloaded.
 
+## Review panel
+
+The finish step reviews the whole integration branch. With `"review": "panel"`
+(on in `runway.json.template`) it runs two seats through Ringer: a Codex seat and
+a Claude seat, reviewing independently. Then one fix pass triages both reports
+with no human in the loop:
+
+- A finding both seats raise is agreed: it gets fixed.
+- A finding only one seat raises is split: the fixer verifies it against the code
+  and judges it. Claude-only findings get extra scrutiny; Codex-only ones are the
+  cross-vendor catches.
+- Joe is never asked. The fixer ends with a triage table (fixed or skipped, with
+  a reason for every skip).
+
+Reports land in `_pm/runway-review-codex.md` and `_pm/runway-review-claude.md`;
+the merged findings and triage table go to `_pm/runway-review.md` and into the
+PR body (`_pm/runway-pr.md`).
+
+Ringer is optional. Without it, or if neither seat writes a report, Runway logs
+the fallback and runs the single Claude review (`"review": "single"`, the engine
+default for a `runway.json` that doesn't set it). Cloud sessions can't run the
+panel: Codex is blocked there and Ringer is only on the Mac. A cloud thread that
+wants an ad hoc panel review starts a Remote Control session on the Mac and runs
+`cross-review-gate` there. Factory doesn't ship a `ringer` skill; Joe's library
+already has one.
+
 ## Pause and resume
 
 A pause is machine-wide (`~/.runway/pause`), holds with the app closed and

@@ -12,6 +12,9 @@ experiments that produced it are one folder up in `factory/` and don't ship.
 | `runway/issue-tracker-linear.md` | The tracker file `setup.sh` stamps: labels, the gating rule, the conflict screen. |
 | `runway/worker-env.md` | Template for a repo's `docs/agents/worker-env.md`, which every ticket run reads first. |
 
+Ringer is optional here. Only the review panel (`"review": "panel"`) uses it; without
+Ringer, Runway falls back to the single Claude review. See the runway skill.
+
 Install alongside `sdlc` (the credential guard and gates) and Matt Pocock's
 skills (`/to-spec`, `/to-tickets`, `/tdd`, `/code-review`, `/pr`, `/retro`).
 
