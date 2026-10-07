@@ -6,6 +6,8 @@ public struct LaunchJob: Equatable, Sendable {
     public let repoPath: String
     public let interval: Int?
     public let logPath: String?
+    /// The `runway.py` the plist runs, when the command string names one.
+    public let runwayScript: String?
 
     public enum ParseError: Error, Equatable {
         case notAPlist
@@ -24,14 +26,26 @@ public struct LaunchJob: Equatable, Sendable {
             label: label,
             repoPath: root,
             interval: dict["StartInterval"] as? Int,
-            logPath: dict["StandardOutPath"] as? String)
+            logPath: dict["StandardOutPath"] as? String,
+            runwayScript: args.lazy.compactMap(scriptArgument).first)
+    }
+
+    /// `python3 "/path/runway.py"` inside the shell command string.
+    private static func scriptArgument(_ arg: String) -> String? {
+        guard let range = arg.range(of: "python3 ") else { return nil }
+        return firstToken(arg[range.upperBound...])
     }
 
     /// `--root "/path with spaces"` or `--root /path` inside the shell command string.
     private static func rootArgument(_ arg: String) -> String? {
         if arg == "--root" { return nil }
         guard let range = arg.range(of: "--root ") else { return nil }
-        let rest = arg[range.upperBound...].drop(while: { $0 == " " })
+        return firstToken(arg[range.upperBound...])
+    }
+
+    /// The first word of `text`, or the quoted string if it starts with a quote.
+    private static func firstToken(_ text: Substring) -> String? {
+        let rest = text.drop(while: { $0 == " " })
         if rest.first == "\"" {
             let body = rest.dropFirst()
             guard let end = body.firstIndex(of: "\"") else { return nil }
@@ -92,6 +106,7 @@ public struct Project: Identifiable, Equatable, Sendable {
     public let tracker: String?
     public let interval: Int?
     public let logPath: String?
+    public let runwayScript: String?
     public let loaded: Bool
     public let running: Bool
     public let lastExit: Int?
@@ -130,6 +145,24 @@ public struct ProjectDiscovery {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// The LaunchAgent label `schedule.sh` gives a repo: the folder name with anything but letters and digits as `-`.
+    public static func label(forRepo path: String) -> String {
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        return labelPrefix + String(name.map { $0.isASCII && ($0.isLetter || $0.isNumber) ? $0 : "-" })
+    }
+
+    /// A repo whose loop was stopped (its plist is gone), so the menu can still start it again.
+    public func stoppedProject(repoPath: String, interval: Int? = nil, runwayScript: String? = nil) -> Project {
+        let repoURL = URL(fileURLWithPath: repoPath)
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: repoPath, isDirectory: &isDir) && isDir.boolValue
+        let config = (try? Data(contentsOf: repoURL.appendingPathComponent("runway.json"))).map(RunwayConfig.parse)
+        return Project(label: Self.label(forRepo: repoPath), name: config?.projectName ?? repoURL.lastPathComponent,
+                       repoPath: repoPath, tracker: config?.tracker, interval: interval, logPath: nil,
+                       runwayScript: runwayScript, loaded: false, running: false, lastExit: nil,
+                       error: exists ? nil : "Repo not found: \(repoPath)")
+    }
+
     public func discover() -> [Project] {
         let files = (try? FileManager.default.contentsOfDirectory(at: launchAgentsDir, includingPropertiesForKeys: nil)) ?? []
         return files
@@ -147,7 +180,7 @@ public struct ProjectDiscovery {
             job = try LaunchJob.parse(plist: try Data(contentsOf: plist))
         } catch {
             return Project(label: fileLabel, name: fallbackName, repoPath: nil, tracker: nil, interval: nil,
-                           logPath: nil, loaded: false, running: false, lastExit: nil,
+                           logPath: nil, runwayScript: nil, loaded: false, running: false, lastExit: nil,
                            error: "Can't read \(plist.lastPathComponent)")
         }
 
@@ -157,8 +190,8 @@ public struct ProjectDiscovery {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: job.repoPath, isDirectory: &isDir), isDir.boolValue else {
             return Project(label: job.label, name: repoName, repoPath: job.repoPath, tracker: nil,
-                           interval: job.interval, logPath: job.logPath, loaded: state.loaded,
-                           running: state.running, lastExit: state.lastExit,
+                           interval: job.interval, logPath: job.logPath, runwayScript: job.runwayScript,
+                           loaded: state.loaded, running: state.running, lastExit: state.lastExit,
                            error: "Repo not found: \(job.repoPath)")
         }
 
@@ -166,7 +199,7 @@ public struct ProjectDiscovery {
         let config = (try? Data(contentsOf: configURL)).map(RunwayConfig.parse)
         return Project(label: job.label, name: config?.projectName ?? repoName, repoPath: job.repoPath,
                        tracker: config?.tracker, interval: job.interval, logPath: job.logPath,
-                       loaded: state.loaded, running: state.running, lastExit: state.lastExit,
+                       runwayScript: job.runwayScript, loaded: state.loaded, running: state.running, lastExit: state.lastExit,
                        error: nil)
     }
 }
