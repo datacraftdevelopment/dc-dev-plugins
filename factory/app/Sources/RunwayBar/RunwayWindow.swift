@@ -11,6 +11,7 @@ struct RunwayWindow: View {
     @State private var selection: String?
     @State private var tab: RunwayTab = .now
     @State private var showSetup = false
+    @State private var showMachine = false
 
     private var entry: ProjectEntry? {
         store.entries.first { $0.project.label == selection } ?? store.entries.first
@@ -33,10 +34,14 @@ struct RunwayWindow: View {
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
             .safeAreaInset(edge: .bottom) {
-                Button("Set up a loop…") { showSetup = true }
-                    .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button("Set up a loop…") { showSetup = true }
+                    Button("This Mac…") { showMachine = true }
+                }
+                .padding(8).frame(maxWidth: .infinity, alignment: .leading)
             }
             .sheet(isPresented: $showSetup) { SetupSheet(store: store) }
+            .sheet(isPresented: $showMachine) { MachineSheet(store: store) }
         } detail: {
             if let entry {
                 VStack(spacing: 0) {
