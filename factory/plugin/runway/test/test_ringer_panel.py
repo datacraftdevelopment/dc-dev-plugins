@@ -221,6 +221,54 @@ class FinishPanel(unittest.TestCase):
         self.assertIn("### claude", prompt)
         self.assertNotIn("single review finding", prompt)
 
+    TABLE = ("| finding | flagged by | action | reason |\\n|---|---|---|---|\\n"
+             "| a bug | claude | skipped | not real: f.py:1 is guarded |")
+
+    def use_fixer(self, break_check=False):
+        """A fix agent that records its prompt, makes a change and replies with a triage table."""
+        (self.repo / "fix_agent.py").write_text(
+            'import sys\nopen(%r, "a").write(sys.stdin.read() + "\\n=====\\n")\nopen("fixed.txt", "w").write("x")\n'
+            'print("%s")\n' % (str(self.repo / "prompts.log"), self.TABLE))
+        if break_check:
+            cfg = json.loads((self.repo / "runway.json").read_text())
+            cfg["check_cmd"] = "test ! -e fixed.txt"
+            (self.repo / "runway.json").write_text(json.dumps(cfg))
+
+    def test_fix_prompt_carries_both_reports_and_the_triage_rule(self):
+        self.use_fixer()
+        self.finish("codex=ok,claude=ok")
+        prompt = (self.repo / "prompts.log").read_text()
+        self.assertIn("### codex", prompt)
+        self.assertIn("### claude", prompt)
+        self.assertIn("a bug", prompt)
+        for phrase in ("agreed", "only one seat", "flagged by", "skipped", "Never ask Joe"):
+            self.assertIn(phrase, prompt)
+
+    def test_triage_table_lands_in_review_file_and_pr_body(self):
+        self.use_fixer()
+        self.finish("codex=ok,claude=ok")
+        want = "| a bug | claude | skipped | not real: f.py:1 is guarded |"
+        self.assertIn(want, (self.repo / "_pm" / "runway-review.md").read_text())
+        self.assertIn(want, (self.repo / "_pm" / "runway-pr.md").read_text())
+
+    def test_fix_that_breaks_the_check_is_discarded_and_table_says_so(self):
+        self.use_fixer(break_check=True)
+        self.finish("codex=ok,claude=ok")
+        review = (self.repo / "_pm" / "runway-review.md").read_text()
+        self.assertIn("broke the check", review)
+        self.assertIn("discarded", review)
+        self.assertIn("| a bug | claude |", review)
+        self.assertIn("discarded", (self.repo / "_pm" / "runway-pr.md").read_text())
+        wt = Path(os.environ["RUNWAY_HOME"])
+        self.assertEqual(list(wt.rglob("fixed.txt")), [])
+
+    def test_single_review_keeps_the_old_fix_prompt(self):
+        self.use_fixer()
+        self.finish(ringer=False)
+        prompt = (self.repo / "prompts.log").read_text()
+        self.assertIn("single review finding", prompt)
+        self.assertNotIn("flagged by", prompt)
+
     def test_one_seat_missing_still_uses_panel(self):
         rows = self.finish("codex=none,claude=ok")
         panel = [r for r in rows if r["kind"] == "review"][0]

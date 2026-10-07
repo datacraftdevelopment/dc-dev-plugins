@@ -975,6 +975,22 @@ and say why in the commit message. Commit when done.
 {findings}
 """
 
+PANEL_FIX_PROMPT = """Two independent reviewers (a Codex seat and a Claude seat) reviewed the current branch
+(Runway's integration branch). Triage their findings yourself and fix what deserves fixing. Never ask Joe
+anything; nobody is waiting to answer, so make your best judgment on every finding.
+
+1. Merge duplicates. A finding both seats raise (the same problem, even worded differently) is agreed: fix it.
+2. A finding only one seat raises: verify it against the code, then judge. Fix it if it is real and the fix
+   is in proportion. Otherwise skip it with a one-line reason.
+   - Claude-seat-only findings get extra scrutiny: that seat shares priors with the builder.
+   - Codex-only findings are the cross-vendor catches; don't dismiss one for being unfamiliar.
+3. Do only what the accepted findings ask; no other refactoring. Commit once.
+4. Reply with a Markdown triage table and nothing after it, one row per merged finding:
+   | finding | flagged by (both / codex / claude) | action (fixed / skipped) | reason (required for each skip) |
+
+{findings}
+"""
+
 PR_PROMPT = """Write the pull request body for merging `{integration}` into `{base}`. Do NOT change any files.
 If the /pr skill is available, use it. Otherwise use exactly these three sections:
 
@@ -1095,10 +1111,14 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 2. One fix pass. Kept only if the check still passes.
     fix_note = "No fix pass needed."
+    triage = ""
     if has_findings:
         before = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
-        run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt, FIX_PROMPT.format(findings=findings),
-                  "finish", "fix", harness=hp)
+        fix_prompt = PANEL_FIX_PROMPT if panel else FIX_PROMPT
+        fr, fix_text = run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt,
+                                 fix_prompt.format(findings=findings), "finish", "fix", harness=hp)
+        if panel:
+            triage = fix_text.strip() or f"(The fixer returned no triage table, exit {fr.returncode}.)"
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-qm", "runway: review fixes (auto-commit)"], wt)
         after = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
@@ -1109,6 +1129,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         else:
             sh(["git", "reset", "--hard", "-q", before], wt)
             fix_note = "The fix pass broke the check, so it was discarded; the findings stand."
+            if triage:
+                triage += "\n\nThe fix commit broke the check and was discarded: every row marked fixed above was NOT applied."
     log(root, f"review {'findings' if has_findings else 'clean'}. {fix_note}")
 
     # 3. Evidence: the check on the final branch.
@@ -1118,6 +1140,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 4. The PR body, /pr style.
     review_line = f"{fix_note}\n\n{findings}" if has_findings else fix_note
+    if triage:
+        review_line = f"{fix_note}\n\n#### Triage\n\n{triage}\n\n{findings}"
     r, body = run_agent(cfg, root, hp["pr_cmd"] or hp["review_cmd"], wt,
                         PR_PROMPT.format(integration=integ, base=base, tickets=tlist, stat=stat,
                                          check=cfg["check_cmd"], code=c.returncode, check_out=check_out,
@@ -1128,7 +1152,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     body += (f"\n\n<details><summary>Runway review</summary>\n\n{review_line}\n\n"
              f"Tickets:\n{tlist}\n</details>\n")
     (root / "_pm").mkdir(exist_ok=True)
-    (root / "_pm" / "runway-review.md").write_text(findings + "\n\n" + fix_note + "\n")
+    (root / "_pm" / "runway-review.md").write_text(
+        findings + "\n\n" + fix_note + "\n" + (f"\n## Triage\n\n{triage}\n" if triage else ""))
     pr_file = root / "_pm" / "runway-pr.md"
     pr_file.write_text(body)
 

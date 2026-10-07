@@ -1,6 +1,6 @@
 {
   "name": "factory",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DataCraft software factory: Runway, a deterministic loop that runs ready Linear tickets unattended in git worktrees, preps decision packets for the ones that need Joe, and finishes with a review and a PR body. The runway skill sets up a repo, plans its tickets with Matt Pocock's skills, labels them with the gating rule and runs the loop on a schedule. Pairs with the sdlc plugin (credential guard, gates).",
   "author": {
     "name": "Joe",
