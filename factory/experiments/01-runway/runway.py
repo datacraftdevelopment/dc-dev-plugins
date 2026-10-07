@@ -17,6 +17,28 @@ Every agent call is logged to _pm/runway-runs.jsonl with its session id and toke
 usage when the agent prints Claude Code's JSON output. `runway retro` turns that log
 into a /retro prompt pointing at the runs that struggled.
 
+`runway status --json` prints the queue as one JSON object, the contract the Mac app reads.
+Version 1 (additive changes keep the version; renames or removals bump it):
+
+  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear", "generated_at": "ISO-8601",
+   "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
+              "ready_prep": [...], "blocked": [...], "done": [...]},
+   "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
+                "waiting_on", "packet", "harness"}]}
+
+  groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
+           text output: waiting = "Waiting on you", ready_prep = "Ready (needs prep)".
+  tickets  One entry per Runway ticket (gate auto, human or approved), in tracker order.
+  id       Linear identifier ("DAT-12") or markdown "<effort>/<NN>".
+  url      Linear issue URL; markdown: the file path relative to the repo. null if unknown.
+  status   resolved, claimed, needs-human or ready (markdown may carry other values as written).
+  gate     auto, human or approved.
+  blocked_by  Ids, in the same form as id.
+  waiting_on  Who or what the ticket waits on, or null.
+  packet   Latest decision packet text for waiting tickets (Linear: Runway's latest comment;
+           markdown: the last "## Decision packet" section), else null.
+  harness  Reserved, always null for now.
+
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
                       one extra header line: `Gate: human` or `Gate: auto` (default).
@@ -129,6 +151,16 @@ class Ticket:
     @property
     def ref(self) -> str:
         return str(self.path.relative_to(self.root))
+
+    @property
+    def url(self) -> str:
+        return self.ref
+
+    @property
+    def packet(self) -> str | None:
+        """The latest decision packet section, or None."""
+        found = re.findall(r"^## Decision packet\n(.*?)(?=^## |\Z)", self.text, re.M | re.S)
+        return found[-1].strip() if found else None
 
     @property
     def status(self) -> str:
@@ -672,29 +704,59 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     return did
 
 
-def cmd_status(tracker) -> None:
-    tickets = tracker.load()
-    groups = {"Waiting on you": [], "Running": [], "Ready (auto)": [], "Ready (needs prep)": [], "Blocked": [], "Done": []}
+GROUPS = [("waiting", "Waiting on you"), ("running", "Running"), ("ready_auto", "Ready (auto)"),
+          ("ready_prep", "Ready (needs prep)"), ("blocked", "Blocked"), ("done", "Done")]
+
+
+def group_tickets(tickets: list) -> dict:
+    """Runway's tickets by group key, each in tracker (queue) order."""
+    groups = {key: [] for key, _ in GROUPS}
     for t in tickets:
         if t.gate not in RUNNABLE_GATES + ("human",):
             continue  # not Runway's (e.g. a wayfinder decision ticket)
         if t.status == "needs-human":
-            groups["Waiting on you"].append(t)
+            groups["waiting"].append(t)
         elif t.status == "claimed":
-            groups["Running"].append(t)
+            groups["running"].append(t)
         elif t.status in DONE:
-            groups["Done"].append(t)
+            groups["done"].append(t)
         elif not unblocked(t, tickets) and t.gate != "human":
-            groups["Blocked"].append(t)
+            groups["blocked"].append(t)
         elif t.gate == "human":
-            groups["Ready (needs prep)"].append(t)
+            groups["ready_prep"].append(t)
         else:
-            groups["Ready (auto)"].append(t)
-    for name, ts in groups.items():
+            groups["ready_auto"].append(t)
+    return groups
+
+
+def cmd_status(tracker) -> None:
+    groups = group_tickets(tracker.load())
+    for key, name in GROUPS:
+        ts = groups[key]
         print(f"\n{name} ({len(ts)})")
         for t in ts:
-            extra = f"  [{t.h('Waiting on')}]" if name == "Waiting on you" and t.h("Waiting on") else ""
+            extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
             print(f"  {t.id:<24} {t.title}{extra}")
+
+
+def status_json(cfg: dict, root: Path, tracker) -> dict:
+    """The `status --json` document. Shape is documented in the module docstring."""
+    groups = group_tickets(tracker.load())
+
+    def full_id(t, b: str) -> str:
+        return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
+
+    def entry(t) -> dict:
+        waiting = t.status == "needs-human"
+        return {"id": t.id, "title": t.title, "url": t.url or None, "status": t.status, "gate": t.gate,
+                "blocked_by": [full_id(t, b) for b in t.blocked_by],
+                "waiting_on": (t.h("Waiting on") or None) if waiting else None,
+                "packet": t.packet if waiting else None, "harness": None}
+
+    return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
+            "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+            "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
+            "tickets": [entry(t) for ts in groups.values() for t in ts]}
 
 
 def find(tracker, num: str):
@@ -730,7 +792,8 @@ def main() -> None:
     ap.add_argument("--root", default=".", help="target repo (git checkout Runway works in)")
     ap.add_argument("--config", help="JSON config (default: <root>/runway.json if present)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status")
+    st = sub.add_parser("status")
+    st.add_argument("--json", action="store_true", help="machine-readable queue (shape in the module docstring)")
     sub.add_parser("tick")
     lp = sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
@@ -750,7 +813,10 @@ def main() -> None:
     tracker = make_tracker(cfg, root)
 
     if a.cmd == "status":
-        cmd_status(tracker)
+        if a.json:
+            print(json.dumps(status_json(cfg, root, tracker), indent=2))
+        else:
+            cmd_status(tracker)
     elif a.cmd == "setup":
         if not hasattr(tracker, "setup"):
             sys.exit("setup is only needed for the linear tracker.")
