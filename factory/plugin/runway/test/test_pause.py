@@ -187,6 +187,32 @@ class Pause(unittest.TestCase):
         self.assertNotIn("Status: resolved", text)
         self.assertFalse(self.tick(root))
 
+    def test_stop_now_without_root_stops_agents_in_every_repo(self):
+        import threading
+        import time
+        agent = "import sys, time\nsys.stdin.read()\nopen('partial.txt', 'w').write('x')\ntime.sleep(60)\n"
+        a, b = self.repo(agent=agent), self.repo(agent=agent)
+        ticks = [threading.Thread(target=self.tick, args=(r,)) for r in (a, b)]
+        for t in ticks:
+            t.start()
+        deadline = time.time() + 30
+        while time.time() < deadline and len(list((self.home / "agents").glob("*"))) < 2:
+            time.sleep(0.1)
+        self.assertEqual(len(list((self.home / "agents").glob("*"))), 2, "both agents should be running")
+        elsewhere = tempfile.mkdtemp()  # no --root, and cwd is neither repo
+        r = subprocess.run([sys.executable, str(Path(runway.__file__)), "pause", "--stop-now"],
+                           capture_output=True, text=True, env=dict(os.environ), cwd=elsewhere)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("no agent running", r.stdout)
+        for t in ticks:
+            t.join(30)
+            self.assertFalse(t.is_alive(), "tick should end once its agent is stopped")
+        for root in (a, b):
+            text = self.ticket_text(root)
+            self.assertIn("Status: ready", text)
+            self.assertIn("stopped by pause", text)
+            self.assertNotIn("Claimed-by", text)
+
     def test_stop_now_without_running_agent_just_pauses(self):
         root = self.repo()
         r = self.cli(root, "pause", "--stop-now")
