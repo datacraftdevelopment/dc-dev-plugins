@@ -15,6 +15,20 @@ experiments that produced it are one folder up in `factory/` and don't ship.
 Ringer is optional here. Only the review panel (`"review": "panel"`) uses it; without
 Ringer, Runway falls back to the single Claude review. See the runway skill.
 
+## Pause, quiet time, harnesses, claims
+
+- **Pause.** `runway pause --for 1h` (or `--until <ISO>`) lets a running ticket finish and starts
+  nothing new. `--stop-now` also stops running agents, the review panel included; stopped tickets go
+  back to ready. `runway resume` lifts it. It is machine-wide (`~/.runway/pause`).
+- **Quiet-time rules.** `~/.runway/machine.json` sets quiet hours, idle-only, not-on-battery and
+  `max_agents` for this Mac. `runway machine` shows whether a tick would run.
+- **Harnesses.** `runway.json` `"harness"` picks the default agent CLI (`claude` or a key of
+  `"harnesses"`); a ticket overrides it with a `harness:<name>` label or `Harness:` header.
+- **Claims.** A claimed ticket carries the machine name (`Claimed-by:` header, or a Linear claim
+  comment). It clears when the ticket is parked, resolved, approved, declined or put back to ready.
+
+The runway skill has the full detail.
+
 Install alongside `sdlc` (the credential guard and gates) and Matt Pocock's
 skills (`/to-spec`, `/to-tickets`, `/tdd`, `/code-review`, `/pr`, `/retro`).
 

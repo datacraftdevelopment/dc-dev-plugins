@@ -17,6 +17,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -132,11 +133,22 @@ def main() -> int:
         print(f"ringer lint failed: {(lint.stdout + lint.stderr).strip()[-500:]}", file=sys.stderr)
     else:
         try:
-            run = subprocess.run([*cmd, "run", str(mpath)], capture_output=True, text=True,
-                                 timeout=2 * SEAT_TIMEOUT_S + 300)
-            run_ok, output = run.returncode == 0, run.stdout + run.stderr
-        except subprocess.TimeoutExpired:
-            print("ringer run timed out", file=sys.stderr)
+            proc = subprocess.Popen([*cmd, "run", str(mpath)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True)
+
+            def stop(signum, frame):  # pause --stop-now signals this process; take ringer down with it
+                proc.terminate()
+                sys.exit(1)
+            signal.signal(signal.SIGTERM, stop)
+            try:
+                output, _ = proc.communicate(timeout=2 * SEAT_TIMEOUT_S + 300)
+                run_ok = proc.returncode == 0
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.communicate()
+                print("ringer run timed out", file=sys.stderr)
+        except OSError as e:
+            print(f"ringer run failed: {e}", file=sys.stderr)
 
     seats = {}
     for seat, key in SEATS.items():

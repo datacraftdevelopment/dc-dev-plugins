@@ -191,8 +191,8 @@ def parse_span(text: str) -> dt.timedelta:
     return dt.timedelta(**{unit[u]: int(n) for n, u in parts})
 
 
-def active_pause() -> dict | None:
-    """The pause in force, else None. An expired pause file is removed here."""
+def active_pause(clean: bool = True) -> dict | None:
+    """The pause in force, else None. An expired pause file is removed here unless clean is False."""
     p = pause_path()
     try:
         data = json.loads(p.read_text())
@@ -208,7 +208,8 @@ def active_pause() -> dict | None:
     except ValueError:
         expired = False
     if expired:
-        p.unlink(missing_ok=True)
+        if clean:
+            p.unlink(missing_ok=True)
         return None
     return data
 
@@ -611,11 +612,13 @@ class Ticket:
 
     def mark_resolved(self, note: str) -> None:
         self.set("Status", "resolved")
+        self.set("Claimed-by", None)
         self.comment(note)
         self.save()
 
     def mark_needs_human(self, why: str, detail: str) -> None:
         self.set("Status", "needs-human")
+        self.set("Claimed-by", None)
         self.set("Waiting on", f"Joe, {why}, since {now()}")
         self.comment(detail)
         self.save()
@@ -630,6 +633,7 @@ class Ticket:
     def approve(self, note: str) -> None:
         self.set("Status", "ready")
         self.set("Gate", "approved")
+        self.set("Claimed-by", None)
         self.set("Waiting on", None)
         self.comment(f"Joe: go. {note}".strip())
         self.save()
@@ -637,6 +641,7 @@ class Ticket:
     def decline(self, note: str) -> None:
         drop = note.lower().startswith("drop")
         self.set("Status", "resolved" if drop else "needs-human")
+        self.set("Claimed-by", None)
         self.set("Waiting on", None if drop else f"Joe said no: {note}")
         self.comment(f"Joe: no. {note}".strip())
         self.save()
@@ -1004,6 +1009,8 @@ PANEL_FIX_PROMPT = """Two independent reviewers (a Codex seat and a Claude seat)
 (Runway's integration branch). Triage their findings yourself and fix what deserves fixing. Never ask Joe
 anything; nobody is waiting to answer, so make your best judgment on every finding.
 
+0. If a seat's section says NO REPORT, only one reviewer ran: nothing can be "agreed", so treat every finding as
+   single-seat and verify it yourself.
 1. Merge duplicates. A finding both seats raise (the same problem, even worded differently) is agreed: fix it.
 2. A finding only one seat raises: verify it against the code, then judge. Fix it if it is real and the fix
    is in proportion. Otherwise skip it with a one-line reason.
@@ -1057,9 +1064,18 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     brief.write_text(f"Runway integration branch `{cfg['integration_branch']}`, reviewed against "
                      f"`{cfg['base_branch']}`.\n{spec}\nTickets:\n{tlist}\n")
     t0 = time.time()
-    r = sh([sys.executable, str(Path(__file__).resolve().parent / "ringer_panel.py"), "--repo", str(wt),
-            "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out)], root,
-           timeout=cfg["agent_timeout_s"])
+    pids: list = []
+
+    def started(pid):
+        pids.append(pid)
+        register_agent(pid, root)  # so max_agents counts the panel and pause --stop-now can stop it
+    try:
+        r = sh([sys.executable, str(Path(__file__).resolve().parent / "ringer_panel.py"), "--repo", str(wt),
+                "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out)], root,
+               timeout=cfg["agent_timeout_s"], on_start=started)
+    finally:
+        if pids:
+            unregister_agent(pids[0])
     if r.returncode == 3:
         log(root, "ringer not found; falling back to the single review.")
         return None
@@ -1067,7 +1083,7 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
         seats = json.loads(r.stdout.strip().splitlines()[-1])["seats"]
     except (ValueError, KeyError, IndexError):
         seats = {}
-    sections, statuses = [], {}
+    sections, statuses, missing = [], {}, []
     for seat in ("codex", "claude"):
         info = seats.get(seat) or {}
         statuses[seat] = info.get("status", "MISSING")
@@ -1078,6 +1094,8 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
             note = ("\n(Ringer's check rejected this report; its findings are still worth reading.)\n"
                     if statuses[seat] == "FAIL" else "")
             sections.append(f"### {seat}{note}\n{text}")
+        else:
+            missing.append(seat)
     if not sections:
         log(root, f"ringer panel wrote no reports (exit {r.returncode}); falling back to the single review.")
         return None
@@ -1085,7 +1103,11 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
                   "secs": round(time.time() - t0), "seats": statuses})
     log(root, "ringer panel seats: " + ", ".join(f"{k} {v}" for k, v in statuses.items()))
     has_findings = any(re.search(r"^\W*Finding:", s, re.M) for s in sections)
-    return "\n\n".join(sections), has_findings
+    findings = "\n\n".join(sections)
+    for seat in missing:
+        findings += (f"\n\n### {seat}\nNO REPORT (status {statuses[seat]}). This was a single-seat review: "
+                     f"nothing here was cross-checked by the {seat} seat.")
+    return findings, has_findings
 
 
 def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
@@ -1133,6 +1155,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
             findings, has_findings = f"Review failed (exit {r.returncode}).", False
         else:
             has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
+    if stop_requested():
+        log(root, "finish stopped by pause; the review is not recorded for this head.")
+        return False
 
     # 2. One fix pass. Kept only if the check still passes.
     fix_note = "No fix pass needed."
@@ -1156,6 +1181,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
             fix_note = "The fix pass broke the check, so it was discarded; the findings stand."
             if triage:
                 triage += "\n\nThe fix commit broke the check and was discarded: every row marked fixed above was NOT applied."
+    if stop_requested():
+        log(root, "finish stopped by pause; the review is not recorded for this head.")
+        return False
     log(root, f"review {'findings' if has_findings else 'clean'}. {fix_note}")
 
     # 3. Evidence: the check on the final branch.
@@ -1171,6 +1199,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                         PR_PROMPT.format(integration=integ, base=base, tickets=tlist, stat=stat,
                                          check=cfg["check_cmd"], code=c.returncode, check_out=check_out,
                                          review=review_line), "finish", "pr", harness=hp)
+    if stop_requested():
+        log(root, "finish stopped by pause; the review is not recorded for this head.")
+        return False
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
@@ -1386,7 +1417,9 @@ def cmd_status(tracker) -> None:
 
 def status_json(cfg: dict, root: Path, tracker) -> dict:
     """The `status --json` document. Shape is documented in the module docstring."""
-    groups = group_tickets(tracker.load())
+    loaded = tracker.load()
+    groups = group_tickets(loaded)
+    grouped = {t.id for ts in groups.values() for t in ts}
 
     def full_id(t, b: str) -> str:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
@@ -1399,10 +1432,10 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
                 "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
-            "machine": machine_name(), "paused": active_pause(),
+            "machine": machine_name(), "paused": active_pause(clean=False),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
-            "tickets": [entry(t) for ts in groups.values() for t in ts]}
+            "tickets": [entry(t) for t in loaded if t.id in grouped]}
 
 
 def find(tracker, num: str):
