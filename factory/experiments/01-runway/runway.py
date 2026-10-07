@@ -46,6 +46,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
               comment). A ready ticket claimed by another machine is skipped and logged
               `skip <id> claimed by <machine>`.
+  paused      The pause in force (the ~/.runway/pause contents), or null.
   claimed_by  The machine that holds the ticket's claim, or null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
@@ -60,6 +61,17 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   packet   Latest decision packet text for waiting tickets (Linear: Runway's latest comment;
            markdown: the last "## Decision packet" section), else null.
   harness  Reserved, always null for now.
+
+`runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
+overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
+
+  {"until": "ISO-8601 or null", "mode": "finish|stop", "at": "ISO-8601"}
+
+`runway resume` deletes it. While the file exists and `until` hasn't passed, `tick` logs
+`paused until ...`, writes heartbeat phase `paused` and exits 0; `loop` stops between ticks the same
+way (no finish step). An expired pause file is removed. Mode finish (default): a running ticket
+finishes, nothing new starts. Mode stop (`--stop-now`): also SIGTERMs the running agent (agent_pid from
+the heartbeat); the tick returns the ticket to ready with a "stopped by pause" comment and keeps its worktree.
 
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
@@ -79,6 +91,7 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -130,6 +143,104 @@ def machine_name() -> str:
     except (OSError, subprocess.SubprocessError):
         pass
     return socket.gethostname()
+
+
+# ---------- machine-wide pause: ~/.runway/pause ----------
+
+def pause_path() -> Path:
+    return Path(os.environ.get("RUNWAY_HOME") or Path.home() / ".runway") / "pause"
+
+
+def parse_when(text: str) -> dt.datetime:
+    """ISO-8601 (naive means local time) to an aware datetime."""
+    d = dt.datetime.fromisoformat(text.strip())
+    return d if d.tzinfo else d.astimezone()
+
+
+def parse_span(text: str) -> dt.timedelta:
+    """'90s', '30m', '1h', '2d' or '1h30m'."""
+    want = text.strip().lower()
+    parts = re.findall(r"(\d+)([smhd])", want)
+    if not parts or "".join(n + u for n, u in parts) != want:
+        raise ValueError(f"bad duration {text!r}; use e.g. 30m, 1h, 2d")
+    unit = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}
+    return dt.timedelta(**{unit[u]: int(n) for n, u in parts})
+
+
+def active_pause() -> dict | None:
+    """The pause in force, else None. An expired pause file is removed here."""
+    p = pause_path()
+    try:
+        data = json.loads(p.read_text())
+        if not isinstance(data, dict):
+            raise ValueError
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        data = {"until": None, "mode": "finish", "at": None}  # unreadable: stay paused, never run on a guess
+    until = data.get("until")
+    try:
+        expired = bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
+    except ValueError:
+        expired = False
+    if expired:
+        p.unlink(missing_ok=True)
+        return None
+    return data
+
+
+def stop_requested() -> bool:
+    pause = active_pause()
+    return bool(pause and pause.get("mode") == "stop")
+
+
+def paused_now(root: Path) -> bool:
+    """True (after logging it and writing heartbeat phase paused) while a pause is in force."""
+    pause = active_pause()
+    if not pause:
+        return False
+    log(root, f"paused until {pause.get('until') or 'resumed'}")
+    beat(root, "paused")
+    return True
+
+
+def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -> None:
+    if until and span:
+        sys.exit("Use --until or --for, not both.")
+    end = None
+    try:
+        if until:
+            end = parse_when(until)
+        elif span:
+            end = dt.datetime.now().astimezone() + parse_span(span)
+    except ValueError as e:
+        sys.exit(str(e))
+    p = pause_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None,
+                               "mode": "stop" if stop_now else "finish",
+                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
+    os.replace(tmp, p)
+    print("paused until " + (end.isoformat(timespec="seconds") if end else "resumed") + (" (stop)" if stop_now else ""))
+    if stop_now:
+        try:
+            pid = json.loads((root / "_pm" / "runway-state.json").read_text()).get("agent_pid")
+        except (OSError, ValueError):
+            pid = None
+        if not pid:
+            print("no agent running; nothing to stop")
+            return
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+            print(f"stopped agent {pid}")
+        except ProcessLookupError:
+            print(f"agent {pid} already gone")
+
+
+def cmd_resume() -> None:
+    pause_path().unlink(missing_ok=True)
+    print("resumed")
 
 
 def now() -> str:
@@ -209,7 +320,7 @@ def beat_update(root: Path, **fields) -> None:
 class Ticket:
     """A ticket in pm's local markdown tracker. Other trackers mirror this interface:
     id, num, effort, slug, ref, title, text, status, gate, blocked_by, h(),
-    post_packet(), mark_claimed(), mark_resolved(), mark_needs_human(), approve(), decline()."""
+    post_packet(), mark_claimed(), mark_resolved(), mark_needs_human(), mark_ready(), approve(), decline()."""
 
     def __init__(self, path: Path, root: Path | None = None):
         self.path = path
@@ -312,6 +423,13 @@ class Ticket:
         self.set("Status", "needs-human")
         self.set("Waiting on", f"Joe, {why}, since {now()}")
         self.comment(detail)
+        self.save()
+
+    def mark_ready(self, note: str) -> None:
+        """Back in the queue (a pause stopped it). Releases the claim; the branch name stays."""
+        self.set("Status", "ready")
+        self.set("Claimed-by", None)
+        self.comment(note)
         self.save()
 
     def approve(self, note: str) -> None:
@@ -442,6 +560,9 @@ def prep(cfg: dict, root: Path, t) -> None:
     beat(root, "prep", t.id)
     log(root, f"prep  {t.id} {t.title}")
     r, text = run_agent(cfg, root, cfg["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep")
+    if stop_requested():
+        log(root, f"stopped by pause  prep {t.id}")
+        return
     packet = text.strip() if r.returncode == 0 and text.strip() else f"Prep failed:\n\n```\n{r.stderr[-2000:]}\n```"
     t.post_packet(packet)
     notify(cfg, root, f"Decision ready: {t.id} {t.title}")
@@ -485,10 +606,17 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     sh(["git", "worktree", "add", "-b", branch, str(wt), cfg["integration_branch"]], root, check=True)
 
     extra, ok, detail, attempt = "", False, "", 0
+    stopped = False
     for attempt in range(1, cfg["max_attempts"] + 1):
+        if stop_requested():
+            stopped = True
+            break
         beat(root, "agent", t.id, attempt)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
         run_agent(cfg, root, cfg["agent_cmd"], wt, prompt, t.id, "run", attempt)
+        if stop_requested():
+            stopped = True
+            break
         q = wt / "RUNWAY_QUESTION.md"
         if q.exists():
             detail = "Agent stopped with a question:\n\n" + q.read_text()
@@ -506,6 +634,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         beat_update(root, last_result="fail")
 
     t = tracker.reload(t)  # agent may not touch it, but reload to be safe
+    if stopped:  # pause --stop-now: back to ready, worktree and branch kept
+        t.mark_ready("stopped by pause")
+        log(root, f"stopped by pause  {t.id}")
+        record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "stopped", "detail": ""})
+        return
     if ok:
         beat(root, "merge", t.id)
         if merge_into_integration(cfg, root, branch):
@@ -784,15 +917,21 @@ def cmd_retro(root: Path, last: int) -> None:
 def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything."""
     did = False
+    if paused_now(root):
+        return False
     beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
     tickets = tracker.load()
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
     for t in tickets:
+        if active_pause():
+            return did  # a pause landed mid-tick: finish what is running, start nothing new
         if t.gate == "human" and t.status == "ready" and will_unblock_without_joe(t, tickets):
             prep(cfg, root, t)
             did = True
     # 2. AFK lane: run the first ready auto (or approved) ticket.
+    if active_pause():
+        return did
     tickets = tracker.load()
     me = machine_name()
     for t in tickets:
@@ -855,7 +994,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
                 "packet": t.packet if waiting else None, "harness": None, "claimed_by": t.claimed_by}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
-            "machine": machine_name(),
+            "machine": machine_name(), "paused": active_pause(),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "tickets": [entry(t) for ts in groups.values() for t in ts]}
@@ -898,6 +1037,11 @@ def main() -> None:
     st.add_argument("--json", action="store_true", help="machine-readable queue (shape in the module docstring)")
     sub.add_parser("whoami", help="print this Mac's name, as stamped on claims")
     sub.add_parser("tick")
+    pz = sub.add_parser("pause", help="pause every loop on this Mac (holds with the app closed)")
+    pz.add_argument("--until", help="resume at this ISO-8601 time")
+    pz.add_argument("--for", dest="span", help="resume after this long, e.g. 30m, 1h, 2d")
+    pz.add_argument("--stop-now", action="store_true", help="also stop the running agent and return its ticket to ready")
+    sub.add_parser("resume", help="delete the pause")
     lp =sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
@@ -912,6 +1056,12 @@ def main() -> None:
         return
 
     root = Path(a.root).resolve()
+    if a.cmd == "pause":
+        cmd_pause(root, a.until, a.span, a.stop_now)
+        return
+    if a.cmd == "resume":
+        cmd_resume()
+        return
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():
@@ -942,6 +1092,8 @@ def main() -> None:
             else:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
+                        if active_pause():
+                            return  # paused: no finish step, keep heartbeat phase paused
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
