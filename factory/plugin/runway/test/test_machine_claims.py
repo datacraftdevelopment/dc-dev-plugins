@@ -112,6 +112,12 @@ class LinearClaims(unittest.TestCase):
             runway.tick(dict(runway.DEFAULT_CONFIG), Path("/r"), tr)
         return ran, [c.args[1] for c in lg.call_args_list]
 
+    def test_skip_is_logged_for_a_ticket_another_mac_is_running(self):
+        claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."
+        ran, logs = self._tick_linear("Mini-Two", [node(1, ["ready-for-agent"], "started", [claim])])
+        self.assertEqual(ran, [])
+        self.assertIn("skip DAT-1 claimed by Mini-One", logs)
+
     def test_pause_stop_then_other_machine_claims(self):
         claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."
         running = node(1, ["ready-for-agent"], "started", [claim])

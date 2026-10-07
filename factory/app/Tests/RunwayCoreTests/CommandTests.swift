@@ -27,6 +27,11 @@ final class CommandTests: XCTestCase {
                        Command(executable: "/bin/launchctl", arguments: ["kickstart", "gui/501/com.joe.runway.demo"]))
     }
 
+    func testPauseStopModeAddsStopNow() {
+        XCTAssertEqual(tools.pause(.untilResumed, mode: .stop).arguments,
+                       ["python3", "/co/factory/experiments/01-runway/runway.py", "pause", "--stop-now"])
+    }
+
     func testPauseChoices() {
         let now = ISO8601DateFormatter().date(from: "2026-10-07T18:00:00Z")!  // 13:00 in Chicago
         XCTAssertEqual(tools.pause(.oneHour, now: now, calendar: chicago).arguments,

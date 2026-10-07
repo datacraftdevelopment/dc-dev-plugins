@@ -141,7 +141,7 @@ class Pause(unittest.TestCase):
         self.assertNotIn("Status: claimed", (issues / "02-next.md").read_text())
         self.assertNotIn("Status: resolved", (issues / "02-next.md").read_text())
         self.assertIn("paused until", self.log_text(root))
-        self.assertEqual(state(root)["phase"], "paused")
+        self.assertEqual(state(root)["phase"], "idle")  # the exiting loop leaves no stale "paused" under a dead pid
         self.assertFalse((root / "_pm" / "runway-pr.md").exists())
 
     def repo_agent_pauses(self, root):
@@ -212,6 +212,22 @@ class Pause(unittest.TestCase):
             self.assertIn("Status: ready", text)
             self.assertIn("stopped by pause", text)
             self.assertNotIn("Claimed-by", text)
+
+    def test_stop_now_leaves_a_reused_pid_alone(self):
+        import time
+        bystander = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        try:
+            (self.home / "agents").mkdir(parents=True, exist_ok=True)
+            # A registration whose recorded start time is not this process's: the pid was reused.
+            (self.home / "agents" / str(bystander.pid)).write_text("/tmp/repo\nMon Jan  1 00:00:00 2001\n")
+            r = self.cli(self.repo(), "pause", "--stop-now")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            time.sleep(0.3)
+            self.assertIsNone(bystander.poll(), "an unrelated process must not be signalled")
+            self.assertIn("left alone", r.stdout)
+        finally:
+            bystander.kill()
+            bystander.wait()
 
     def test_stop_now_without_running_agent_just_pauses(self):
         root = self.repo()

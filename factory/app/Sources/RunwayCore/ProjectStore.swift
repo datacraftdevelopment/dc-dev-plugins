@@ -129,7 +129,8 @@ public final class ProjectStore {
 
     public func pauseAll(_ choice: PauseChoice) async {
         guard let tools = requireTools() else { return }
-        await perform(tools.pause(choice), "Pause")
+        let mode = (try? MachineStore().load().pauseMode) ?? .finish  // the This Mac sheet's pause_mode
+        await perform(tools.pause(choice, mode: mode), "Pause")
     }
 
     public func resume() async {

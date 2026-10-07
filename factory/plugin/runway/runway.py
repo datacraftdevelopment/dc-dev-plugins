@@ -249,18 +249,22 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
     os.replace(tmp, p)
     print("paused until " + (end.isoformat(timespec="seconds") if end else "resumed") + (" (stop)" if stop_now else ""))
     if stop_now:
-        pids = set()  # every live agent on this Mac, plus this repo's heartbeat pid
+        pids = set()  # every registered agent on this Mac (run_agent registers the heartbeat's agent_pid too)
         for f in agents_dir().glob("*"):
             try:
-                pids.add(int(f.name))
+                pid = int(f.name)
             except ValueError:
-                pass
-        try:
-            pid = json.loads((root / "_pm" / "runway-state.json").read_text()).get("agent_pid")
-            if pid:
-                pids.add(int(pid))
-        except (OSError, ValueError):
-            pass
+                continue
+            lines = f.read_text().splitlines() if f.exists() else []
+            recorded = lines[1] if len(lines) > 1 else ""
+            actual = process_started(pid)
+            if actual is None:
+                f.unlink(missing_ok=True)  # gone
+            elif recorded and recorded == actual:
+                pids.add(pid)
+            else:  # the pid was reused by some other process: not ours to signal
+                print(f"pid {pid} is no longer a Runway agent; left alone")
+                f.unlink(missing_ok=True)
         if not pids:
             print("no agent running; nothing to stop")
             return
@@ -327,11 +331,21 @@ def agents_dir() -> Path:
     return runway_home() / "agents"
 
 
+def process_started(pid: int) -> str | None:
+    """When the process with this pid started (ps's lstart text), or None if it isn't running."""
+    try:
+        out = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.strip() or None
+
+
 def register_agent(pid: int, root: Path) -> None:
-    """Mark an agent as running on this Mac: a file named for its pid, holding the repo path."""
+    """Mark an agent as running on this Mac: a file named for its pid, holding the repo path and, on a second
+    line, the process start time, so a reused pid is never mistaken for the agent."""
     try:
         agents_dir().mkdir(parents=True, exist_ok=True)
-        (agents_dir() / str(pid)).write_text(str(root) + "\n")
+        (agents_dir() / str(pid)).write_text(f"{root}\n{process_started(pid) or ''}\n")
     except OSError:
         pass  # counting is best effort; it must never take the loop down
 
@@ -907,6 +921,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     branch = f"runway/{t.effort}-{t.slug}"
     wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
     t.mark_claimed(branch, machine_name())
+    # No tracker can claim atomically, so read the claim back: if another Mac stamped it after us, it keeps it.
+    now_held = next((x.claimed_by for x in tracker.load() if x.id == t.id), None)
+    if now_held and now_held != machine_name():
+        log(root, f"skip {t.id} claimed by {now_held}")
+        return
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
     if wt.exists():
@@ -1368,12 +1387,15 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     tickets = tracker.load()
     me = machine_name()
     for t in tickets:
-        if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
-            if park_bad_harness(cfg, root, t):
-                did = True
-                continue
+        if t.gate in RUNNABLE_GATES and t.status in ("ready", "claimed") and unblocked(t, tickets):
+            # A ticket another Mac is running reads as claimed, not ready, so the check covers both.
             if t.claimed_by and t.claimed_by != me:
                 log(root, f"skip {t.id} claimed by {t.claimed_by}")
+                continue
+            if t.status != "ready":
+                continue
+            if park_bad_harness(cfg, root, t):
+                did = True
                 continue
             run_ticket(cfg, root, tracker, t)
             return True
@@ -1535,7 +1557,8 @@ def main() -> None:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
                         if active_pause() or machine_block():
-                            return  # paused or waiting: no finish step, keep that heartbeat phase
+                            beat(root, "idle")  # paused or waiting: no finish step, and no stale phase under a dead pid
+                            return
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
