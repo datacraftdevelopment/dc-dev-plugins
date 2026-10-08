@@ -143,6 +143,15 @@ class GitHubTracker(unittest.TestCase):
         self.assertEqual(by["#2"].packet, "Parked: why")
         self.assertIsNone(by["#2"].claimed_by)
 
+    def test_first_claim_of_the_cycle_wins(self):
+        c = "\U0001f6eb runway · Claimed-by: {} · Started on `b`."
+        self.data([[issue(1, assignees=1, comments=[(c.format("Mini-One"), "OWNER"), (c.format("Mini-Two"), "OWNER")]),
+                    issue(2, assignees=1, comments=[(c.format("Mini-One"), "OWNER"), ("\U0001f6eb runway · Parked: x", "OWNER"),
+                                                    (c.format("Mini-Two"), "OWNER")])]])
+        by = self.load()
+        self.assertEqual(by["#1"].claimed_by, "Mini-One")
+        self.assertEqual(by["#2"].claimed_by, "Mini-Two")
+
     def test_paging_counts_calls(self):
         self.data([[issue(1)], [issue(2)], [issue(3)]])
         self.assertEqual(len(self.load()), 3)

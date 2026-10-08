@@ -257,14 +257,19 @@ class GitHubTicket:
 
     @property
     def claimed_by(self) -> str | None:
-        """The machine named in Runway's latest claim comment while the issue is claimed, else None."""
+        """The machine named in the first claim comment of the current claim cycle, else None. First stamp wins, so
+        two Macs that both stamped agree on the owner whichever order they read back in."""
         if self.status != "claimed":
             return None
+        owner = None
         for cm in reversed(self.comments):
-            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
-            if m:
-                return m.group(1).strip()
-        return None
+            if not cm["body"].startswith(MARK):
+                continue
+            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
+            if not m:
+                break  # a park, release or note: earlier claims belong to an earlier cycle
+            owner = m.group(1).strip()
+        return owner
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
