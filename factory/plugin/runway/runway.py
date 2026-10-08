@@ -255,12 +255,15 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
                 pid = int(f.name)
             except ValueError:
                 continue
-            lines = f.read_text().splitlines() if f.exists() else []
+            try:
+                lines = f.read_text().splitlines()
+            except OSError:
+                continue  # the agent finished and unregistered while we scanned
             recorded = lines[1] if len(lines) > 1 else ""
             actual = process_started(pid)
             if actual is None:
                 f.unlink(missing_ok=True)  # gone
-            elif recorded and recorded == actual:
+            elif not recorded or recorded == actual:  # no start time: a registration from before they were recorded
                 pids.add(pid)
             else:  # the pid was reused by some other process: not ours to signal
                 print(f"pid {pid} is no longer a Runway agent; left alone")
@@ -359,7 +362,15 @@ def running_agents() -> int:
     n = 0
     for f in agents_dir().glob("*"):
         try:
-            os.kill(int(f.name), 0)
+            pid = int(f.name)
+            os.kill(pid, 0)
+            try:
+                lines = f.read_text().splitlines()
+            except OSError:
+                continue
+            if len(lines) > 1 and lines[1] and lines[1] != process_started(pid):
+                f.unlink(missing_ok=True)  # the pid was reused by some other process
+                continue
             n += 1
         except ProcessLookupError:
             f.unlink(missing_ok=True)
@@ -1090,7 +1101,8 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
         register_agent(pid, root)  # so max_agents counts the panel and pause --stop-now can stop it
     try:
         r = sh([sys.executable, str(Path(__file__).resolve().parent / "ringer_panel.py"), "--repo", str(wt),
-                "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out)], root,
+                "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out),
+                "--budget-s", str(max(cfg["agent_timeout_s"] - 60, 60))], root,
                timeout=cfg["agent_timeout_s"], on_start=started)
     finally:
         if pids:

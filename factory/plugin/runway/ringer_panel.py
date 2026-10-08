@@ -110,6 +110,8 @@ def main() -> int:
     ap.add_argument("--base", required=True)
     ap.add_argument("--brief-file", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--budget-s", type=int, default=2 * SEAT_TIMEOUT_S + 300,
+                    help="give up and kill the ringer group after this long (the caller's own timeout is longer)")
     a = ap.parse_args()
 
     ringer = find_ringer()
@@ -148,7 +150,7 @@ def main() -> int:
                 sys.exit(1)
             signal.signal(signal.SIGTERM, stop)
             try:
-                output, _ = proc.communicate(timeout=2 * SEAT_TIMEOUT_S + 300)
+                output, _ = proc.communicate(timeout=a.budget_s)
                 run_ok = proc.returncode == 0
             except subprocess.TimeoutExpired:
                 kill_group(signal.SIGKILL)
