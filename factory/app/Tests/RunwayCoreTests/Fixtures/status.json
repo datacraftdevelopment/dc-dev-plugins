@@ -1,0 +1,13 @@
+{"version": 1, "repo": "/tmp/repo", "tracker": "linear", "machine": "Mini-One", "paused": null,
+ "generated_at": "2026-10-07T12:00:00+00:00",
+ "groups": {"waiting": ["DAT-30"], "running": ["DAT-21"], "ready_auto": ["DAT-22", "DAT-23"],
+            "ready_prep": ["DAT-31"], "blocked": ["DAT-24"], "done": ["DAT-20"]},
+ "tickets": [
+  {"id": "DAT-30", "title": "Pick a theme", "url": "https://linear.app/x/DAT-30", "status": "needs-human", "gate": "human", "blocked_by": [], "waiting_on": "Joe", "packet": "### Decision needed\nWhich theme?\n### Options\n- **A** dark\n- **B** light (recommended)\n### Risks / one-way doors\nnone", "harness": "claude", "claimed_by": null},
+  {"id": "DAT-21", "title": "Queue tab", "url": "https://linear.app/x/DAT-21", "status": "claimed", "gate": "auto", "blocked_by": [], "waiting_on": null, "packet": null, "harness": "codex", "claimed_by": "Mini-One"},
+  {"id": "DAT-22", "title": "History tab", "url": "https://linear.app/x/DAT-22", "status": "ready", "gate": "auto", "blocked_by": [], "waiting_on": null, "packet": null, "harness": "claude", "claimed_by": null},
+  {"id": "DAT-23", "title": "Settings", "url": null, "status": "ready", "gate": "approved", "blocked_by": [], "waiting_on": null, "packet": null, "harness": "claude", "claimed_by": null},
+  {"id": "DAT-31", "title": "Needs prep", "url": "https://linear.app/x/DAT-31", "status": "ready", "gate": "human", "blocked_by": [], "waiting_on": null, "packet": null},
+  {"id": "DAT-24", "title": "Polish", "url": "https://linear.app/x/DAT-24", "status": "ready", "gate": "auto", "blocked_by": ["DAT-22", "DAT-23"], "waiting_on": null, "packet": null, "harness": "claude", "claimed_by": null},
+  {"id": "DAT-20", "title": "Window", "url": "https://linear.app/x/DAT-20", "status": "resolved", "gate": "auto", "blocked_by": [], "waiting_on": null, "packet": null, "harness": "claude", "claimed_by": null}
+ ]}

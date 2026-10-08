@@ -6,6 +6,7 @@
   },
   "agent_cmd": "claude -p --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3:*),Bash(python3 -m pytest:*),Bash(pytest:*),Bash(bash factory/:*),Bash(swift build:*),Bash(swift test:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)\"",
   "prep_cmd": "claude -p --output-format json --allowedTools \"Read,Grep,Glob,Bash(codex --help),Bash(codex exec --help),Bash(cursor-agent --help)\"",
+  "harness": "claude",
   "check_cmd": "bash factory/scripts/check.sh",
   "base_branch": "main",
   "integration_branch": "runway/integration",

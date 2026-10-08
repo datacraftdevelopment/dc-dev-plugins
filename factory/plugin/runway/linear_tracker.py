@@ -143,6 +143,16 @@ class LinearTicket:
         return "\n".join(out) + "\n"
 
     @property
+    def url(self) -> str:
+        return self.node.get("url") or ""
+
+    @property
+    def packet(self) -> str | None:
+        """Runway's latest comment (the decision packet, or why it parked), without the marker."""
+        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)]
+        return mine[-1][len(MARK):].lstrip(" ·\n").strip() if mine else None
+
+    @property
     def status(self) -> str:
         c = self.tr.c
         st = self.node["state"]["type"]
@@ -164,8 +174,27 @@ class LinearTicket:
         return "none"
 
     @property
+    def harness(self) -> str | None:
+        """Per-ticket harness override from a `harness:<name>` label, or None."""
+        for name in self.labels:
+            if name.lower().startswith("harness:"):
+                return name.split(":", 1)[1].strip().lower() or None
+        return None
+
+    @property
     def blocked_by(self) -> list[str]:
         return [r["issue"]["identifier"] for r in self.node["inverseRelations"]["nodes"] if r["type"] == "blocks"]
+
+    @property
+    def claimed_by(self) -> str | None:
+        """The machine named in Runway's latest claim comment while the ticket is claimed, else None."""
+        if self.status != "claimed":
+            return None  # parked, paused or retried: the old stamp no longer holds the ticket
+        for cm in reversed(self.comments):
+            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
+            if m:
+                return m.group(1).strip()
+        return None
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
@@ -203,9 +232,9 @@ class LinearTicket:
             f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
         self._labels(add=[self.tr.c["needs_human_label"]])
 
-    def mark_claimed(self, branch: str) -> None:
+    def mark_claimed(self, branch: str, machine: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
-        self._comment(f"Started on `{branch}`.")
+        self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
 
     def mark_resolved(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["done_state"]))
@@ -216,6 +245,10 @@ class LinearTicket:
         self._update(stateId=self.tr.state_id(None, "unstarted"))
         self._labels(add=[self.tr.c["needs_human_label"]])
         self._comment(f"Parked: {why}. Remove `{self.tr.c['needs_human_label']}` or comment `go` to retry.\n\n{detail}")
+
+    def mark_ready(self, note: str) -> None:
+        self._update(stateId=self.tr.state_id(None, "unstarted"))
+        self._comment(note)
 
     def approve(self, note: str) -> None:
         add = [self.tr.c["approve_label"]] if self.gate == "human" else []

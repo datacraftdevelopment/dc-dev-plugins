@@ -1,6 +1,6 @@
 ---
 name: runway
-description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule or stop the loop, or run a retro on its runs.
+description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
 ---
 
 # Runway
@@ -60,15 +60,94 @@ run side by side. Give them a blocks relation in landing order.
 
 ## Running and watching
 
-- `RUNWAY status`: what's waiting on Joe, running, ready, blocked and done.
+- `RUNWAY status --json`: the queue as one JSON object (`groups`: waiting,
+  running, ready_auto, ready_prep, blocked, done; `tickets` with `packet`,
+  `blocked_by`, `claimed_by`; `paused`; `machine`). Prefer it over plain
+  `RUNWAY status`, and summarize it for Joe as running, next, blocked and
+  waiting on him (read each waiting ticket's `packet`).
+- "What is it doing right now" comes from the heartbeat, `<repo>/_pm/runway-state.json`:
+  `phase` (`sync|prep|agent|check|merge|finish|idle|stopped`, plus `paused` and
+  `waiting` with a `reason`), `ticket`, `attempt`, `since`, `last_result`. A
+  non-idle phase only counts as live if its `pid` is still running; otherwise
+  it's a crash's leftovers, so say so.
 - `RUNWAY tick` runs one step; `RUNWAY loop` runs until nothing is ready.
 - `bash .../schedule.sh status|run|uninstall <repo>`: the scheduled job.
 - The log is `<repo>/_pm/runway.log`; each agent call is in `_pm/runway-runs.jsonl`.
 - `RUNWAY finish` forces the finish step; its PR body lands in `_pm/runway-pr.md`.
 
 Closing a chat never pauses the loop, and nothing here should say it does.
-Stop it with `schedule.sh uninstall`, and say it's stopped only once
-`schedule.sh status` shows it unloaded.
+To hold it for a while, pause it (below). To remove it, `schedule.sh uninstall`,
+and say it's stopped only once `schedule.sh status` shows it unloaded.
+
+## Review panel
+
+The finish step reviews the whole integration branch. With `"review": "panel"`
+(on in `runway.json.template`) it runs two seats through Ringer: a Codex seat and
+a Claude seat, reviewing independently. Then one fix pass triages both reports
+with no human in the loop:
+
+- A finding both seats raise is agreed: it gets fixed.
+- A finding only one seat raises is split: the fixer verifies it against the code
+  and judges it. Claude-only findings get extra scrutiny; Codex-only ones are the
+  cross-vendor catches.
+- Joe is never asked. The fixer ends with a triage table (fixed or skipped, with
+  a reason for every skip).
+
+Reports land in `_pm/runway-review-codex.md` and `_pm/runway-review-claude.md`;
+the merged findings and triage table go to `_pm/runway-review.md` and into the
+PR body (`_pm/runway-pr.md`).
+
+Ringer is optional. Without it, or if neither seat writes a report, Runway logs
+the fallback and runs the single Claude review (`"review": "single"`, the engine
+default for a `runway.json` that doesn't set it). Cloud sessions can't run the
+panel: Codex is blocked there and Ringer is only on the Mac. A cloud thread that
+wants an ad hoc panel review starts a Remote Control session on the Mac and runs
+`cross-review-gate` there. Factory doesn't ship a `ringer` skill; Joe's library
+already has one.
+
+## Pause and resume
+
+A pause is machine-wide (`~/.runway/pause`), holds with the app closed and
+leaves the LaunchAgent loaded. Only on Joe's ask:
+
+- `RUNWAY pause --for 1h` or `--until <ISO-8601>`: a running ticket finishes,
+  nothing new starts. With neither flag it holds until `resume`.
+- `RUNWAY pause --stop-now` also stops the running agent; its ticket goes back
+  to ready with a "stopped by pause" comment and keeps its worktree.
+- `RUNWAY resume` lifts it.
+
+Say it's paused only after `RUNWAY status --json` shows `paused` set or the
+heartbeat phase reads `paused`.
+
+## Quiet time
+
+`RUNWAY machine` prints this Mac's quiet-time rules and whether a tick would run
+now, and why not. Show it when Joe asks why nothing is starting (the heartbeat
+phase `waiting` carries the same reason). The rules live in
+`~/.runway/machine.json` (quiet hours, idle only, not on battery, max agents).
+Edit that file only when Joe asks for a specific change, show him the result
+with `RUNWAY machine`, and never change it to get a ticket moving. The rules
+stop new starts only; a running agent is never touched.
+
+## Harnesses
+
+A harness is the agent CLI that does a ticket's work. The default is Claude
+(`agent_cmd`, `prep_cmd` and the rest at the top of `runway.json`).
+
+- `runway.json` `"harness"` sets the project default: `claude` or a key of
+  `"harnesses"`.
+- `"harnesses"` maps a name to a profile (`agent_cmd`, `prep_cmd`, `review_cmd`,
+  `fix_cmd`, `pr_cmd`, `parser`). A profile overlays the top-level commands;
+  anything it leaves out falls back to them. Each key must be a profile object;
+  keys starting with `_` and non-object values are ignored, so keep notes in a
+  top-level `_harness_note`, not inside `"harnesses"`.
+- One ticket can override the default: a `harness:<name>` label in Linear, or a
+  `Harness: <name>` header in a markdown ticket. An unknown name is logged
+  (`park ... unknown harness`) and the ticket is parked as needs-human, not run.
+- `RUNWAY status --json` shows each ticket's effective `harness`.
+- `RUNWAY whoami` prints this Mac's name, the one stamped on claims
+  (`claimed_by`). A ticket claimed by another Mac is skipped here; the claim
+  clears when the ticket is parked, paused or retried.
 
 ## Decisions
 
@@ -85,3 +164,11 @@ and `RUNWAY no <ticket> "<note>"` do the same from the command line.
 a `/retro` prompt pointing at the runs that struggled. It also asks the retro
 to compare what each ticket asked for with what landed. Retros are started by
 a human, never scheduled.
+
+## Versions
+
+0.1.0 was the first cut. 0.4.0 adds the two-seat review panel, machine-wide
+pause, quiet-time rules and per-project and per-ticket harnesses. No notes were
+kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
+across repos, and the app's script paths after the engine move. 0.4.2 ignores `_` notes in `"harnesses"` and parks a
+ticket with an unknown harness label instead of crashing the tick.
