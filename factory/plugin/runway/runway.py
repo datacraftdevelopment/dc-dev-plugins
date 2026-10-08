@@ -1466,6 +1466,23 @@ def locked(root: Path):
     return f
 
 
+# ---------- the menu bar app ----------
+
+APP_PATH = Path("/Applications/Runway.app")
+
+
+def ensure_app(app: Path = APP_PATH, env=None) -> bool:
+    """Open the Runway menu bar app in the background when a run starts and it isn't running, so a tick started
+    by launchd or by Claude is never invisible. macOS only; a Mac without the app, RUNWAY_NO_APP, or a test run
+    skips it. True when it asked macOS to open the app."""
+    env = os.environ if env is None else env
+    if sys.platform != "darwin" or env.get("RUNWAY_NO_APP") or env.get("PYTEST_CURRENT_TEST") or not app.exists():
+        return False
+    if subprocess.run(["pgrep", "-xq", "Runway"], capture_output=True).returncode == 0:
+        return False
+    return subprocess.run(["open", "-g", str(app)], capture_output=True).returncode == 0
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=".", help="target repo (git checkout Runway works in)")
@@ -1522,6 +1539,7 @@ def main() -> None:
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
     elif a.cmd in ("tick", "loop", "finish"):
+        ensure_app()
         lock = locked(root)
         if lock is None:
             print("Another Runway run holds the lock; skipping.")
