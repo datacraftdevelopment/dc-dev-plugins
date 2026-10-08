@@ -229,6 +229,24 @@ def paused_now(root: Path) -> bool:
     return True
 
 
+def write_pause(end: dt.datetime | None, mode: str) -> None:
+    p = pause_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
+                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
+    os.replace(tmp, p)
+
+
+def pause_for_auth(cfg: dict, root: Path) -> None:
+    """The agent's sign-in is gone: pause the whole machine (what `runway pause` sets) and say so once.
+    A pause already in force is left as it is, and so is its notification."""
+    if active_pause():
+        return
+    write_pause(None, "finish")
+    notify(cfg, root, "Runway: Claude Code needs signing in")
+
+
 def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -> None:
     if until and span:
         sys.exit("Use --until or --for, not both.")
@@ -240,13 +258,7 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
             end = dt.datetime.now().astimezone() + parse_span(span)
     except ValueError as e:
         sys.exit(str(e))
-    p = pause_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None,
-                               "mode": "stop" if stop_now else "finish",
-                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
-    os.replace(tmp, p)
+    write_pause(end, "stop" if stop_now else "finish")
     print("paused until " + (end.isoformat(timespec="seconds") if end else "resumed") + (" (stop)" if stop_now else ""))
     if stop_now:
         pids = set()  # every registered agent on this Mac (run_agent registers the heartbeat's agent_pid too)
@@ -775,7 +787,8 @@ def resolve_harness(cfg: dict, t=None) -> dict:
 def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
     """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns and usage,
     each None when the harness doesn't report it. Unparseable output comes back as text unchanged."""
-    meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None}
+    meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None, "is_error": False,
+            "subtype": None}
     if parser == "claude":
         try:
             d = json.loads(stdout)
@@ -783,7 +796,8 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
             return stdout, meta
         if isinstance(d, dict) and "result" in d:
             meta.update(session_id=d.get("session_id"), cost_usd=d.get("total_cost_usd"),
-                        num_turns=d.get("num_turns"), usage=d.get("usage"))
+                        num_turns=d.get("num_turns"), usage=d.get("usage"),
+                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"))
             return d.get("result") or "", meta
     elif parser == "codex":
         # `codex exec --json` prints one event per line: thread.started, item.completed, turn.completed.
@@ -809,6 +823,30 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
     return stdout, meta
 
 
+AUTH_RE = re.compile(r"authentication_failed|authentication_error|oauth (session|token)[^.\n]*expired|"
+                     r"invalid api key|please run /login|not logged in", re.I)
+
+
+def agent_failure(r, text: str, meta: dict) -> str | None:
+    """Why this agent call did not really run, else None: a non-zero exit, an is_error result, or no
+    turns and no output at all. The reason carries the agent's own error text."""
+    said = (text or r.stdout or "").strip()
+    err = (r.stderr or "").strip()
+    detail = "\n".join(x for x in (said, err) if x)[-1500:] or "no output"
+    if r.returncode != 0:
+        return f"the agent exited {r.returncode}: {detail}"
+    if meta.get("is_error"):
+        return f"the agent reported an error: {detail}"
+    out = (meta.get("usage") or {}).get("output_tokens")
+    if meta.get("num_turns") == 0 and not out:
+        return "the agent ran no turns and wrote no output"
+    return None
+
+
+def fix_failure_note(reason: str) -> str:
+    return f"The fix pass failed ({reason.splitlines()[0][:200]}); the findings stand."
+
+
 def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: str, kind: str, attempt: int = 1,
               harness: dict | None = None):
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
@@ -832,6 +870,11 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
                   "exit": r.returncode, "secs": round(time.time() - t0),
                   "session_id": meta["session_id"], "cost_usd": meta["cost_usd"],
                   "num_turns": meta["num_turns"], "usage": meta["usage"]})
+    r.failure = agent_failure(r, text, meta)
+    r.auth = bool(r.failure and (meta.get("subtype") == "authentication_failed" or AUTH_RE.search(
+        "\n".join((text, r.stdout or "", r.stderr or "")))))
+    if r.auth:
+        pause_for_auth(cfg, root)
     return r, text
 
 
@@ -867,7 +910,7 @@ def prep(cfg: dict, root: Path, t) -> None:
     if stop_requested():
         log(root, f"stopped by pause  prep {t.id}")
         return
-    packet = text.strip() if r.returncode == 0 and text.strip() else f"Prep failed:\n\n```\n{r.stderr[-2000:]}\n```"
+    packet = text.strip() if not r.failure and text.strip() else f"Prep failed:\n\n```\n{r.failure or r.stderr[-2000:]}\n```"
     t.post_packet(packet)
     notify(cfg, root, f"Decision ready: {t.id} {t.title}")
 
@@ -946,16 +989,24 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
     extra, ok, detail, attempt = "", False, "", 0
     hp = resolve_harness(cfg, t)
-    stopped = False
+    stopped = signed_out = False
     for attempt in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
             stopped = True
             break
         beat(root, "agent", t.id, attempt)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
-        run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
+        r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
         if stop_requested():
             stopped = True
+            break
+        if r.auth:  # not the ticket's fault: back in the queue, loop paused machine-wide
+            signed_out = True
+            break
+        if r.failure:
+            detail = f"Agent failed on attempt {attempt}: {r.failure}"
+            log(root, f"fail  {t.id} attempt {attempt}: agent did not run")
+            beat_update(root, last_result="fail")
             break
         q = wt / "RUNWAY_QUESTION.md"
         if q.exists():
@@ -963,6 +1014,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             break
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-m", f"runway: {t.title} (auto-commit)"], wt)
+        made = sh(["git", "rev-list", "--count", f"{cfg['integration_branch']}..HEAD"], wt).stdout.strip()
+        if made in ("", "0"):  # a ticket always changes something; one that doesn't needs Joe to say so
+            detail = f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something."
+            log(root, f"fail  {t.id} attempt {attempt}: no commits")
+            break
         beat(root, "check", t.id, attempt)
         c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
         if c.returncode == 0:
@@ -978,6 +1034,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         t.mark_ready("stopped by pause")
         log(root, f"stopped by pause  {t.id}")
         record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "stopped", "detail": ""})
+        return
+    if signed_out:  # the ticket goes back to ready; the queue behind it is untouched
+        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
+        record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "signed-out", "detail": ""})
+        sh(["git", "worktree", "remove", "--force", str(wt)], root)
         return
     if ok:
         beat(root, "merge", t.id)
@@ -1182,11 +1243,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                             REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
                             "finish", "review", harness=hp)
         findings = text.strip()
-        if r.returncode != 0 or not findings:
-            findings, has_findings = f"Review failed (exit {r.returncode}).", False
+        if r.failure or not findings:
+            findings, has_findings = f"Review failed ({r.failure or 'no output'}).", False
         else:
             has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
-    if stop_requested():
+    if stop_requested() or (not panel and r.auth):
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
 
@@ -1198,12 +1259,17 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         fix_prompt = PANEL_FIX_PROMPT if panel else FIX_PROMPT
         fr, fix_text = run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt,
                                  fix_prompt.format(findings=findings), "finish", "fix", harness=hp)
+        if fr.failure:
+            sh(["git", "reset", "--hard", "-q", before], wt)
+            sh(["git", "clean", "-fdq"], wt)
         if panel:
             triage = fix_text.strip() or f"(The fixer returned no triage table, exit {fr.returncode}.)"
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-qm", "runway: review fixes (auto-commit)"], wt)
         after = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
-        if after == before:
+        if fr.failure:
+            fix_note = fix_failure_note(fr.failure)
+        elif after == before:
             fix_note = "The fix pass made no changes; the findings stand."
         elif sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"]).returncode == 0:
             fix_note = f"The fix pass committed {after[:8]} and the check still passes."
