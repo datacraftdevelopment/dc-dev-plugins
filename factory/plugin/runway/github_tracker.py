@@ -1,4 +1,4 @@
-"""GitHub Issues adapter for Runway (read side only; nothing here writes to GitHub yet).
+"""GitHub Issues adapter for Runway: reads the queue, and claims, finishes, parks and releases issues.
 
 Runway's queue is the issues in one repo that carry Matt Pocock's triage labels, the same ones the
 Linear adapter reads:
@@ -11,6 +11,15 @@ Linear adapter reads:
 
 Config: `"tracker": "github"`, and the repo from `"github": {"repo": "owner/name"}`, else from the
 clone's `origin` remote. Optional `"github": {"gh": "<gh command>"}` (default `gh`).
+
+Writes (through `gh issue edit / comment / close`; every comment starts with the 🛫 runway marker):
+
+  claim    assign the gh user (`@me`), comment `Claimed-by: <machine> · Started on <branch>`
+  resolve  close as completed, the note as the closing comment
+  park     add `needs-human`, remove the assignee, comment why. Removing the label makes it ready again
+  release  (pause --stop-now, signed out) remove the assignee and comment; the claim clears
+
+The packet, approve and decline writes (ready-for-human issues) are not built yet.
 
 Status: closed (completed or not planned) is resolved; open with `needs-human` is needs-human; open with
 an assignee is claimed; anything else is ready.
@@ -59,7 +68,7 @@ AUTH_RE = re.compile(r"gh auth login|GH_TOKEN|GITHUB_TOKEN|not logged in|authent
 ISSUE_FIELDS = """
   number title body url state stateReason
   labels(first: 30) { nodes { name } }
-  assignees(first: 1) { totalCount }
+  assignees(first: 10) { totalCount nodes { login } }
   comments(last: 50) { nodes { body createdAt authorAssociation } }
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
 """
@@ -92,6 +101,17 @@ class GitHub:
     def __init__(self, cfg: dict):
         self.cmd = shlex.split(cfg["gh"])
 
+    def run(self, args: list[str]) -> str:
+        try:
+            r = subprocess.run(self.cmd + args, capture_output=True, text=True)
+        except FileNotFoundError:
+            sys.exit(AUTH_HELP)
+        if r.returncode != 0:
+            if AUTH_RE.search(r.stderr + r.stdout):
+                sys.exit(AUTH_HELP)
+            raise RuntimeError(f"gh failed: {(r.stderr or r.stdout).strip()[:500]}")
+        return r.stdout
+
     def graphql(self, query: str, **variables) -> dict:
         args = ["api", "graphql", "-f", f"query={query}"]
         for k, v in variables.items():
@@ -104,18 +124,11 @@ class GitHub:
                 args += ["-F", f"{k}={v}"]
             else:
                 args += ["-f", f"{k}={v}"]
+        stdout = self.run(args)
         try:
-            r = subprocess.run(self.cmd + args, capture_output=True, text=True)
-        except FileNotFoundError:
-            sys.exit(AUTH_HELP)
-        if r.returncode != 0:
-            if AUTH_RE.search(r.stderr + r.stdout):
-                sys.exit(AUTH_HELP)
-            raise RuntimeError(f"gh failed: {(r.stderr or r.stdout).strip()[:500]}")
-        try:
-            out = json.loads(r.stdout)
+            out = json.loads(stdout)
         except ValueError:
-            raise RuntimeError(f"gh returned something that isn't JSON: {r.stdout[:200]}") from None
+            raise RuntimeError(f"gh returned something that isn't JSON: {stdout[:200]}") from None
         if out.get("errors"):
             raise RuntimeError(f"GitHub API error: {out['errors']}")
         return out["data"]
@@ -233,12 +246,39 @@ class GitHubTicket:
                 out.append(cm["body"].strip())
         return out
 
-    # -- write side: not built yet --
+    # -- write side --
 
-    def _readonly(self, *_a, **_k):
-        raise NotImplementedError("The GitHub tracker is read-only so far; it can't write to GitHub yet.")
+    def _issue(self, verb: str, *args: str) -> None:
+        self.tr.api.run(["issue", verb, self.num[1:], "--repo", self.tr.repo, *args])
 
-    post_packet = mark_claimed = mark_resolved = mark_needs_human = mark_ready = approve = decline = _readonly
+    def _comment(self, body: str) -> None:
+        self._issue("comment", "--body", f"{MARK} · {body.strip()}")
+
+    def _unassign(self) -> list[str]:
+        """Args that drop whoever holds the issue (the gh user when the node doesn't say)."""
+        who = [a["login"] for a in self.node["assignees"].get("nodes", [])] or ["@me"]
+        return ["--remove-assignee", ",".join(who)]
+
+    def mark_claimed(self, branch: str, machine: str) -> None:
+        self._issue("edit", "--add-assignee", "@me")
+        self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+
+    def mark_resolved(self, note: str) -> None:
+        self._issue("close", "--reason", "completed", "--comment", f"{MARK} · {note.strip()}")
+
+    def mark_needs_human(self, why: str, detail: str) -> None:
+        label = self.tr.c["needs_human_label"]
+        self._issue("edit", "--add-label", label, *self._unassign())
+        self._comment(f"Parked: {why}. Remove `{label}` to retry.\n\n{detail}")
+
+    def mark_ready(self, note: str) -> None:
+        self._issue("edit", *self._unassign())
+        self._comment(note)
+
+    def _unbuilt(self, *_a, **_k):
+        raise NotImplementedError("The GitHub tracker can't write decision packets or answers yet.")
+
+    post_packet = approve = decline = _unbuilt
 
 
 class GitHubTracker:
