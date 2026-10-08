@@ -7,6 +7,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+# Isolate every suite from this Mac's real ~/.runway (machine-wide pause, quiet time, agents).
+RUNWAY_HOME="$(mktemp -d)"; export RUNWAY_HOME
+trap 'rm -rf "$RUNWAY_HOME"' EXIT
+
 echo "== pytest tests"
 python3 -m pytest tests -q
 

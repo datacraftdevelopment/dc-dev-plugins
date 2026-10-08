@@ -78,6 +78,17 @@ final class ProjectDiscoveryTests: XCTestCase {
         XCTAssertEqual(c.projectName, "Runway for Mac")
     }
 
+    func testRunwayConfigGitHubNameIsTheRepo() {
+        let c = RunwayConfig.parse(Data(#"{"tracker":"github","github":{"repo":"acme/widgets"}}"#.utf8))
+        XCTAssertEqual(c.tracker, "github")
+        XCTAssertEqual(c.projectName, "acme/widgets")
+    }
+
+    func testRunwayConfigGitHubWithoutRepoHasNoName() {
+        XCTAssertNil(RunwayConfig.parse(Data(#"{"tracker":"github"}"#.utf8)).projectName)
+        XCTAssertNil(RunwayConfig.parse(Data(#"{"tracker":"github","github":{"repo":""}}"#.utf8)).projectName)
+    }
+
     func testRunwayConfigDefaults() {
         let c = RunwayConfig.parse(Data("{}".utf8))
         XCTAssertEqual(c.tracker, "markdown")

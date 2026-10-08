@@ -35,7 +35,7 @@ doing right now. Written atomically (temp file + rename) at every phase change:
 `runway status --json` prints the queue as one JSON object, the contract the Mac app reads.
 Version 1 (additive changes keep the version; renames or removals bump it):
 
-  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear", "machine": "Mini-One",
+  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear|github", "machine": "Mini-One",
    "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
@@ -100,10 +100,22 @@ keeps the results in `_pm/runway-signin.json` (shown by `runway machine` and `st
 tick checks again. A status command can report "logged in" while the token refresh is already dead, so the
 rule behind it stands: the first agent call that fails on auth pauses the loop (pause_for_auth).
 
+A tracker that doesn't answer (timeout, connection reset, 5xx; Linear or GitHub, every `gh` call has a
+`timeout_s`, default 60) is retried twice with a 1s then 3s backoff (transient.py; RUNWAY_BACKOFF_S="0,0"
+turns the wait off). Still failing, the tick ends: one `waiting: tracker not answering: <call>` log line,
+heartbeat `waiting` with that reason, one notification until the tracker answers again (state in
+`_pm/runway-tracker.json`), exit 0, the ticket and its worktree left as they are. Auth errors are not
+retried. A comment or close that timed out is looked up before it is repeated, so it never posts twice.
+At the start of a tick, a ticket claimed by this Mac that no live Runway process holds (the heartbeat's
+pid is dead, or it names another ticket) is a crash's orphan: it goes back to ready with a "recovered after
+a crash" comment and runs again. A claim held by a live process, or by another Mac, is never touched.
+
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
                       one extra header line: `Gate: human` or `Gate: auto` (default).
   linear              Linear issues, through linear_tracker.py. See its docstring.
+  github              A repo's GitHub Issues, through github_tracker.py (claims, closes, parks and releases ready-for-agent issues; repo from
+                      "github": {"repo": "owner/name"} or the clone's origin). See its docstring.
 
 The base branch is never touched; Joe merges the integration branch himself.
 
@@ -125,11 +137,14 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import transient  # noqa: E402
+
 HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by|Harness):\s*(.*)$", re.M)
 DONE = {"resolved", "done", "closed"}
 RUNNABLE_GATES = ("auto", "approved")
 DEFAULT_CONFIG = {
-    # "markdown" or "linear". Linear settings live under the "linear" key.
+    # "markdown", "linear" or "github". Linear settings live under the "linear" key.
     "tracker": "markdown",
     # Prompt goes to the agent on stdin. Headless Claude Code by default. With
     # --output-format json, Runway records the session id and token usage of each call.
@@ -725,7 +740,11 @@ def make_tracker(cfg: dict, root: Path):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from linear_tracker import LinearTracker
         return LinearTracker(root, cfg)
-    sys.exit(f"Unknown tracker {kind!r}; use 'markdown' or 'linear'.")
+    if kind == "github":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from github_tracker import GitHubTracker
+        return GitHubTracker(root, cfg)
+    sys.exit(f"Unknown tracker {kind!r}; use 'markdown', 'linear' or 'github'.")
 
 
 # ---------- frontier ----------
@@ -1571,14 +1590,118 @@ def park_bad_harness(cfg: dict, root: Path, t) -> bool:
     return True
 
 
+_DOWN: set[str] = set()  # repos whose last tick ended because the tracker wasn't answering
+
+
+def tracker_down_path(root: Path) -> Path:
+    return root / "_pm" / "runway-tracker.json"
+
+
+def tracker_is_down(root: Path) -> bool:
+    return str(root) in _DOWN
+
+
+def tracker_waiting(cfg: dict, root: Path, e: transient.TrackerDown) -> None:
+    """End the tick cleanly: one log line, heartbeat `waiting` with the reason, one notification until the
+    tracker answers again. The ticket and its worktree stay as they are; the next tick tries again."""
+    reason = f"tracker not answering: {e}"
+    log(root, f"waiting: {reason}")
+    beat(root, "waiting", reason=reason)
+    _DOWN.add(str(root))
+    p = tracker_down_path(root)
+    if not p.exists():
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps({"since": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+                                     "call": e.what}) + "\n")
+        except OSError:
+            pass
+        notify(cfg, root, f"Runway: tracker is not answering ({e.what})")
+
+
+def tracker_answered(root: Path) -> None:
+    tracker_down_path(root).unlink(missing_ok=True)
+
+
+def read_heartbeat(root: Path) -> dict:
+    try:
+        data = json.loads((root / "_pm" / "runway-state.json").read_text())
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def process_alive(pid) -> bool:
+    """A live Runway process by this pid: not this process, and not an unrelated one that reused the pid."""
+    if not isinstance(pid, int) or pid <= 0 or pid == os.getpid():
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    except OSError:
+        return False
+    try:
+        cmd = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return True  # can't look: assume it is Runway rather than release a ticket it holds
+    return "runway" in cmd.lower()
+
+
+def agent_registered_alive(pid) -> bool:
+    """Is pid a registered agent still running (same start time as when it registered)?"""
+    try:
+        lines = (agents_dir() / str(int(pid))).read_text().splitlines()
+        actual = process_started(int(pid))
+    except (OSError, ValueError, TypeError):
+        return False
+    return actual is not None and (len(lines) < 2 or not lines[1] or lines[1] == actual)
+
+
+def release_orphans(root: Path, tickets: list, beat_before: dict) -> bool:
+    """A ticket claimed by this Mac that no live Runway process holds is a crash's leftover: back to ready,
+    with a comment, so it runs again. beat_before: the heartbeat as the previous process left it."""
+    me = machine_name()
+    alive = process_alive(beat_before.get("pid"))
+    agent = beat_before.get("agent_pid")
+    if not alive and agent and agent_registered_alive(agent):
+        return False  # the loop died but its agent is still working: leave the claim and the worktree alone
+    released = False
+    for t in tickets:
+        if t.status != "claimed" or t.claimed_by != me:
+            continue
+        if alive and beat_before.get("ticket") == t.id:
+            continue  # a live process is running it
+        t.mark_ready("Released: recovered after a crash. This Mac had claimed it but no Runway process was "
+                     "still running it, so it goes back in the queue and runs again.")
+        log(root, f"recovered {t.id}: claimed by this Mac, no live Runway process holds it")
+        released = True
+    return released
+
+
 def tick(cfg: dict, root: Path, tracker) -> bool:
-    """One pass. Returns True if it did anything."""
+    """One pass. Returns True if it did anything. A tracker that won't answer ends the pass, not the process."""
+    _DOWN.discard(str(root))
+    try:
+        return _tick(cfg, root, tracker)
+    except transient.TrackerDown as e:
+        tracker_waiting(cfg, root, e)
+        return False
+
+
+def _tick(cfg: dict, root: Path, tracker) -> bool:
     did = False
     if paused_now(root) or machine_waiting(root):
         return False
+    before = read_heartbeat(root)  # the last process's, before this tick's first beat overwrites it
     beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
     tickets = tracker.load()
+    tracker_answered(root)
+    if release_orphans(root, tickets, before):
+        tickets = tracker.load()
     if signin_waiting_for_work(cfg, root, tickets):
         return False
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
@@ -1677,7 +1800,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
 
 def find(tracker, num: str):
     key = num.zfill(2) if num.isdigit() else num
-    hits = [t for t in tracker.load() if t.num == key or t.id == key or t.id.endswith("/" + key)]
+    hits = [t for t in tracker.load() if t.num in (key, "#" + num) or t.id == key or t.id.endswith("/" + key)]
     if len(hits) != 1:
         sys.exit(f"Expected one ticket for {num!r}, found {[t.id for t in hits]}. Use effort/NN.")
     return hits[0]
@@ -1739,7 +1862,7 @@ def main() -> None:
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
-    sub.add_parser("setup", help="Linear only: check the key, team and project, and create Runway's labels")
+    sub.add_parser("setup", help="Linear or GitHub: check the sign-in and project/repo, and create Runway's labels")
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
@@ -1771,7 +1894,7 @@ def main() -> None:
             cmd_status(tracker)
     elif a.cmd == "setup":
         if not hasattr(tracker, "setup"):
-            sys.exit("setup is only needed for the linear tracker.")
+            sys.exit("setup is only needed for the linear and github trackers.")
         tracker.setup()
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
@@ -1789,6 +1912,8 @@ def main() -> None:
             else:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
+                        if tracker_is_down(root):
+                            return  # tracker not answering: heartbeat stays `waiting`, no finish step, exit 0
                         if active_pause() or machine_block():
                             beat(root, "idle")  # paused or waiting: no finish step, and no stale phase under a dead pid
                             return
@@ -1799,10 +1924,17 @@ def main() -> None:
         except KeyboardInterrupt:
             beat(root, "stopped")
             raise
-        beat(root, "idle")
+        except transient.TrackerDown as e:  # finish or the status print lost the tracker
+            tracker_waiting(cfg, root, e)
+            return
+        if not tracker_is_down(root):
+            beat(root, "idle")
     elif a.cmd in ("go", "no"):
         cmd_answer(root, tracker, a.ticket, a.cmd == "go", a.note)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except transient.TrackerDown as e:  # status, setup, go, no: say so in a line instead of a traceback
+        sys.exit(f"Tracker not answering: {e}")

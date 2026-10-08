@@ -8,7 +8,7 @@ import Foundation
 public struct SetupCheck: Equatable, Sendable, Identifiable {
     public enum Status: Equatable, Sendable { case ok, missing }
     /// What the sheet can offer to do about a check.
-    public enum Fix: Equatable, Sendable { case cloneEngine, signIn, saveKey }
+    public enum Fix: Equatable, Sendable { case cloneEngine, signIn, saveKey, ghLogin }
 
     public let id: String
     public let title: String
@@ -112,12 +112,33 @@ public enum SetupChecks {
                          detail: "No keychain item \(keychainService)", required: true, fix: .saveKey)
     }
 
+    /// GitHub needs `gh` installed and signed in; `gh auth status` exits non-zero when it isn't.
+    public static func githubAuth(run: (Command) async -> CommandResult) async -> SetupCheck {
+        let result = await run(probe("gh auth status"))
+        if result.succeeded {
+            return SetupCheck(id: "gh-auth", title: "GitHub sign-in (gh)", status: .ok, detail: "Signed in", required: true)
+        }
+        let text = (result.stdout + " " + result.stderr).lowercased()
+        if result.status == 127 || text.contains("command not found") {
+            return SetupCheck(id: "gh-auth", title: "GitHub sign-in (gh)", status: .missing,
+                              detail: "gh is not installed (brew install gh)", required: true)
+        }
+        return SetupCheck(id: "gh-auth", title: "GitHub sign-in (gh)", status: .missing,
+                          detail: "Not signed in to GitHub", required: true, fix: .ghLogin)
+    }
+
+    /// Opens Terminal running `gh auth login`, which walks through the sign-in.
+    public static let ghLoginCommand = Command(executable: "/usr/bin/osascript", arguments: [
+        "-e", "tell application \"Terminal\" to activate",
+        "-e", "tell application \"Terminal\" to do script \"gh auth login\""])
+
     public static func all(tracker: SetupTracker, checkout: String?, fileExists: (String) -> Bool,
                            run: (Command) async -> CommandResult) async -> [SetupCheck] {
         var checks = [await python(run: run), await git(run: run), await claude(run: run),
                       await codex(run: run), await cursorAgent(run: run),
                       engine(checkout: checkout, fileExists: fileExists)]
         if tracker == .linear { checks.append(await linearKey(run: run)) }
+        if tracker == .github { checks.append(await githubAuth(run: run)) }
         return checks
     }
 
@@ -156,7 +177,7 @@ public enum LinearKey {
 
 // MARK: the plan
 
-public enum SetupTracker: String, CaseIterable, Equatable, Sendable { case linear, git }
+public enum SetupTracker: String, CaseIterable, Equatable, Sendable { case linear, github, git }
 
 public struct SetupConfig: Equatable, Sendable {
     public var repo: String
@@ -165,14 +186,18 @@ public struct SetupConfig: Equatable, Sendable {
     public var project: String
     public var harness: String
     public var minutes: Int
+    /// `owner/name` for the GitHub tracker; empty lets setup.sh read it from the clone's origin.
+    public var githubRepo: String
 
-    public init(repo: String, tracker: SetupTracker, team: String, project: String, harness: String, minutes: Int) {
+    public init(repo: String, tracker: SetupTracker, team: String, project: String, harness: String, minutes: Int,
+                githubRepo: String = "") {
         self.repo = repo
         self.tracker = tracker
         self.team = team
         self.project = project
         self.harness = harness
         self.minutes = minutes
+        self.githubRepo = githubRepo
     }
 }
 
@@ -221,6 +246,11 @@ public enum SetupPlan {
             if config.team.trimmingCharacters(in: .whitespaces).isEmpty { found.append("Enter the Linear team key.") }
             if config.project.trimmingCharacters(in: .whitespaces).isEmpty { found.append("Enter the Linear project name.") }
         }
+        let githubRepo = config.githubRepo.trimmingCharacters(in: .whitespaces)
+        if config.tracker == .github, !githubRepo.isEmpty,
+           githubRepo.range(of: #"^[^/\s]+/[^/\s]+$"#, options: .regularExpression) == nil {
+            found.append("The GitHub repo must look like owner/name.")
+        }
         if config.minutes < 1 { found.append("The interval must be at least 1 minute.") }
         return found
     }
@@ -229,13 +259,22 @@ public enum SetupPlan {
     public static func steps(_ config: SetupConfig, tools: RunwayTools) -> [SetupStep] {
         let python = { (args: [String]) in Command(executable: "/usr/bin/env", arguments: ["python3", tools.runwayScript, "--root", config.repo] + args) }
         var steps: [SetupStep] = []
-        if config.tracker == .linear {
-            steps.append(SetupStep(id: "setup-repo", title: "Point the repo at Linear", action: .run(
-                Command(executable: "/bin/bash", arguments: [tools.setupScript, config.repo, config.team, config.project]))))
+        if config.tracker == .linear || config.tracker == .github {
+            if config.tracker == .linear {
+                steps.append(SetupStep(id: "setup-repo", title: "Point the repo at Linear", action: .run(
+                    Command(executable: "/bin/bash", arguments: [tools.setupScript, config.repo, config.team, config.project]))))
+            } else {
+                let githubRepo = config.githubRepo.trimmingCharacters(in: .whitespaces)
+                steps.append(SetupStep(id: "setup-repo", title: "Point the repo at GitHub", action: .run(
+                    Command(executable: "/bin/bash", arguments: [tools.setupScript, config.repo, "--github"]
+                            + (githubRepo.isEmpty ? [] : [githubRepo])))))
+            }
             if config.harness != "claude" {
                 steps.append(SetupStep(id: "harness", title: "Set the harness", action: .setHarness(repo: config.repo, name: config.harness)))
             }
-            steps.append(SetupStep(id: "runway-setup", title: "Check the key, team and project", action: .run(python(["setup"]))))
+            steps.append(SetupStep(id: "runway-setup",
+                                   title: config.tracker == .github ? "Check gh and create the labels" : "Check the key, team and project",
+                                   action: .run(python(["setup"]))))
             steps.append(SetupStep(id: "claims", title: "Look for tickets claimed by another Mac", action: .claimCheck(python(["status", "--json"]))))
         } else if config.harness != "claude" {
             steps.append(SetupStep(id: "harness", title: "Set the harness", action: .setHarness(repo: config.repo, name: config.harness)))
