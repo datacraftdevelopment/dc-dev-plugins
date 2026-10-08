@@ -90,6 +90,34 @@ final class SetupTests: XCTestCase {
         XCTAssertEqual(missing.fix, .saveKey)
     }
 
+    func testGitHubAuthCheck() async {
+        var seen: Command?
+        let ok = await SetupChecks.githubAuth(run: { seen = $0; return CommandResult(status: 0, stdout: "Logged in", stderr: "") })
+        XCTAssertEqual(ok.id, "gh-auth")
+        XCTAssertEqual(ok.status, .ok)
+        XCTAssertTrue(ok.required)
+        XCTAssertEqual(seen, SetupChecks.probe("gh auth status"))
+        let out = await SetupChecks.githubAuth(run: stub(1, "", "You are not logged into any GitHub hosts"))
+        XCTAssertEqual(out.status, .missing)
+        XCTAssertEqual(out.fix, .ghLogin)
+        let gone = await SetupChecks.githubAuth(run: stub(127, "", "command not found: gh"))
+        XCTAssertEqual(gone.status, .missing)
+        XCTAssertNil(gone.fix)
+        XCTAssertTrue(gone.detail.contains("gh"))
+    }
+
+    func testAllChecksForGitHubUseGhNotTheLinearKey() async {
+        let checks = await SetupChecks.all(tracker: .github, checkout: "/co", fileExists: { _ in true }, run: stub(0, "Python 3.12"))
+        XCTAssertTrue(checks.contains { $0.id == "gh-auth" })
+        XCTAssertFalse(checks.contains { $0.id == "linear-key" })
+        let linear = await SetupChecks.all(tracker: .linear, checkout: "/co", fileExists: { _ in true }, run: stub(0, "Python 3.12"))
+        XCTAssertFalse(linear.contains { $0.id == "gh-auth" })
+    }
+
+    func testGhLoginOpensTerminal() {
+        XCTAssertTrue(SetupChecks.ghLoginCommand.arguments.contains { $0.contains("gh auth login") })
+    }
+
     func testAllChecksSkipKeyForGit() async {
         let linear = await SetupChecks.all(tracker: .linear, checkout: "/co", fileExists: { _ in true }, run: stub(0, "Python 3.12"))
         XCTAssertTrue(linear.contains { $0.id == "linear-key" })
@@ -158,6 +186,28 @@ final class SetupTests: XCTestCase {
             "python3", "/co/factory/plugin/runway/runway.py", "--root", "/r/demo", "status", "--json"])))
         XCTAssertEqual(steps[3].action, .run(Command(executable: "/bin/bash", arguments: [
             "/co/factory/plugin/runway/schedule.sh", "install", "/r/demo", "15"])))
+    }
+
+    func testGitHubPlanUsesTheSetupScriptsGitHubMode() {
+        let steps = SetupPlan.steps(config(.github), tools: tools)
+        XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
+        XCTAssertEqual(steps[0].title, "Point the repo at GitHub")
+        XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
+            "/co/factory/plugin/runway/setup.sh", "/r/demo", "--github"])))
+    }
+
+    func testGitHubPlanPassesTheRepoWhenGiven() {
+        let cfg = SetupConfig(repo: "/r/demo", tracker: .github, team: "", project: "", harness: "claude", minutes: 15,
+                              githubRepo: " acme/widgets ")
+        XCTAssertEqual(SetupPlan.steps(cfg, tools: tools)[0].action, .run(Command(executable: "/bin/bash", arguments: [
+            "/co/factory/plugin/runway/setup.sh", "/r/demo", "--github", "acme/widgets"])))
+    }
+
+    func testGitHubValidation() {
+        let ok = SetupConfig(repo: "/r", tracker: .github, team: "", project: "", harness: "claude", minutes: 10)
+        XCTAssertEqual(SetupPlan.problems(ok), [])
+        let bad = SetupConfig(repo: "/r", tracker: .github, team: "", project: "", harness: "claude", minutes: 10, githubRepo: "widgets")
+        XCTAssertEqual(SetupPlan.problems(bad), ["The GitHub repo must look like owner/name."])
     }
 
     func testGitPlanOnlyInstalls() {

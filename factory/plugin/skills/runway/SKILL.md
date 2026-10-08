@@ -16,20 +16,30 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
 
 ## Start a factory project
 
-1. **Linear project.** Create it in Joe's team (or confirm the one he named).
+1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he
+   named). GitHub: confirm the repo (`owner/name`) and that Joe's `gh` is signed in.
 2. **Point the repo at it.**
-   `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> <TEAM-KEY> "<project name>"`
-   writes `docs/agents/issue-tracker.md` (the labels and gating rule below),
+   Linear: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> <TEAM-KEY> "<project name>"`.
+   GitHub: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> --github [owner/name]`
+   (the repo defaults to the clone's github.com origin).
+   Either writes `docs/agents/issue-tracker.md` (the labels and gating rule below),
    a `runway.json` and an "Agent skills" section in `CLAUDE.md`, then commits.
-   Edit `runway.json` before the first run: `check_cmd` must be the repo's real
-   test command, and `agent_cmd`'s `--allowedTools` must allow it.
-3. **Labels.** `RUNWAY setup` checks the Linear key (Mac keychain service
-   `runway-linear`), the team and the project, and creates Runway's labels.
+   The GitHub doc keeps Matt's GitHub conventions as they are and adds Runway's
+   labels and gating rule. Edit `runway.json` before the first run: `check_cmd`
+   must be the repo's real test command, and `agent_cmd`'s `--allowedTools`
+   must allow it.
+3. **Labels.** `RUNWAY setup` for Linear checks the key (Mac keychain service
+   `runway-linear`), the team and the project. For GitHub it checks `gh` auth,
+   the repo and that Issues is on. Both create Runway's four labels when they're
+   missing and never recolor existing ones. On GitHub it also warns when the
+   repo is public: issues and Runway's comments are public then, so no client
+   names, credentials or NDA material.
 4. **Worker environment.** Copy `${CLAUDE_PLUGIN_ROOT}/runway/worker-env.md`
    to `docs/agents/worker-env.md` and fill it in from the repo: what a fresh
    worktree lacks, the verify command, paths to leave alone. Every ticket run
    reads it first. Commit it.
-5. **Plan.** `/to-spec`, then `/to-tickets`, published to the Linear project.
+5. **Plan.** `/to-spec`, then `/to-tickets`, published to the Linear project
+   (or the GitHub repo).
    Label each ticket with the gating rule below and add blocks relations for
    the conflict screen.
 6. **Schedule.** `bash "${CLAUDE_PLUGIN_ROOT}/runway/schedule.sh" install <repo> [minutes]`
@@ -173,6 +183,12 @@ after Joe has said go on that specific ticket, with his choice.** A connector
 writes as Joe, so Runway can't tell the difference. `RUNWAY go <ticket> "<note>"`
 and `RUNWAY no <ticket> "<note>"` do the same from the command line.
 
+On GitHub only a trusted author's comment counts as Joe's: the repo's OWNER,
+MEMBER or COLLABORATOR. A `go` or `drop` from anyone else is ignored (and logged
+once in `_pm/runway.log`), and a stranger's comments never reach the agent's
+ticket text. `gh` writes as Joe's account, so the same rule holds: post a go only
+after Joe said go on that ticket.
+
 ## Retro
 
 `RUNWAY retro` prints usage per ticket and writes `_pm/runway-retro-prompt.md`,
@@ -186,4 +202,6 @@ a human, never scheduled.
 pause, quiet-time rules and per-project and per-ticket harnesses. No notes were
 kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
 across repos, and the app's script paths after the engine move. 0.4.2 ignores `_` notes in `"harnesses"` and parks a
-ticket with an unknown harness label instead of crashing the tick.
+ticket with an unknown harness label instead of crashing the tick. 0.5.0 sets a repo up for GitHub Issues:
+`setup.sh --github`, a GitHub tracker doc, and `RUNWAY setup` for GitHub (auth, repo,
+Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9.

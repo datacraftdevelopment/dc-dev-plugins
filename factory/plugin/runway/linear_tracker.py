@@ -28,8 +28,12 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import transient  # noqa: E402
 
 API_URL = "https://api.linear.app/graphql"
 MARK = "🛫 runway"  # every comment Runway writes starts with this, so Joe's are told apart
@@ -64,7 +68,9 @@ Q_ISSUES = """query($filter: IssueFilter, $after: String) {
 
 Q_ISSUE = """query($id: String!) { issue(id: $id) { %s } }""" % ISSUE_FIELDS
 
-Q_TEAM = """query($key: String!) {
+Q_COMMENTS = """query($id: String!) { issue(id: $id) { comments(last: 25) { nodes { body createdAt } } } }"""
+
+Q_TEAM ="""query($key: String!) {
   teams(first: 1, filter: { key: { eq: $key } }) {
     nodes {
       id key name
@@ -99,15 +105,26 @@ class Linear:
         self.cfg = cfg
         self.key = api_key(cfg)
 
-    def gql(self, query: str, variables: dict | None = None) -> dict:
+    def gql(self, query: str, variables: dict | None = None, landed=None) -> dict:
+        """One API call. A timeout, connection reset or 5xx is retried (transient.py), then raises
+        TrackerDown. landed: for a write that isn't safe to repeat, a check that it is already there."""
         body = json.dumps({"query": query, "variables": variables or {}}).encode()
         req = urllib.request.Request(self.cfg["api_url"], data=body, method="POST", headers={
             "Content-Type": "application/json", "Authorization": self.key})
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                out = json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            raise RuntimeError(f"Linear API {e.code}: {e.read().decode()[:500]}") from None
+
+        def once() -> dict:
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    return json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                if transient.is_transient(e):
+                    raise
+                raise RuntimeError(f"Linear API {e.code}: {e.read().decode()[:500]}") from None
+
+        m = re.search(r"\{\s*(\w+)", query)
+        out = transient.retry(once, f"Linear {m.group(1) if m else 'API call'}", landed)
+        if out is None:  # a write that landed while its reply was lost
+            return {}
         if out.get("errors"):
             raise RuntimeError(f"Linear API error: {out['errors']}")
         return out["data"]
@@ -217,7 +234,13 @@ class LinearTicket:
         self.tr.api.gql(M_UPDATE, {"id": self.node["id"], "input": inp})
 
     def _comment(self, body: str) -> None:
-        self.tr.api.gql(M_COMMENT, {"input": {"issueId": self.node["id"], "body": f"{MARK} · {body.strip()}"}})
+        full = f"{MARK} · {body.strip()}"
+        since = transient.since_mark()
+
+        def landed() -> bool:  # a comment that timed out may already be there: look before posting again
+            d = self.tr.api.gql(Q_COMMENTS, {"id": self.node["id"]})["issue"]["comments"]["nodes"]
+            return transient.posted_since(d, full, since)
+        self.tr.api.gql(M_COMMENT, {"input": {"issueId": self.node["id"], "body": full}}, landed=landed)
 
     def _labels(self, add=(), remove=()) -> None:
         add_ids = [self.tr.label_id(n) for n in add if n not in self.labels]
@@ -233,8 +256,10 @@ class LinearTicket:
         self._labels(add=[self.tr.c["needs_human_label"]])
 
     def mark_claimed(self, branch: str, machine: str) -> None:
-        self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
+        # Stamp first: a failure between the two writes then leaves the ticket ready (retried next tick), never
+        # claimed with no owner on it.
         self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+        self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
 
     def mark_resolved(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["done_state"]))

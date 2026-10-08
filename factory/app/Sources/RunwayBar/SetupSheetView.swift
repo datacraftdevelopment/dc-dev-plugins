@@ -8,6 +8,7 @@ final class SetupModel {
     let store: ProjectStore
     var repo = ""
     var tracker: SetupTracker = .linear
+    var githubRepo = ""
     var team = ""
     var project = ""
     var harness = "claude"
@@ -25,7 +26,8 @@ final class SetupModel {
     }
 
     var config: SetupConfig {
-        SetupConfig(repo: repo, tracker: tracker, team: team, project: project, harness: harness, minutes: minutes)
+        SetupConfig(repo: repo, tracker: tracker, team: team, project: project, harness: harness, minutes: minutes,
+                    githubRepo: githubRepo)
     }
 
     private var checkout: String? {
@@ -72,6 +74,11 @@ final class SetupModel {
     func openTerminalToSignIn() async {
         _ = await CommandRunner.run(SetupChecks.signInCommand)
         note = "Terminal is open. Sign in there, then come back."
+    }
+
+    func openTerminalToLoginGitHub() async {
+        _ = await CommandRunner.run(SetupChecks.ghLoginCommand)
+        note = "Terminal is open. Sign in to GitHub there, then come back."
     }
 
     func saveKey() async {
@@ -176,6 +183,7 @@ struct SetupSheet: View {
         switch check.fix {
         case .cloneEngine: Button("Clone…") { Task { await model.clone() } }
         case .signIn: Button("Open Terminal to sign in") { Task { await model.openTerminalToSignIn() } }
+        case .ghLogin: Button("Open Terminal to sign in") { Task { await model.openTerminalToLoginGitHub() } }
         case .saveKey, .none: EmptyView()
         }
     }
@@ -197,6 +205,7 @@ struct SetupSheet: View {
             }
             Picker("Tracker", selection: $model.tracker) {
                 Text("Linear").tag(SetupTracker.linear)
+                Text("GitHub").tag(SetupTracker.github)
                 Text("git").tag(SetupTracker.git)
             }
             .pickerStyle(.segmented)
@@ -205,6 +214,10 @@ struct SetupSheet: View {
                     TextField("Team key (e.g. DAT)", text: $model.team).textFieldStyle(.roundedBorder).frame(width: 160)
                     TextField("Linear project name", text: $model.project).textFieldStyle(.roundedBorder)
                 }
+            }
+            if model.tracker == .github {
+                TextField("GitHub repo, owner/name (blank: this clone's origin)", text: $model.githubRepo)
+                    .textFieldStyle(.roundedBorder)
             }
             HStack {
                 Picker("Harness", selection: $model.harness) {
