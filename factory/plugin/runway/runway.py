@@ -1683,7 +1683,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
 
 def find(tracker, num: str):
     key = num.zfill(2) if num.isdigit() else num
-    hits = [t for t in tracker.load() if t.num == key or t.id == key or t.id.endswith("/" + key)]
+    hits = [t for t in tracker.load() if t.num in (key, "#" + num) or t.id == key or t.id.endswith("/" + key)]
     if len(hits) != 1:
         sys.exit(f"Expected one ticket for {num!r}, found {[t.id for t in hits]}. Use effort/NN.")
     return hits[0]

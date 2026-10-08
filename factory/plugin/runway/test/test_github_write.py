@@ -56,7 +56,7 @@ if body:
     k = len(i["comments"]["nodes"]) + 1
     i["comments"]["nodes"].append({"body": body, "createdAt": "2026-10-09T10:%02d:00Z" % k, "authorAssociation": "OWNER"})
 if verb == "close":
-    i["state"], i["stateReason"] = "CLOSED", opt("--reason")[0].upper()
+    i["state"], i["stateReason"] = "CLOSED", opt("--reason")[0].upper().replace(" ", "_")
 json.dump(data, open(path, "w"))
 '''
 
