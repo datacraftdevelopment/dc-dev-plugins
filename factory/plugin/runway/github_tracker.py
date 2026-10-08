@@ -19,7 +19,15 @@ Writes (through `gh issue edit / comment / close`; every comment starts with the
   park     add `needs-human`, remove the assignee, comment why. Removing the label makes it ready again
   release  (pause --stop-now, signed out) remove the assignee and comment; the claim clears
 
-The packet, approve and decline writes (ready-for-human issues) are not built yet.
+Decisions (ready-for-human issues):
+
+  post_packet  comment the decision packet (🛫 marker) and add `needs-human`
+  approve      add `go` (if not there), remove `needs-human`, comment `Approved. <note>`
+  decline      `drop` closes as not planned; anything else is a comment, the issue stays parked
+  sync         for each parked issue: the `go` label, or Joe's latest comment since Runway last wrote
+               starting `go` (the rest of that comment is the note) approves; starting `drop` declines.
+               Only a trusted author's comment counts (OWNER, MEMBER, COLLABORATOR). A stranger's go or
+               drop is ignored and logged once in `_pm/runway.log`. Runway's own 🛫 comments are never Joe's.
 
 Status: closed (completed or not planned) is resolved; open with `needs-human` is needs-human; open with
 an assignee is claimed; anything else is ready.
@@ -43,6 +51,7 @@ else is one clear error naming both, not a traceback.
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 import shlex
@@ -53,6 +62,8 @@ from pathlib import Path
 MARK = "🛫 runway"  # every comment Runway writes starts with this, so Joe's are told apart
 TRUSTED = ("OWNER", "MEMBER", "COLLABORATOR")
 PAGE = 50
+ANSWER_RE = re.compile(r"(go|drop)\b", re.I)
+GO_RE = re.compile(r"go\b[\s:,.-]*", re.I)
 DEFAULTS = {
     "repo": "",
     "gh": "gh",
@@ -69,7 +80,7 @@ ISSUE_FIELDS = """
   number title body url state stateReason
   labels(first: 30) { nodes { name } }
   assignees(first: 10) { totalCount nodes { login } }
-  comments(last: 50) { nodes { body createdAt authorAssociation } }
+  comments(last: 50) { nodes { body createdAt authorAssociation author { login } } }
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
 """
 
@@ -156,6 +167,7 @@ class GitHubTicket:
         every = sorted(node["comments"]["nodes"], key=lambda c: c["createdAt"])
         self.comments = [c for c in every if c.get("authorAssociation") in TRUSTED]
         self.untrusted = len(every) - len(self.comments)
+        self.strangers = [c for c in every if c.get("authorAssociation") not in TRUSTED]
 
     # -- read side --
 
@@ -275,10 +287,34 @@ class GitHubTicket:
         self._issue("edit", *self._unassign())
         self._comment(note)
 
-    def _unbuilt(self, *_a, **_k):
-        raise NotImplementedError("The GitHub tracker can't write decision packets or answers yet.")
+    def post_packet(self, packet: str) -> None:
+        a = self.tr.c["approve_label"]
+        self._comment(
+            f"**Decision packet**\n\n_Reply with a comment starting `go` (add any choice or note after it) "
+            f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
+        self._issue("edit", "--add-label", self.tr.c["needs_human_label"])
 
-    post_packet = approve = decline = _unbuilt
+    def approve(self, note: str) -> None:
+        c = self.tr.c
+        args = []
+        if self.gate == "human":
+            args += ["--add-label", c["approve_label"]]
+        if c["needs_human_label"] in self.labels:
+            args += ["--remove-label", c["needs_human_label"]]
+        if args:
+            self._issue("edit", *args)
+        self._comment(f"Approved. {note}".strip())
+
+    def decline(self, note: str) -> None:
+        if note.lower().startswith("drop"):
+            self._issue("close", "--reason", "not planned", "--comment", f"{MARK} · Dropped. {note}".strip())
+        else:
+            self._comment(f"Joe said no: {note}")
+
+    def stranger_calls(self) -> list[dict]:
+        """Untrusted comments since Runway last wrote that try to say go or drop."""
+        mark = max((cm["createdAt"] for cm in self.comments if cm["body"].startswith(MARK)), default="")
+        return [c for c in self.strangers if c["createdAt"] > mark and ANSWER_RE.match(c["body"].strip())]
 
 
 class GitHubTracker:
@@ -338,5 +374,30 @@ class GitHubTracker:
         d = self.api.graphql(Q_ONE, owner=self.owner, name=self.name, number=int(t.num.rsplit('#', 1)[1]))
         return GitHubTicket(d["repository"]["issue"], self)
 
+    def _log_once(self, line: str) -> None:
+        p = self.root / "_pm" / "runway.log"
+        if p.exists() and line in p.read_text():
+            return
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a") as f:
+            f.write(f"{dt.datetime.now().strftime('%Y-%m-%d %H:%M')}  {line}\n")
+        print(line)
+
     def sync(self) -> None:
-        """Nothing to pick up yet: answering from GitHub arrives with the write side."""
+        """Turn Joe's answers on GitHub into ticket state before the tick decides anything."""
+        for t in self.load():
+            if t.status != "needs-human":
+                continue
+            for c in t.stranger_calls():
+                who = (c.get("author") or {}).get("login") or "unknown"
+                self._log_once(f"sync  {t.id} ignored '{c['body'].strip().split()[0]}' from {who} "
+                               f"({c.get('authorAssociation', 'NONE')}) at {c['createdAt']}: not owner, member or collaborator")
+            replies = t.joe_replies()
+            last = replies[-1] if replies else ""
+            said_go = bool(GO_RE.match(last))
+            if t.gate == "approved" or said_go:
+                t.approve(GO_RE.sub("", last, count=1) if said_go else "")
+                print(f"sync  {t.id} approved on GitHub")
+            elif re.match(r"drop\b", last, re.I):
+                t.decline("drop (from GitHub)")
+                print(f"sync  {t.id} dropped on GitHub")
