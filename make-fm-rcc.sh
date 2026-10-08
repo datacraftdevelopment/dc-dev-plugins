@@ -275,7 +275,7 @@ printf '.DS_Store\n/_pm/\n' > "$REPO/.gitignore"   # /_pm/ = local-only personal
 
 # --- 6. verification gate: zero brand/leak residue, valid manifests, no symlinks
 echo "== verify"
-RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|dc-dev-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSOS|_agentic-2026|/Users/|beta toolkit|filemaker-init|fm-proofkit' "$PLUGIN" || true)
+RESIDUE=$(grep -rIliE 'datacraft|data craft|dc-plugins|dc-dev-plugins|datacraftdev|DC_Code|atrcc\.com|api!234|JDAI|SPAI|LEADGEN|SBSO[S]|_agentic-2026|/Users/|beta toolkit|filemaker-init|fm-proofkit' "$PLUGIN" || true)
 [ -z "$RESIDUE" ] || { echo "BRAND/LEAK RESIDUE:"; echo "$RESIDUE"; exit 1; }
 TOKEN=$(grep -rIl 'fm-dc' "$PLUGIN" || true)
 [ -z "$TOKEN" ] || { echo "fm-dc TOKEN RESIDUE:"; echo "$TOKEN"; exit 1; }

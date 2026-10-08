@@ -56,6 +56,12 @@ check "multi-line command"                      block "echo hi
 git add .env"
 
 git add .env 2>/dev/null || git add -f .env
+check "pipeline that stages, even a safe file"   block "git log --oneline | head -1; git add README.md"
+check "add piped"                               block "git add README.md | cat"
+check "xargs feeds git add"                     block "printf README.md | xargs git add"
+check "shell-wrapped git in a pipeline"         block "git status | sh -c 'git add .env'"
+check "repository-changing git in a pipeline"   block "git stash | cat"
+check "backgrounded commit"                     block "git commit -m x &"
 check "commit with staged .env"                 block "git commit -m x"
 git reset -q .env
 
@@ -69,6 +75,15 @@ check "git without add/commit"                  allow "git status && git log --o
 check "git mv is index-only, allowed"           allow "git mv README.md docs-readme.md"
 check "read-only subcommand added in 0.22.3"    allow "git show-ref"
 check ".git in a non-git pipeline"              allow "grep -rn readme --exclude-dir=.git . | head"
+check "read-only git piped (0.2.1)"             allow "git status | head -5"
+check "read-only git -C piped"                  allow "git -C \"$tmp\" log --oneline | head -3"
+check "diff piped to tail"                      allow "git diff --stat | tail -1"
+check "ls-files piped twice"                    allow "git ls-files | sed -n 1p | wc -l"
+check "read-only git with -c, piped"            allow "git -c core.quotepath=off ls-files | wc -l"
+check "two read-only git in one pipeline"       allow "git log --oneline | head -1 && git status --short | cat"
+check "git inside a grep pattern, piped"        allow "grep -rn \"git log\" . | head"
+check "a bare git argument still means wrapped" block "printf x | grep git"
+check "read-only git backgrounded"              allow "git status &"
 
 cd /
 notrepo=$(mktemp -d) && cd "$notrepo"

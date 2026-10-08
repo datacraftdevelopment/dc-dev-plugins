@@ -2,7 +2,7 @@
 
 # Basecamp — Best Practices
 
-A living reference for how Basecamp fits into the dev workflow, used by Joe and by Claude (via the Basecamp CLI). Started **2026-06-03** on SB-SOS; written to be portable across repos. Update it as the workflow settles — the "Still evolving" section is where the open questions live.
+A living reference for how Basecamp fits into the dev workflow, used by Joe and by Claude (via the Basecamp CLI). Started **2026-06-03** on a client project; written to be portable across repos. Update it as the workflow settles — the "Still evolving" section is where the open questions live.
 
 > Status legend: ✅ settled · 🔄 still evolving
 
@@ -37,8 +37,8 @@ In-repo markdown stays the detailed, technical source of truth that drives dev w
 ## ✅ Conventions (revised 2026-09-02 — ADR-0002)
 
 - **Tools per project:** exactly three — the **New Requests** to-do set, the **Work** to-do set, and **Docs & Files**. Message Board, Card Table, Schedule, Chat stay off. Tools and client access are switched on in the browser, once, by Joe; the API cannot do it.
-- **The client's set** (ADR-0004; *Your side* on SB-SOS, was *New Requests*) has two lists. **New requests**: raw asks in their own words, **never edited**; when one is folded into work, comment *"Folded into [Work item]"* and check it off — it stays visible and traceable. **Questions for you**: one question per line, each linking the Work item waiting on it; the client answers in the comment and ticks it, Joe folds the answer into the Work item.
-- **Work** (*Joe's side* on SB-SOS) has three lists that are the status, in this order: `Shipped` (live, waiting for the client to check it off), `Active` (being built now), `Backlog` (agreed, waiting). A Work item waiting on an answer **stays in Backlog** with a **`Waiting on:`** line linking its open question(s) and moves to Active when the last one is ticked — never a separate "waiting" list (ADR-0004).
+- **The client's set** (ADR-0004; *Your side* on the first client project, was *New Requests*) has two lists. **New requests**: raw asks in their own words, **never edited**; when one is folded into work, comment *"Folded into [Work item]"* and check it off — it stays visible and traceable. **Questions for you**: one question per line, each linking the Work item waiting on it; the client answers in the comment and ticks it, Joe folds the answer into the Work item.
+- **Work** (*Joe's side* on the first client project) has three lists that are the status, in this order: `Shipped` (live, waiting for the client to check it off), `Active` (being built now), `Backlog` (agreed, waiting). A Work item waiting on an answer **stays in Backlog** with a **`Waiting on:`** line linking its open question(s) and moves to Active when the last one is ticked — never a separate "waiting" list (ADR-0004).
 - **Shipping is a move, not a check.** When work goes live: `todos position <id> --to 1 --list <shipped-id>` plus a one-line plain-English comment. The item stays **unchecked**. At the next meeting the client tries it and checks it off herself. Partly-shipped clusters stay in Active with a status comment until every ref is live.
 - **Meeting rhythm:** review Shipped together → go through what's new → after the call, write the agreed work into Active / Backlog. Don't type into Basecamp during the call.
 - **A Work item is a cluster** (ADR-0003): what ships together, outcome-first title, plain-English description, an optional **Status:** or **Waiting on:** line (links to the client-side question(s), ADR-0004), and an italic last line `_Ref: S1 · S5 · S8_` listing every repo task id it absorbs. When it came from a request, the description links back: `**From your request:** [their words](app_url)`.

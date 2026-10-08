@@ -36,7 +36,7 @@ finishes, leaves a compact handoff, starts one successor and retires. Parallelis
 is optional, with at most three active sessions across both machines; the first
 beta exercises a single chain, three sessions long, with no parallel spawning.
 
-The SB-SOS and YoJoe pilots shipped work but did not establish net throughput:
+The client and YoJoe pilots shipped work but did not establish net throughput:
 6–8 sessions, a memory crash, reopening sessions and recovery cost Joe attention.
 That pilot initially prioritized session succession. The final direction above
 supersedes that priority: lean subagent orchestration is the default, while

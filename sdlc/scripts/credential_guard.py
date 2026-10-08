@@ -257,10 +257,44 @@ def inspect_segment(segment, cwd):
     return cwd
 
 
+def git_kind(segment):
+    """None when the segment runs no Git, 'read' for a literal read-only Git command
+    (READ_ONLY_GIT, after -C/-c global options), 'other' for anything else that could
+    reach Git: a staging, committing or repository-changing subcommand, an unknown option,
+    or Git wrapped in another command (xargs, sh -c ...)."""
+    args = list(segment)
+    while args and (args[0] in ('command', 'builtin', 'env', 'sudo', 'nohup') or re.match(r'^\w+=', args[0])):
+        if args[0].startswith(('GIT_', 'CDPATH=')): return 'other'
+        args.pop(0)
+    if not args: return None
+    if Path(args[0]).name != 'git':
+        if args[0] in ('echo', 'printf'): return None
+        if any(Path(a).name == 'git' for a in args[1:]) or (
+                args[0] in ('sh', 'bash', 'zsh') and GIT_WORD.search(' '.join(args))):
+            return 'other'
+        return None
+    i = 1
+    while i < len(args):
+        value = args[i]; i += 1
+        if value in ('-C', '-c'):
+            i += 1
+        elif value.startswith('-C'):
+            continue
+        elif value.startswith('-'):
+            return 'other'
+        else:
+            return 'read' if value in READ_ONLY_GIT else 'other'
+    return 'other'
+
+
 def inspect(command, cwd):
     command = mask_heredocs(command)
     tokens, subs = shell_tokens(command)
     stack, segment = [], []
+    # A pipeline or a background job is allowed when every Git command in it only reads
+    # (status, log, diff, ls-files ...): nothing in it can stage or commit, so there is no
+    # candidate set to inspect. Anything else that reaches Git in one still blocks.
+    piped, kinds = False, []
     def finish():
         nonlocal cwd, segment
         for token in segment:
@@ -268,6 +302,7 @@ def inspect(command, cwd):
                 index = int(match[1])
                 if index >= len(subs): raise Unresolved('reserved parser marker in an argument')
                 inspect(subs[index], cwd)
+        kinds.append(git_kind(segment))
         cwd = inspect_segment(segment, cwd)
         segment = []
     for token in tokens:
@@ -278,8 +313,7 @@ def inspect(command, cwd):
             if not stack: raise Unresolved('unbalanced shell group')
             cwd = stack.pop()
         elif token in (';', '&&', '||', '|', '&'):
-            if token in ('|', '&') and GIT_WORD.search(command):
-                raise Unresolved('pipeline or background Git command; use separate literal commands')
+            if token in ('|', '&'): piped = True
             finish()
         elif token in ('<', '>'):
             # Redirection can supply pathspec input; literal supported commands are clearer.
@@ -287,6 +321,9 @@ def inspect(command, cwd):
         else: segment.append(token)
     finish()
     if stack: raise Unresolved('unbalanced shell group')
+    if piped and 'other' in kinds:
+        raise Unresolved('pipeline or background Git command that stages, commits or changes the repository; '
+                         'use separate literal commands (read-only Git may be piped)')
 
 
 def main():

@@ -19,9 +19,12 @@ directory changes, scoped subshells, explicit commit paths, forced adds and
 quoted or chained `-C` paths. Example and template files (`*.example`,
 `*.sample`) pass. Removing a tracked credential is allowed.
 
-It blocks rather than guesses: a git command it cannot inspect safely (piped,
-looped, or mixing git with other commands on one line) is refused with an
-explanation. Unrelated commands and folders that aren't repos pass.
+It blocks rather than guesses: a git command it cannot inspect safely (looped,
+wrapped in `xargs` or `sh -c`, or a pipeline or background job that stages,
+commits or changes the repository) is refused with an explanation. Read-only git
+(`status`, `log`, `diff`, `show`, `ls-files`, `branch` and the rest of its
+read-only list) may be piped or backgrounded (sdlc 0.2.1). Unrelated commands and
+folders that aren't repos pass.
 
 ## When it blocks you
 
