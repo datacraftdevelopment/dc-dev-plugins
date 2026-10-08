@@ -33,7 +33,7 @@ struct RunwayBarApp: App {
         Window("Runway panel", id: "runway-panel") {
             SidePanel(store: store)
         }
-        .defaultSize(width: 280, height: 520)
+        .defaultSize(width: 300, height: 760)
         .windowResizability(.contentSize)
     }
 
