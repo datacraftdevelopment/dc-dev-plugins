@@ -30,6 +30,11 @@ struct RunwayBarApp: App {
         Window("Runway", id: "runway") {
             RunwayWindow(store: store)
         }
+        Window("Runway panel", id: "runway-panel") {
+            SidePanel(store: store)
+        }
+        .defaultSize(width: 300, height: 760)
+        .windowResizability(.contentSize)
     }
 
     /// Amber when a project has ready tickets but its loop is off. Errors and decisions waiting keep their own icon.
@@ -62,6 +67,10 @@ struct RunwayMenu: View {
         Button("Open Runway window") {
             NSApplication.shared.activate(ignoringOtherApps: true)
             openWindow(id: "runway")
+        }
+        Button("Open side panel") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            openWindow(id: "runway-panel")
         }
         Divider()
         if let error = store.lastError {
@@ -106,6 +115,13 @@ struct RunwayMenu: View {
                 Button("For 1 hour") { Task { await store.pauseAll(.oneHour) } }
                 Button("Until tomorrow 08:00") { Task { await store.pauseAll(.untilTomorrow) } }
                 Button("Until I resume") { Task { await store.pauseAll(.untilResumed) } }
+            }
+        }
+        if !store.hiddenProjects.isEmpty {
+            Menu("Hidden projects") {
+                ForEach(store.hiddenProjects) { project in
+                    Button("Show \(project.name)") { store.unhide(project.label) }
+                }
             }
         }
         Divider()

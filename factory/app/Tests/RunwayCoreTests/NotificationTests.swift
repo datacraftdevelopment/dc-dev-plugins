@@ -40,6 +40,15 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(s?.tickets.last?.gate, "auto")
     }
 
+    func testParseKeepsHttpsTicketLinks() {
+        let json = """
+        {"groups":{},"tickets":[{"id":"DAT-1","title":"A","url":"https://linear.app/dc/issue/DAT-1/a"},
+                                {"id":"DAT-2","title":"B","url":null},{"id":"DAT-3","title":"C","url":"file:///etc"}]}
+        """
+        let s = StatusSnapshot.parse(Data(json.utf8))
+        XCTAssertEqual(s?.urls, ["DAT-1": URL(string: "https://linear.app/dc/issue/DAT-1/a")!])
+    }
+
     func testParseGarbageIsNil() {
         XCTAssertNil(StatusSnapshot.parse(Data("nope".utf8)))
     }

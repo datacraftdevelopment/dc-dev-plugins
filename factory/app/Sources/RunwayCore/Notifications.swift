@@ -81,11 +81,34 @@ public struct StatusSnapshot: Equatable, Sendable {
 
     /// Every ticket's title by id, so the Now tab can name what the loop is working on.
     public let titles: [String: String]
+    /// Each ticket's tracker link (a Linear issue URL) by id, when the tracker gives one.
+    public let urls: [String: URL]
+    /// What the loop takes after the running ticket, nearest first: ready, then needing prep, then blocked.
+    public let upNext: [UpNext]
 
-    public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:]) {
+    /// One queued ticket and why it is where it is.
+    public struct UpNext: Equatable, Sendable, Identifiable {
+        public enum Kind: String, Equatable, Sendable { case ready, prep, blocked }
+        public let id: String
+        public let title: String
+        public let kind: Kind
+        public let blockedBy: [String]
+
+        public init(id: String, title: String, kind: Kind, blockedBy: [String] = []) {
+            self.id = id
+            self.title = title
+            self.kind = kind
+            self.blockedBy = blockedBy
+        }
+    }
+
+    public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
+                upNext: [UpNext] = []) {
         self.tickets = tickets
         self.readyCount = readyCount
         self.titles = titles
+        self.urls = urls
+        self.upNext = upNext
     }
 
     public static func parse(_ data: Data) -> StatusSnapshot? {
@@ -100,8 +123,22 @@ public struct StatusSnapshot: Equatable, Sendable {
                           gate: (entry["gate"] as? String) ?? "")
         }
         var titles: [String: String] = [:]
-        for entry in all { if let id = entry["id"] as? String { titles[id] = entry["title"] as? String } }
-        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles)
+        var urls: [String: URL] = [:]
+        for entry in all {
+            guard let id = entry["id"] as? String else { continue }
+            titles[id] = entry["title"] as? String
+            if let link = entry["url"] as? String, link.hasPrefix("https://"), let url = URL(string: link) { urls[id] = url }
+        }
+        let byID = Dictionary(all.compactMap { e in (e["id"] as? String).map { ($0, e) } }, uniquingKeysWith: { a, _ in a })
+        let kinds: [(String, UpNext.Kind)] = [("ready_auto", .ready), ("ready_prep", .prep), ("blocked", .blocked)]
+        let upNext = kinds.flatMap { key, kind in
+            ((groups[key] as? [String]) ?? []).map { id in
+                UpNext(id: id, title: titles[id] ?? "", kind: kind,
+                       blockedBy: (byID[id]?["blocked_by"] as? [String]) ?? [])
+            }
+        }
+        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
+                              urls: urls, upNext: upNext)
     }
 }
 

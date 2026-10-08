@@ -17,8 +17,15 @@ public struct RunRecord: Equatable, Sendable, Identifiable {
     public let tokens: Int?
     public let costUSD: Double?
     public let sessionID: String?
+    /// Every other top-level value in the line, for the details pane: (key, value) in a stable order.
+    public var details: [RunDetail] = []
 
     public var minutes: Double? { secs.map { $0 / 60 } }
+}
+
+public struct RunDetail: Equatable, Sendable, Hashable {
+    public let key: String
+    public let value: String
 }
 
 public struct RunTotals: Equatable, Sendable {
@@ -62,7 +69,37 @@ public enum RunsLog {
         return RunRecord(id: id, at: raw["at"] as? String ?? "", kind: kind, ticket: raw["ticket"] as? String ?? "",
                          harness: raw["harness"] as? String, attempt: int(raw["attempt"] ?? raw["attempts"]),
                          result: result(kind: kind, raw: raw), secs: double(raw["secs"]), tokens: tokens,
-                         costUSD: double(raw["cost_usd"]), sessionID: raw["session_id"] as? String)
+                         costUSD: double(raw["cost_usd"]), sessionID: raw["session_id"] as? String,
+                         details: details(raw))
+    }
+
+    /// Keys the table already shows, left out of the details pane.
+    static let shownKeys: Set<String> = ["at", "kind", "ticket", "harness", "attempt", "attempts", "secs", "cost_usd",
+                                         "session_id", "usage"]
+
+    /// Scalar fields not in the table, plus the token breakdown from `usage`; empty strings are skipped.
+    static func details(_ raw: [String: Any]) -> [RunDetail] {
+        var out: [RunDetail] = []
+        for key in raw.keys.sorted() where !shownKeys.contains(key) {
+            guard let text = scalar(raw[key]), !text.isEmpty else { continue }
+            out.append(RunDetail(key: key, value: text))
+        }
+        if let usage = raw["usage"] as? [String: Any] {
+            for key in ["input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"] {
+                if let n = int(usage[key]) { out.append(RunDetail(key: key, value: String(n))) }
+            }
+        }
+        return out
+    }
+
+    private static func scalar(_ value: Any?) -> String? {
+        switch value {
+        case let s as String: return s
+        case let n as NSNumber:
+            if CFGetTypeID(n) == CFBooleanGetTypeID() { return n.boolValue ? "true" : "false" }
+            return n.stringValue
+        default: return nil
+        }
     }
 
     /// An outcome says its own result, the finish step passes when its check did, and an agent call passes on exit 0.

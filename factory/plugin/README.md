@@ -41,3 +41,7 @@ marketplace root runs them all. The old paths
 `factory/experiments/01-runway/runway.py` and
 `factory/experiments/03-linear/schedule.sh` forward here, so LaunchAgents
 installed before the move keep working.
+
+## Menu bar app
+
+When `tick`, `loop` or `finish` starts on a Mac with `/Applications/Runway.app` installed (`bash factory/app/make-app.sh --install`) and the app isn't running, Runway opens it in the background first, so a run started by launchd or by Claude always shows in the menu bar. Set `RUNWAY_NO_APP=1` to skip this; test runs skip it on their own.

@@ -7,6 +7,7 @@ struct RunsTab: View {
     let entry: ProjectEntry
     @State private var snapshot: RunsSnapshot?
     @State private var message: String?
+    @State private var selected: RunRecord.ID?
 
     private var repo: String? { entry.project.repoPath }
 
@@ -22,7 +23,10 @@ struct RunsTab: View {
                     Divider()
                     footer(snapshot.totals)
                 }
-                if let body = snapshot.prBody {
+                if let id = selected, let record = snapshot.records.first(where: { $0.id == id }) {
+                    Divider()
+                    details(record)
+                } else if let body = snapshot.prBody {
                     Divider()
                     finish(body)
                 }
@@ -55,9 +59,15 @@ struct RunsTab: View {
 
     // A Table over 10k rows is lazy; the parse happens off the main actor in `reload`.
     private func table(_ records: [RunRecord]) -> some View {
-        Table(records) {
+        Table(records, selection: $selected) {
             TableColumn("When") { Text($0.at).monospacedDigit() }.width(min: 120, ideal: 150)
-            TableColumn("Ticket") { Text($0.ticket).font(.body.monospaced()) }.width(min: 60, ideal: 80)
+            TableColumn("Ticket") { record in
+                if let url = linearURL(record.ticket) {
+                    Link(record.ticket, destination: url).font(.body.monospaced()).help("Open \(record.ticket) in Linear")
+                } else {
+                    Text(record.ticket).font(.body.monospaced())
+                }
+            }.width(min: 60, ideal: 80)
             TableColumn("Kind") { Text($0.kind) }.width(min: 50, ideal: 70)
             TableColumn("Harness") { Text($0.harness ?? "—") }.width(min: 50, ideal: 70)
             TableColumn("Attempt") { Text($0.attempt.map(String.init) ?? "—") }.width(min: 40, ideal: 55)
@@ -86,6 +96,49 @@ struct RunsTab: View {
             Text(String(format: "$%.2f", totals.costUSD))
         }
         .font(.callout.monospacedDigit().bold()).padding(10)
+    }
+
+    private func linearURL(_ ticket: String) -> URL? {
+        store.snapshot(for: entry.project.label)?.urls[ticket]
+    }
+
+    /// The selected row: what it was, links out, and every field the table leaves out.
+    private func details(_ record: RunRecord) -> some View {
+        let title = store.snapshot(for: entry.project.label)?.titles[record.ticket] ?? ""
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(record.ticket).font(.headline.monospaced())
+                if !title.isEmpty { Text(title).font(.headline).lineLimit(1) }
+                Spacer()
+                if let url = linearURL(record.ticket) {
+                    Link(destination: url) { Label("Open in Linear", systemImage: "arrow.up.right.square") }
+                }
+                if let id = record.sessionID, !id.isEmpty {
+                    Button { openSession(id) } label: { Label("Show session", systemImage: "doc.text.magnifyingglass") }
+                        .buttonStyle(.link)
+                }
+                Button { selected = nil } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless).foregroundStyle(.secondary).help("Close details")
+            }
+            Text([record.at, record.kind, record.attempt.map { "attempt \($0)" }, record.result.rawValue,
+                  record.minutes.map { String(format: "%.1f min", $0) }, record.costUSD.map { String(format: "$%.2f", $0) }]
+                .compactMap { $0 }.joined(separator: "  ·  "))
+                .font(.callout).foregroundStyle(.secondary)
+            ScrollView {
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 4) {
+                    ForEach(record.details, id: \.self) { item in
+                        GridRow {
+                            Text(item.key).foregroundStyle(.secondary)
+                            Text(item.value).textSelection(.enabled).lineLimit(3)
+                        }
+                    }
+                }
+                .font(.system(size: 11, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 160)
+        }
+        .padding(12)
     }
 
     private func finish(_ body: String) -> some View {
