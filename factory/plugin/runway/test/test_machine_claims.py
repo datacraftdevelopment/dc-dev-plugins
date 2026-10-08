@@ -106,6 +106,7 @@ class LinearClaims(unittest.TestCase):
         with mock.patch.object(runway, "machine_name", return_value=me), \
                 mock.patch.object(runway, "run_ticket", side_effect=lambda cfg, r, tr, t: ran.append(t.id)), \
                 mock.patch.object(runway, "sync_base", return_value=True), \
+                mock.patch.object(runway, "signin_waiting_for_work", return_value=False), \
                 mock.patch.object(runway, "log", lg):
             tr = FakeLinear(nodes)
             tr.sync = lambda: None

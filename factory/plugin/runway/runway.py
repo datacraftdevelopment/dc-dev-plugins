@@ -47,6 +47,8 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               comment). A ready ticket claimed by another machine is skipped and logged
               `skip <id> claimed by <machine>`.
   paused      The pause in force (the ~/.runway/pause contents), or null.
+  signin      The last sign-in check, or null before any ran: {"at", "ok", "notified": [name...],
+              "checks": [{"name", "ok", "detail"}]} (the _pm/runway-signin.json file).
   claimed_by  The machine that holds the ticket's claim, or null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
@@ -87,6 +89,16 @@ starts on (a 22:00-06:00 window on fri runs into Saturday morning). idle_only co
 any repo; dead pids are swept). A reader that can't answer (no battery info, no ioreg) lets that rule pass.
 A skipped tick logs `waiting: <reason>` and writes heartbeat phase `waiting` with a `reason` field.
 `runway machine` prints the rules and whether a tick would run now, and why not.
+
+Sign-ins are checked before a tick starts work (claims a ticket, preps a packet) and before the finish
+step, never on an idle tick. Each check is a status command, not a model call: `claude auth status`
+(Codex: `codex login status`), `gh auth status` when a draft PR will be opened, the Linear key when the
+tracker is Linear, and both review seats when "review" is "panel". Override a command under "signin_cmds".
+Any failure claims nothing: it logs `waiting: <reason>`, writes heartbeat `waiting` with that `reason` (the
+app shows it as it shows quiet-time reasons), sends one notification until the check passes again, and
+keeps the results in `_pm/runway-signin.json` (shown by `runway machine` and `status --json`). The next
+tick checks again. A status command can report "logged in" while the token refresh is already dead, so the
+rule behind it stands: the first agent call that fails on auth pauses the loop (pause_for_auth).
 
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
@@ -155,6 +167,9 @@ DEFAULT_CONFIG = {
     # Optional, e.g. osascript -e 'display notification "{msg}" with title "Runway"'
     "notify_cmd": "",
     "agent_timeout_s": 3600,
+    # Sign-in status commands by tool (claude, codex, gh) when the defaults don't fit this Mac.
+    # A string or an argument list; exit 0 means signed in. Never a model call.
+    "signin_cmds": {},
 }
 
 
@@ -443,7 +458,7 @@ def machine_waiting(root: Path) -> bool:
     return True
 
 
-def describe_machine() -> str:
+def describe_machine(root: Path | None = None) -> str:
     """What `runway machine` prints: the rules and whether a tick would run now."""
     try:
         rules = load_machine_rules()
@@ -463,6 +478,10 @@ def describe_machine() -> str:
             lines.append(f"max agents  {rules['max_agents']}")
         if not lines:
             lines.append("no rules" + ("" if (runway_home() / "machine.json").exists() else " (no machine.json)"))
+    last = read_signin(root) if root else None
+    if last:
+        lines.append(f"sign-ins  last checked {last.get('at')}")
+        lines += [f"  {c['name']:<7} {'ok' if c['ok'] else 'FAILED'}  {c['detail']}" for c in last.get("checks", [])]
     reason = machine_block()
     lines.append("would not run now: " + reason if reason else "would run now: no rule blocks a start")
     return "\n".join(lines)
@@ -743,6 +762,119 @@ def notify(cfg: dict, root: Path, msg: str) -> None:
         # Double quotes become single so an AppleScript string stays closed.
         safe = msg.replace('"', "'")
         sh([a.replace("{msg}", safe) for a in shlex.split(cfg["notify_cmd"])], root)
+
+
+SIGNIN_TOOLS = {  # key: (name Joe knows it by, status command, the command that signs in)
+    "claude": ("Claude Code", "claude auth status", "claude auth login"),
+    "codex": ("Codex", "codex login status", "codex login"),
+    "gh": ("GitHub CLI", "gh auth status", "gh auth login"),
+}
+
+
+def signin_path(root: Path) -> Path:
+    return root / "_pm" / "runway-signin.json"
+
+
+def read_signin(root: Path) -> dict | None:
+    """The last sign-in check's result (what status --json and `runway machine` show), else None."""
+    try:
+        data = json.loads(signin_path(root).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def tool_signin(cfg: dict, root: Path, key: str) -> dict:
+    """One status command, never a model call. A status command can say "logged in" while the token
+    refresh is already dead, so the first agent call that fails on auth still pauses the loop."""
+    label, default, fix = SIGNIN_TOOLS[key]
+    cmd = (cfg.get("signin_cmds") or {}).get(key) or default
+    try:
+        r = sh(cmd, root, timeout=30)
+    except subprocess.TimeoutExpired:
+        return {"name": key, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
+    if r.returncode == 127:
+        return {"name": key, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
+    try:
+        out = json.loads(r.stdout)
+    except ValueError:
+        out = None
+    if r.returncode != 0 or (isinstance(out, dict) and out.get("loggedIn") is False):
+        return {"name": key, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
+    return {"name": key, "ok": True, "detail": f"{label} signed in"}
+
+
+def linear_signin(cfg: dict) -> dict:
+    """The Linear key is present (environment or keychain). Nothing goes over the network."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import linear_tracker
+    lc = dict(linear_tracker.DEFAULTS, **cfg.get("linear", {}))
+    try:
+        linear_tracker.api_key(lc)
+    except SystemExit:
+        return {"name": "linear", "ok": False,
+                "detail": f"Linear needs its key ({lc['api_key_env']} or the keychain item `{lc['keychain_service']}`)"}
+    return {"name": "linear", "ok": True, "detail": "Linear key found"}
+
+
+def harness_signin_key(cfg: dict, name: str) -> str | None:
+    """Which status check covers a harness: its parser decides (claude, codex), else none."""
+    parser = (harness_profiles(cfg).get(name) or {}).get("parser") or ("claude" if name == "claude" else None)
+    return parser if parser in ("claude", "codex") else None
+
+
+def signin_checks(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> list:
+    """Every tool the next step will use, checked. harnesses: names of the harnesses about to run.
+    panel: the next step is the Ringer review panel (both its seats). finish: the finish step is next,
+    so gh counts when it will open a draft PR."""
+    keys = [harness_signin_key(cfg, name) for name in harnesses]
+    if panel:
+        keys += ["codex", "claude"]
+    if cfg.get("tracker") == "github" or (finish and cfg.get("pr") == "draft"):
+        keys.append("gh")
+    results = [tool_signin(cfg, root, k) for k in dict.fromkeys(k for k in keys if k)]
+    if cfg.get("tracker") == "linear":
+        results.append(linear_signin(cfg))
+    return results
+
+
+def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> bool:
+    """Check sign-ins before work starts. True (after logging, heartbeat `waiting` with the reason, and
+    one notification until it clears) when any check fails; the caller then starts nothing."""
+    results = signin_checks(cfg, root, harnesses, panel, finish)
+    failing = [c for c in results if not c["ok"]]
+    prev = read_signin(root) or {}
+    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
+    new = [c for c in failing if c["name"] not in notified]
+    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
+           "checks": results, "notified": notified + [c["name"] for c in new]}
+    p = signin_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(out) + "\n")
+    os.replace(tmp, p)
+    if not failing:
+        return False
+    reason = "; ".join(c["detail"] for c in failing)
+    log(root, f"waiting: {reason}")
+    beat(root, "waiting", reason=reason)
+    if new:
+        notify(cfg, root, "Runway: " + "; ".join(c["detail"].split(" (")[0] for c in new))
+    return True
+
+
+def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
+    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+    me = machine_name()
+    names = []
+    for t in tickets:
+        if t.status != "ready" or harness_error(cfg, t):
+            continue
+        prep_it = t.gate == "human" and will_unblock_without_joe(t, tickets)
+        run_it = t.gate in RUNNABLE_GATES and unblocked(t, tickets) and (not t.claimed_by or t.claimed_by == me)
+        if prep_it or run_it:
+            names.append(resolve_harness(cfg, t)["name"])
+    return bool(names) and signin_waiting(cfg, root, list(dict.fromkeys(names)))
 
 
 def record(root: Path, rec: dict) -> None:
@@ -1222,6 +1354,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if not force and state.get("head") == head:
         return False
 
+    if signin_waiting(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True):
+        return False
     beat(root, "finish")
     log(root, f"finish {integ} ({ahead} commits ahead of {base})")
     wt = integration_worktree(cfg, root)
@@ -1445,6 +1579,8 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
     tickets = tracker.load()
+    if signin_waiting_for_work(cfg, root, tickets):
+        return False
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
     for t in tickets:
         if active_pause():
@@ -1533,6 +1669,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
+            "signin": read_signin(root),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "tickets": [entry(t) for t in loaded if t.id in grouped]}
@@ -1602,7 +1739,7 @@ def main() -> None:
         cmd_resume()
         return
     if a.cmd == "machine":
-        print(describe_machine())
+        print(describe_machine(root))
         return
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
