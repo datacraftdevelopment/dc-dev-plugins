@@ -327,6 +327,33 @@ class GitHubTracker:
         self.owner, self.name = self.repo.split("/")
         self.api = GitHub(self.c)
 
+    def setup(self) -> None:
+        """Check gh auth, the repo and Issues, create Runway's missing labels, warn when the repo is public."""
+        self.api.run(["auth", "status"])
+        try:
+            info = json.loads(self.api.run(["repo", "view", self.repo, "--json", "hasIssuesEnabled,isPrivate"]))
+        except RuntimeError as e:
+            sys.exit(f"Can't see {self.repo} with this gh sign-in: {e}")
+        print(f"Repo: {self.repo} ({'private' if info['isPrivate'] else 'PUBLIC'})")
+        if not info["hasIssuesEnabled"]:
+            sys.exit(f"Issues is turned off on {self.repo}. Turn it on (Settings, Features, Issues), then run setup again.")
+        have = {x["name"].lower() for x in json.loads(self.api.run(
+            ["label", "list", "--repo", self.repo, "--limit", "200", "--json", "name,color"]))}
+        wanted = {"agent_label": ("4EA7FC", "Runway: AFK build work"),
+                  "human_label": ("F2994A", "Runway: needs Joe's call first"),
+                  "approve_label": ("4CB782", "Runway: Joe approved a ready-for-human issue"),
+                  "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe")}
+        for key, (color, desc) in wanted.items():
+            name = self.c[key]
+            if name.lower() in have:
+                print(f"Label {name}: exists")
+                continue
+            self.api.run(["label", "create", name, "--repo", self.repo, "--color", color, "--description", desc])
+            print(f"Label {name}: created")
+        if not info["isPrivate"]:
+            print(f"WARNING: {self.repo} is PUBLIC. Its issues and comments are public too: no client names, "
+                  "credentials or NDA material in issues, and Runway's decision packets and comments are readable by anyone.")
+
     def ref(self, repo: str, number: int) -> str:
         return f"#{number}" if repo.lower() == self.repo.lower() else f"{repo}#{number}"
 

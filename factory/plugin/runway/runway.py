@@ -1728,7 +1728,7 @@ def main() -> None:
     lp.add_argument("--max-ticks", type=int, default=50)
     g = sub.add_parser("go"); g.add_argument("ticket"); g.add_argument("note", nargs="?", default="")
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
-    sub.add_parser("setup", help="Linear only: check the key, team and project, and create Runway's labels")
+    sub.add_parser("setup", help="Linear or GitHub: check the sign-in and project/repo, and create Runway's labels")
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
@@ -1760,7 +1760,7 @@ def main() -> None:
             cmd_status(tracker)
     elif a.cmd == "setup":
         if not hasattr(tracker, "setup"):
-            sys.exit("setup is only needed for the linear tracker.")
+            sys.exit("setup is only needed for the linear and github trackers.")
         tracker.setup()
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
