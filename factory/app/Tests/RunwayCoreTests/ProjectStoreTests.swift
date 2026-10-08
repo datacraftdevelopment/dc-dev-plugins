@@ -50,6 +50,23 @@ final class ProjectStoreTests: XCTestCase {
                             pidAlive: { _ in alive })
     }
 
+    func testHideRemovesAProjectUntilShownAgainAndRemembersIt() throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        XCTAssertEqual(store.entries.map(\.id), ["com.joe.runway.demo"])
+        store.hide("com.joe.runway.demo")
+        XCTAssertTrue(store.entries.isEmpty)
+        XCTAssertEqual(store.hiddenProjects.map(\.label), ["com.joe.runway.demo"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: agents.appendingPathComponent("com.joe.runway.demo.plist").path))
+        let reopened = makeStore()
+        reopened.refresh()
+        XCTAssertTrue(reopened.entries.isEmpty)
+        reopened.unhide("com.joe.runway.demo")
+        XCTAssertEqual(reopened.entries.map(\.id), ["com.joe.runway.demo"])
+        XCTAssertTrue(reopened.hiddenProjects.isEmpty)
+    }
+
     func testStartRunsInstallAndRefreshes() async throws {
         try installPlist()
         let store = makeStore()

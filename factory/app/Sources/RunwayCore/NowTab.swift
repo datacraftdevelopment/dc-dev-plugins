@@ -140,3 +140,51 @@ public struct LogTail: Sendable {
         return true
     }
 }
+
+/// One row of `_pm/runway.log` as the Now tab shows it. A run of identical idle lines is one row with a count.
+public struct LogEntry: Equatable, Sendable {
+    /// `HH:mm` of the first line, or nil for a line that isn't a timestamped event (a continuation line).
+    public let time: String?
+    /// `HH:mm` of the last line folded into this row, when there was more than one.
+    public let until: String?
+    /// The event word (one of `LogFeed.kinds`), or empty for any other line.
+    public let kind: String
+    public let text: String
+    public let count: Int
+}
+
+public enum LogFeed {
+    /// The words `runway.py` starts an event line with. Any other line ("Ready for review: …") is plain text.
+    public static let kinds: Set<String> = ["idle", "prep", "sync", "run", "fail", "done", "finish", "review",
+                                            "pr", "park", "skip", "answer"]
+
+    /// Parses `YYYY-MM-DD HH:mm TZ  kind  text` lines; anything else is kept as a continuation line.
+    /// Consecutive `idle` lines with the same text fold into one entry.
+    public static func entries(_ lines: [String]) -> [LogEntry] {
+        var out: [LogEntry] = []
+        for line in lines where !line.trimmingCharacters(in: .whitespaces).isEmpty {
+            guard let parsed = parse(line) else {
+                out.append(LogEntry(time: nil, until: nil, kind: "", text: line.trimmingCharacters(in: .whitespaces), count: 1))
+                continue
+            }
+            if parsed.kind == "idle", let last = out.last, last.kind == "idle", last.text == parsed.text {
+                out[out.count - 1] = LogEntry(time: last.time, until: parsed.time, kind: "idle", text: last.text,
+                                              count: last.count + 1)
+            } else {
+                out.append(LogEntry(time: parsed.time, until: nil, kind: parsed.kind, text: parsed.text, count: 1))
+            }
+        }
+        return out
+    }
+
+    private static func parse(_ line: String) -> (time: String, kind: String, text: String)? {
+        let parts = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
+        guard parts.count >= 4, parts[0].count == 10, parts[0].allSatisfy({ $0.isNumber || $0 == "-" }),
+              parts[1].count == 5, parts[1].contains(":") else { return nil }
+        let rest = parts[3].trimmingCharacters(in: .whitespaces)
+        let split = rest.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        guard let first = split.first.map(String.init), kinds.contains(first) else { return (String(parts[1]), "", rest) }
+        let text = split.count > 1 ? split[1].trimmingCharacters(in: .whitespaces) : ""
+        return (String(parts[1]), first, text)
+    }
+}

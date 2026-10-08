@@ -27,6 +27,7 @@ swift build            # debug build
 swift test             # RunwayCore unit tests
 ./make-app.sh          # release build -> build/Runway.app
 open build/Runway.app  # menu bar item, no Dock icon (LSUIElement)
+bash make-app.sh --install  # build, copy to /Applications/Runway.app and open it
 ```
 
 `make-app.sh` prints the Login Items steps: System Settings > General > Login Items & Extensions > `+` > pick `build/Runway.app`.
@@ -34,3 +35,5 @@ open build/Runway.app  # menu bar item, no Dock icon (LSUIElement)
 ## Check command
 
 `factory/scripts/check.sh` already runs `swift test` in `factory/app` once `Package.swift` exists, so the repo's `runway.json` `check_cmd` (`bash factory/scripts/check.sh`) covers the app. If you use a different `check_cmd`, include `(cd factory/app && swift test)`.
+
+Install with `bash make-app.sh --install` (puts it in `/Applications`). The engine opens it in the background whenever a `tick`, `loop` or `finish` starts and it isn't running (`ensure_app` in `runway.py`; `RUNWAY_NO_APP=1` turns that off).

@@ -21,6 +21,16 @@ final class RunsTabTests: XCTestCase {
         XCTAssertEqual(first.sessionID, "abc")
     }
 
+    func testDetailsCarryUnshownFieldsAndTokenBreakdown() {
+        let row = RunsLog.parse(data([run]))[0]
+        XCTAssertEqual(row.details, [
+            RunDetail(key: "exit", value: "0"), RunDetail(key: "num_turns", value: "3"),
+            RunDetail(key: "input_tokens", value: "100"), RunDetail(key: "output_tokens", value: "50"),
+            RunDetail(key: "cache_read_input_tokens", value: "999"),
+        ])
+        XCTAssertEqual(RunsLog.parse(data([outcome]))[0].details, [RunDetail(key: "result", value: "needs-human")])
+    }
+
     func testResultFromExitAndKind() {
         let rows = RunsLog.parse(data([run, failed, outcome,
             #"{"kind":"outcome","ticket":"T","result":"done"}"#,
