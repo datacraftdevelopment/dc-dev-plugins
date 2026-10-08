@@ -35,7 +35,7 @@ doing right now. Written atomically (temp file + rename) at every phase change:
 `runway status --json` prints the queue as one JSON object, the contract the Mac app reads.
 Version 1 (additive changes keep the version; renames or removals bump it):
 
-  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear", "machine": "Mini-One",
+  {"version": 1, "repo": "/abs/path", "tracker": "markdown|linear|github", "machine": "Mini-One",
    "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
@@ -104,6 +104,8 @@ Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
                       one extra header line: `Gate: human` or `Gate: auto` (default).
   linear              Linear issues, through linear_tracker.py. See its docstring.
+  github              A repo's GitHub Issues, through github_tracker.py (read-only so far; repo from
+                      "github": {"repo": "owner/name"} or the clone's origin). See its docstring.
 
 The base branch is never touched; Joe merges the integration branch himself.
 
@@ -129,7 +131,7 @@ HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed
 DONE = {"resolved", "done", "closed"}
 RUNNABLE_GATES = ("auto", "approved")
 DEFAULT_CONFIG = {
-    # "markdown" or "linear". Linear settings live under the "linear" key.
+    # "markdown", "linear" or "github". Linear settings live under the "linear" key.
     "tracker": "markdown",
     # Prompt goes to the agent on stdin. Headless Claude Code by default. With
     # --output-format json, Runway records the session id and token usage of each call.
@@ -725,7 +727,11 @@ def make_tracker(cfg: dict, root: Path):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from linear_tracker import LinearTracker
         return LinearTracker(root, cfg)
-    sys.exit(f"Unknown tracker {kind!r}; use 'markdown' or 'linear'.")
+    if kind == "github":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from github_tracker import GitHubTracker
+        return GitHubTracker(root, cfg)
+    sys.exit(f"Unknown tracker {kind!r}; use 'markdown', 'linear' or 'github'.")
 
 
 # ---------- frontier ----------
