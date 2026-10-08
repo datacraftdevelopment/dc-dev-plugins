@@ -118,6 +118,16 @@ class CredentialGuardTests(unittest.TestCase):
             self.assertEqual(self.guard(command).returncode, 2)
         self.assertEqual(self.guard(f'pushd "{self.repo}" && git add .env', self.outer).returncode, 2)
 
+    def test_read_only_git_may_be_piped_but_staging_may_not(self):
+        for command in ('git status | head -5', 'git log --oneline | head -1 && git diff --stat | tail -1',
+                        'git -c core.quotepath=off ls-files | wc -l', 'git status &'):
+            with self.subTest(command=command):
+                self.assertEqual(self.guard(command).returncode, 0)
+        for command in ('git log | head -1; git add README.md', 'git add README.md | cat',
+                        'printf README.md | xargs git add', 'git stash | cat', 'git commit -m x &'):
+            with self.subTest(command=command):
+                self.assertEqual(self.guard(command).returncode, 2)
+
     def test_shell_line_continuations(self):
         self.assertEqual(self.guard('git \\\nadd .env').returncode, 2)
 
