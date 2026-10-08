@@ -3,7 +3,7 @@
 Author: Joe (with Fable). Status: accepted. Date: 2026-09-12.
 Completion: pending (ship-acceptance writes a verified docs/shipped/ link when delivered).
 Source: discovery session 2026-09-12, prompted by "two task lists" in this repo and a
-read of how RCC_SB-SOS actually runs its meeting → tasks → Basecamp loop. Pre-mortem
+read of how a client repo actually runs its meeting → tasks → Basecamp loop. Pre-mortem
 gate (Astra seat) same day: `.review-gate/2026-09-12-pm-017-intent/`; six findings,
 five applied here, the size call held for Joe.
 
@@ -24,7 +24,7 @@ answer may produce no work, one ticket, or a change to existing work, has no
 place either. TASKS.md's Backlog, Waiting-on and Questions buckets were quietly
 doing that work, which is why the file survived the 0.8 reshape.
 
-Client-facing tracking (Basecamp, in SB-SOS) is a third layer with its own
+Client-facing tracking (Basecamp, in that client repo) is a third layer with its own
 conventions, and pm has no seam for it. Today it lives entirely in one repo's
 CLAUDE.md prose.
 
@@ -73,7 +73,7 @@ docs/intent/<slug>.md     shaped: discovery ran, size call made.
   certifying client integration.
 - `MIGRATION-0.17.md` gives the TASKS.md rubric: each item is dead (with the
   evidence), an inbox line, an intent, or a ticket, and each disposition names
-  its destination. A repo that decided TASKS.md is its tracker (SB-SOS,
+  its destination. A repo that decided TASKS.md is its tracker (the client repo,
   2026-08-26) stays legitimate; the note says how pm reads it, not that it
   must move.
 - This repo is migrated first: tracker file written, inbox created, the ten
@@ -102,7 +102,7 @@ Local run 2026-09-13 against pm 0.17.0 installed from the marketplace: A1–A7 a
 - This repo's `_pm/TASKS.md`, `docs/agents/`, `docs/intent/inbox.md`, `.scratch/`.
 - Downstream: `_Tools/Basecamp` (being rebuilt in a parallel session) owes a
   `client-face.md` written to the contract above; that session owns it.
-  RCC_SB-SOS is untouched; a later session there reviews pm 0.17 and decides
+  The client repo is untouched; a later session there reviews pm 0.17 and decides
   whether to migrate.
 
 ## Constraints
@@ -126,11 +126,11 @@ Local run 2026-09-13 against pm 0.17.0 installed from the marketplace: A1–A7 a
   inbox line the only pre-intent state? (Lean: inbox only; a stub file per idea
   is the TASKS.md rot in a new shape.)
 - Cross-effort blocking edges (`Blocked by:` pointing into another
-  `.scratch/` effort). SB-SOS needs them; Matt's convention doesn't have them.
-  Park until the SB-SOS review session.
+  `.scratch/` effort). The client repo needs them; Matt's convention doesn't have them.
+  Park until the client repo's review session.
 - A tracker-neutral `meeting-pass` skill (transcript → capture with verified
   root causes → inbox or tickets, client-face steps from the file if present)
-  is the biggest lesson from SB-SOS and the least proven elsewhere. Own intent,
+  is the biggest lesson from the client repo and the least proven elsewhere. Own intent,
   after this ships. The match-before-append rule above is written in
   `stepping-away` so it does not wait on that skill.
 - Does `pm-scaffold` also drop the local-tracker file into an existing repo

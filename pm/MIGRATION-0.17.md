@@ -42,7 +42,7 @@ the new files without opening the old one; if it can't, a row is wrong.
 
 ## A repo that decided `TASKS.md` *is* its tracker
 
-Some repos (RCC_SB-SOS, decided 2026-08-26 under pm 0.9) run a hand-kept task
+Some repos (one client repo, decided 2026-08-26 under pm 0.9) run a hand-kept task
 file as their tracker of record, with a working meeting → batch → client-face
 loop on top of it. That stays legitimate. pm reads such a repo as follows:
 `whats-next` treats the file as the tracker frontier (its Current and Next
