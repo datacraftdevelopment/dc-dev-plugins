@@ -104,7 +104,7 @@ Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
                       one extra header line: `Gate: human` or `Gate: auto` (default).
   linear              Linear issues, through linear_tracker.py. See its docstring.
-  github              A repo's GitHub Issues, through github_tracker.py (read-only so far; repo from
+  github              A repo's GitHub Issues, through github_tracker.py (claims, closes, parks and releases ready-for-agent issues; repo from
                       "github": {"repo": "owner/name"} or the clone's origin). See its docstring.
 
 The base branch is never touched; Joe merges the integration branch himself.
