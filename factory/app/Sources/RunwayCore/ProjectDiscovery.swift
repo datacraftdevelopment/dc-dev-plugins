@@ -93,7 +93,19 @@ public struct RunwayConfig: Equatable, Sendable {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return config }
         if let tracker = json["tracker"] as? String { config.tracker = tracker }
         if let linear = json["linear"] as? [String: Any] { config.projectName = linear["project"] as? String }
+        // A GitHub project is named by its repo; with none configured the caller falls back to the folder name.
+        if config.tracker == "github" {
+            let repo = ((json["github"] as? [String: Any])?["repo"] as? String)?.trimmingCharacters(in: .whitespaces)
+            config.projectName = (repo?.isEmpty ?? true) ? nil : repo
+        }
         return config
+    }
+}
+
+/// What the "open the ticket" button says, by the project's tracker.
+public enum TicketLink {
+    public static func buttonTitle(tracker: String?) -> String {
+        tracker == "github" ? "Open in GitHub" : "Open in Linear"
     }
 }
 
