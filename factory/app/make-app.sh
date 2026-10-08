@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Build RunwayBar in release mode and wrap it in build/Runway.app (menu bar only, no Dock icon).
+#   bash make-app.sh            # build only
+#   bash make-app.sh --install  # build, copy to /Applications/Runway.app (quitting a running copy) and open it
 set -euo pipefail
+INSTALL=0; [ "${1:-}" = "--install" ] && INSTALL=1
 cd "$(dirname "$0")"
 
 APP="build/Runway.app"
@@ -35,6 +38,16 @@ PLIST
 codesign --force --sign - "$APP" >/dev/null 2>&1 || echo "warning: ad-hoc codesign failed"
 
 ABS="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
+
+if [ "$INSTALL" = 1 ]; then
+  pkill -x Runway 2>/dev/null || true
+  rm -rf /Applications/Runway.app
+  cp -R "$APP" /Applications/Runway.app
+  open /Applications/Runway.app
+  echo "Installed /Applications/Runway.app and opened it"
+  echo "Login Items: System Settings > General > Login Items & Extensions > '+' > pick /Applications/Runway.app"
+  exit 0
+fi
 echo "Built $ABS"
 echo "Run it:    open \"$ABS\""
 echo "Login Items: System Settings > General > Login Items & Extensions > '+' > pick $ABS"

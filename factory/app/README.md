@@ -27,6 +27,7 @@ swift build            # debug build
 swift test             # RunwayCore unit tests
 ./make-app.sh          # release build -> build/Runway.app
 open build/Runway.app  # menu bar item, no Dock icon (LSUIElement)
+bash make-app.sh --install  # build, copy to /Applications/Runway.app and open it
 ```
 
 `make-app.sh` prints the Login Items steps: System Settings > General > Login Items & Extensions > `+` > pick `build/Runway.app`.
