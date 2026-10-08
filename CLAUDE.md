@@ -73,7 +73,7 @@ Root `_pm/` holds personal dev tracking (skeleton, TASKS, sessions) via the `pm`
 
 ### Issue tracker
 
-GitHub Issues on this repo (public, so no client names, credentials or NDA material in issues). Runway stays on Linear (DAT) until the GitHub adapter lands. See `docs/agents/issue-tracker.md`.
+GitHub Issues on this repo (public, so no client names, credentials or NDA material in issues). Runway works these issues too (`"tracker": "github"` in `runway.json`, since 2026-10-08); other repos can still point Runway at Linear. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
