@@ -4,7 +4,7 @@ This repo is a **Claude Code plugin marketplace** (`datacraftdevelopment/dc-dev-
 
 Current plugins: **`pm`** (project-management scaffold + session/delivery skills, the hands-on way of working), **`factory`** (Runway, the unattended ticket loop, and its `runway` skill; source `factory/plugin/`), **`design-dc`** (design workflow), **`fm-dc`** (agentic FileMaker development), **`ui-test`** (agent-run UI tests for any macOS app: Codex computer-use runner + verifier under Ringer, per-app target profiles), **`fm-lens`** and **`agenticdev-filemaker-standards`** (listed here, sourced from the private `FM_Agent_Lens` repo), **`basecamp-dc`** (Basecamp client-face conventions + quirk-safe shipping; opt-in per repo via `.basecamp/config.json`, inert without it, never a `pm` dependency — TC uses Jira, most projects use no client tracker), and **`sdlc`** (the machine-wide credential-guard hook, moved from pm on 2026-10-07, plus repo-level enforcement kits: gate hooks installed into a repo's `.claude/` and a `REVIEW.md` policy with a read-only reviewer; it depends on neither `pm` nor Ringer, and its Codex edition carries only the credential guard, per `CODEX_PARTS` in `scripts/build_codex.py`).
 
-**This repo is PRIVATE** (2026-09-03; renamed from `dc-plugins` 2026-09-12 — that name now belongs to the PUBLIC marketplace cut by `make-dc-plugins.sh`). `/plugin marketplace add` still works unchanged, but each machine needs an authenticated `gh`/git credential helper for `datacraftdevelopment`. It went private so pm can hard-wire tools that aren't public — `WORKFLOW.md` assumes Ringer, which lives in the private `datacraftdevelopment/desk` — and so nothing here is written for strangers. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally (`make-fm-rcc.sh`) and DataCraft's public `datacraftdevelopment/dc-plugins` is cut from that (`make-dc-plugins.sh`); `tc-plugins` (the TC Transcontinental edition, Joe's personal credit, separate GitHub account) is cut from the public tree (`make-tc-plugins.sh`), a plain copy. The shared editions (RCC and TC) carry the same pm and sdlc from 2026-10-04: the private `sdlc/` plus `portable-overlay/` (adversary reviewer subagent, `ship-acceptance`, a shared `WORKFLOW.md`), hand-passed into `rcc-plugins`; its README has the steps. They run on Claude Code only, so nothing there may name Ringer. Derived trees are never hand-edited — fix upstream, re-cut down the chain.
+**This repo is PUBLIC, on purpose** (Joe, 2026-10-08): that's how cloud Claude sessions can load the plugins. It was renamed from `dc-plugins` on 2026-09-12. Treat every commit and every issue here as published: no client names, no credentials, nothing under NDA. pm still hard-wires tools that aren't public (`WORKFLOW.md` assumes Ringer, whose live config is in the private `datacraftdevelopment/desk`), so nothing here is written for strangers, even though they can read it. The teaching channel is `FMTrainingTV-AI/rcc-fm` (public, separate org); the `fm-dc → fm-rcc` sync runs locally (`make-fm-rcc.sh`) and DataCraft's public `datacraftdevelopment/dc-plugins` is cut from that (`make-dc-plugins.sh`); `tc-plugins` (the TC Transcontinental edition, Joe's personal credit, separate GitHub account) is cut from the public tree (`make-tc-plugins.sh`), a plain copy. The shared editions (RCC and TC) carry the same pm and sdlc from 2026-10-04: the private `sdlc/` plus `portable-overlay/` (adversary reviewer subagent, `ship-acceptance`, a shared `WORKFLOW.md`), hand-passed into `rcc-plugins`; its README has the steps. They run on Claude Code only, so nothing there may name Ringer. Derived trees are never hand-edited — fix upstream, re-cut down the chain.
 
 ## Ringer is assumed
 
@@ -68,3 +68,17 @@ Per-plugin dev cruft (`.venv/`, `sandbox/`) is gitignored via each plugin's own 
 ## Tracking (`_pm/`, local-only)
 
 Root `_pm/` holds personal dev tracking (skeleton, TASKS, sessions) via the `pm` plugin's `whats-next` / `stepping-away` skills. It is **gitignored** (`/_pm/`, anchored so it doesn't touch `pm/template/_pm/`) — never published. This repo moved out of Dropbox to `~/Agentic-Mini` on 2026-09-12 (Dropbox was causing too many issues); `_pm/` no longer syncs between machines on its own, so it rides on whatever backup covers `~/Agentic-Mini`.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on this repo (public, so no client names, credentials or NDA material in issues). Runway stays on Linear (DAT) until the GitHub adapter lands. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Matt's five defaults, plus Runway's `go` and `needs-human`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root, created when first needed. See `docs/agents/domain.md`.

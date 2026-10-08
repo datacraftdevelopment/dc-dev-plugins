@@ -14,7 +14,7 @@
 
 Author: Joe (with Opus). Status: **field notes, still collecting**. This is not an intent yet;
 it becomes one once the pattern has run for a few days. Started: 2026-09-14.
-Pilot: the SB-SOS repo (Next.js + Supabase, main-only, auto-deploys on push).
+Pilot: a client repo (Next.js + Supabase, main-only, auto-deploys on push).
 
 Joe's aim: run 2–3 Claude Code sessions at once, each building its own piece on its own
 branch, plus one session that doesn't build and acts as the orchestrator. Eventually this
@@ -402,7 +402,7 @@ bring him in only where his answer changes the work.
   merge.
 - **The orphaned-worktree finding repeated.** YoJoe had a worktree whose git record pointed at
   the old Dropbox path ("prunable"). It was checked with `git archive` of its branch plus
-  `diff -r`, and only a gitignored token differed. Same Dropbox-move cause as SB-SOS. The blob
+  `diff -r`, and only a gitignored token differed. Same Dropbox-move cause as the client pilot. The blob
   test above is the more general check.
 
 ### What would let YoJoe run itself (ranked)
@@ -456,7 +456,7 @@ bring him in only where his answer changes the work.
 
 ## Pointers
 
-- Pilot rules and lane board: SB-SOS `docs/TASKS.md` → Development Workflow → *Parallel
+- Pilot rules and lane board: the client pilot's `docs/TASKS.md` → Development Workflow → *Parallel
   sessions*, commit `4804886`.
 - Related: `pm/WORKFLOW.md` (build-swarm waves, parallel-safety screen), `pm-011`
   (one file per session).

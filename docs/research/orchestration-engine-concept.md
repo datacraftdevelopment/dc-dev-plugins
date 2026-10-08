@@ -42,7 +42,7 @@ mostly can't. Code has no context. State on disk costs nothing to keep.
 Usage went 2.6x the week orchestration started, and Joe felt it in his limits.
 Context per call did not move. **Calls doubled.** An orchestrator plus parallel
 lanes plus workers is simply more model calls at once. Over 09-14 to 09-16 the
-SB-SOS orchestrator and its lane worktrees were about 957M of 1,924M. The Marvel
+client pilot's orchestrator and its lane worktrees were about 957M of 1,924M. The Marvel
 lead seat's 436K per call was its own problem (a day-old session); the fleet
 problem is volume.
 

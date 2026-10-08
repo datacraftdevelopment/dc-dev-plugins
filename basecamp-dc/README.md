@@ -2,7 +2,7 @@
 
 Opt-in per repo. If a repo has no `.basecamp/config.json`, this plugin is inert:
 no hook output, no skill triggers, nothing. Some DataCraft projects use Basecamp as
-the client face (SB-SOS), some use another tracker (TC uses Jira), most use none.
+the client face (one client so far), some use another tracker (TC uses Jira), most use none.
 **`pm` never depends on this plugin**, and this plugin never reaches into `pm`.
 
 ## What it assumes
