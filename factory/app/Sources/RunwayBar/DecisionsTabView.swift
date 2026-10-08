@@ -19,7 +19,7 @@ struct DecisionsTab: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(cards) { card in
-                            DecisionCardView(card: card, feed: feed, repo: entry.project.repoPath, tools: store.tools,
+                            DecisionCardView(card: card, feed: feed, repo: entry.project.repoPath, tracker: entry.project.tracker, tools: store.tools,
                                              statusCommand: statusCommand, open: open)
                         }
                     }
@@ -75,6 +75,7 @@ private struct DecisionCardView: View {
     let card: DecisionCard
     let feed: DecisionsFeed
     let repo: String?
+    let tracker: String?
     let tools: RunwayTools?
     let statusCommand: Command?
     let open: (String?) -> Void
@@ -87,7 +88,7 @@ private struct DecisionCardView: View {
                 Text(ticket.id).font(.headline.monospaced())
                 Text(ticket.title).font(.headline).lineLimit(2)
                 Spacer()
-                if ticket.url != nil { Button("Open in Linear") { open(ticket.url) } }
+                if ticket.url != nil { Button(TicketLink.buttonTitle(tracker: tracker)) { open(ticket.url) } }
             }
             if let packet = ticket.packet, !packet.isEmpty {
                 PacketView(packet: packet)
