@@ -81,11 +81,14 @@ public struct StatusSnapshot: Equatable, Sendable {
 
     /// Every ticket's title by id, so the Now tab can name what the loop is working on.
     public let titles: [String: String]
+    /// Each ticket's tracker link (a Linear issue URL) by id, when the tracker gives one.
+    public let urls: [String: URL]
 
-    public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:]) {
+    public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:]) {
         self.tickets = tickets
         self.readyCount = readyCount
         self.titles = titles
+        self.urls = urls
     }
 
     public static func parse(_ data: Data) -> StatusSnapshot? {
@@ -100,8 +103,14 @@ public struct StatusSnapshot: Equatable, Sendable {
                           gate: (entry["gate"] as? String) ?? "")
         }
         var titles: [String: String] = [:]
-        for entry in all { if let id = entry["id"] as? String { titles[id] = entry["title"] as? String } }
-        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles)
+        var urls: [String: URL] = [:]
+        for entry in all {
+            guard let id = entry["id"] as? String else { continue }
+            titles[id] = entry["title"] as? String
+            if let link = entry["url"] as? String, link.hasPrefix("https://"), let url = URL(string: link) { urls[id] = url }
+        }
+        return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
+                              urls: urls)
     }
 }
 

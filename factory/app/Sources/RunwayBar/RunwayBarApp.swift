@@ -30,6 +30,11 @@ struct RunwayBarApp: App {
         Window("Runway", id: "runway") {
             RunwayWindow(store: store)
         }
+        Window("Runway panel", id: "runway-panel") {
+            SidePanel(store: store)
+        }
+        .defaultSize(width: 280, height: 520)
+        .windowResizability(.contentSize)
     }
 
     /// Amber when a project has ready tickets but its loop is off. Errors and decisions waiting keep their own icon.
@@ -62,6 +67,10 @@ struct RunwayMenu: View {
         Button("Open Runway window") {
             NSApplication.shared.activate(ignoringOtherApps: true)
             openWindow(id: "runway")
+        }
+        Button("Open side panel") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            openWindow(id: "runway-panel")
         }
         Divider()
         if let error = store.lastError {

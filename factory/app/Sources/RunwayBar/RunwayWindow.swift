@@ -12,6 +12,7 @@ struct RunwayWindow: View {
     @State private var tab: RunwayTab = .now
     @State private var showSetup = false
     @State private var showMachine = false
+    @Environment(\.openWindow) private var openWindow
 
     private var entry: ProjectEntry? {
         store.entries.first { $0.project.label == selection } ?? store.entries.first
@@ -90,6 +91,10 @@ struct RunwayWindow: View {
 
     @ToolbarContentBuilder private func toolbar(for entry: ProjectEntry) -> some ToolbarContent {
         let project = entry.project
+        ToolbarItem(placement: .navigation) {
+            Button { openWindow(id: "runway-panel") } label: { Label("Side panel", systemImage: "sidebar.right") }
+                .help("Open the side panel")
+        }
         ToolbarItem {
             StatePill(state: entry.status.state, text: pillText(entry.status),
                       detail: project.interval.map { "every \(max(1, $0 / 60)) min" })
@@ -288,13 +293,29 @@ struct PhaseStrip: View {
     }
 }
 
-/// The folded log, newest at the bottom, scrolled there whenever something new lands.
+/// The log without idle ticks, newest at the bottom, scrolled there whenever something new lands.
+/// The last idle check shows as one quiet line underneath, so it's still clear the loop is alive.
 struct LogList: View {
-    let entries: [LogEntry]
+    let all: [LogEntry]
+
+    init(entries: [LogEntry]) { all = entries }
+
+    private var entries: [LogEntry] { all.filter { $0.kind != "idle" } }
+    private var lastIdle: LogEntry? { all.last.flatMap { $0.kind == "idle" ? $0 : nil } }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            list
+            if let idle = lastIdle {
+                Text("Last checked \(idle.until ?? idle.time ?? ""): \(idle.text)")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    @ViewBuilder private var list: some View {
         if entries.isEmpty {
-            Text("No log yet.").foregroundStyle(.secondary)
+            Text(all.isEmpty ? "No log yet." : "Nothing has happened yet.").foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
         } else {
@@ -330,9 +351,6 @@ struct LogList: View {
                 Text(entry.text).foregroundStyle(entry.kind == "idle" ? .secondary : .primary).lineLimit(2)
             }
             Spacer(minLength: 0)
-            if entry.count > 1, let until = entry.until {
-                Text("×\(entry.count) until \(until)").foregroundStyle(.tertiary)
-            }
         }
         .font(.system(size: 11, design: .monospaced))
         .textSelection(.enabled)
