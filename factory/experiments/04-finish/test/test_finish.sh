@@ -5,6 +5,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RUNWAY="$HERE/../../../plugin/runway/runway.py"
 TMP="$(mktemp -d)"
+# Isolate from this Mac's real ~/.runway (pause, quiet time, agent registry).
+export RUNWAY_HOME="$TMP/runway-home"; mkdir -p "$RUNWAY_HOME"
 export CLAUDE_CONFIG_DIR="$TMP/claude-home" GH_LOG="$TMP/gh.log"
 mkdir -p "$TMP/bin"; ln -s "$HERE/fake_gh.sh" "$TMP/bin/gh"; export PATH="$TMP/bin:$PATH"
 git init -q --bare "$TMP/origin.git"
