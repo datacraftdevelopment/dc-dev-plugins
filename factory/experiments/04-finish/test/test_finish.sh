@@ -20,6 +20,7 @@ printf '# Public name\n\nStatus: ready\nGate: human\nBlocked by: 01\n' > $I/03-p
 cat > runway.json <<JSON
 {"agent_cmd": "python3 $HERE/fake_claude.py", "prep_cmd": "python3 $HERE/fake_claude.py",
  "review_cmd": "python3 $HERE/fake_claude.py",
+ "signin_cmds": {"claude": "true", "codex": "true", "gh": "true"},
  "check_cmd": "sh -c '! grep -l broken *.txt'", "pr": "draft", "spec": "docs/spec.md"}
 JSON
 fail() { echo "FAIL: $*"; exit 1; }
