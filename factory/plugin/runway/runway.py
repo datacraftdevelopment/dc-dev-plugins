@@ -1650,11 +1650,24 @@ def process_alive(pid) -> bool:
     return "runway" in cmd.lower()
 
 
+def agent_registered_alive(pid) -> bool:
+    """Is pid a registered agent still running (same start time as when it registered)?"""
+    try:
+        lines = (agents_dir() / str(int(pid))).read_text().splitlines()
+        actual = process_started(int(pid))
+    except (OSError, ValueError, TypeError):
+        return False
+    return actual is not None and (len(lines) < 2 or not lines[1] or lines[1] == actual)
+
+
 def release_orphans(root: Path, tickets: list, beat_before: dict) -> bool:
     """A ticket claimed by this Mac that no live Runway process holds is a crash's leftover: back to ready,
     with a comment, so it runs again. beat_before: the heartbeat as the previous process left it."""
     me = machine_name()
     alive = process_alive(beat_before.get("pid"))
+    agent = beat_before.get("agent_pid")
+    if not alive and agent and agent_registered_alive(agent):
+        return False  # the loop died but its agent is still working: leave the claim and the worktree alone
     released = False
     for t in tickets:
         if t.status != "claimed" or t.claimed_by != me:

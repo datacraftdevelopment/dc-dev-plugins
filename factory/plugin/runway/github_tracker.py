@@ -305,8 +305,10 @@ class GitHubTicket:
         return ["--remove-assignee", ",".join(who)]
 
     def mark_claimed(self, branch: str, machine: str) -> None:
-        self._issue("edit", "--add-assignee", "@me")
+        # Stamp first: a failure between the two writes then leaves the issue ready (retried next tick), never
+        # claimed with no owner on it.
         self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+        self._issue("edit", "--add-assignee", "@me")
 
     def mark_resolved(self, note: str) -> None:
         full = f"{MARK} · {note.strip()}"
@@ -314,7 +316,9 @@ class GitHubTicket:
 
     def mark_needs_human(self, why: str, detail: str) -> None:
         label = self.tr.c["needs_human_label"]
-        self._issue("edit", "--add-label", label, *self._unassign())
+        approve = self.tr.c["approve_label"]
+        gone = ["--remove-label", approve] if approve in self.labels else []
+        self._issue("edit", "--add-label", label, *gone, *self._unassign())  # a spent approval needs a fresh go
         self._comment(f"Parked: {why}. Remove `{label}` to retry.\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:

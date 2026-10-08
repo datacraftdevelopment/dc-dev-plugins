@@ -256,8 +256,10 @@ class LinearTicket:
         self._labels(add=[self.tr.c["needs_human_label"]])
 
     def mark_claimed(self, branch: str, machine: str) -> None:
-        self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
+        # Stamp first: a failure between the two writes then leaves the ticket ready (retried next tick), never
+        # claimed with no owner on it.
         self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+        self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
 
     def mark_resolved(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["done_state"]))
