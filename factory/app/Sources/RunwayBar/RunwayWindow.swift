@@ -36,6 +36,9 @@ struct RunwayWindow: View {
                 }
                 .padding(.vertical, 2)
                 .tag(entry.project.label)
+                .contextMenu {
+                    Button("Hide from Runway") { store.hide(entry.project.label) }
+                }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
             .safeAreaInset(edge: .bottom) {
@@ -43,6 +46,14 @@ struct RunwayWindow: View {
                     Divider().padding(.bottom, 4)
                     Button { showSetup = true } label: { Label("Set up a loop…", systemImage: "plus.circle") }
                     Button { showMachine = true } label: { Label("This Mac…", systemImage: "desktopcomputer") }
+                    if !store.hiddenProjects.isEmpty {
+                        Menu {
+                            ForEach(store.hiddenProjects) { project in
+                                Button("Show \(project.name)") { store.unhide(project.label) }
+                            }
+                        } label: { Label("Hidden (\(store.hiddenProjects.count))", systemImage: "eye.slash") }
+                        .menuStyle(.borderlessButton).fixedSize()
+                    }
                 }
                 .buttonStyle(.borderless).foregroundStyle(.secondary)
                 .padding(.horizontal, 12).padding(.bottom, 10).frame(maxWidth: .infinity, alignment: .leading)

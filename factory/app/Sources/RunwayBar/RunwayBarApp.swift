@@ -117,6 +117,13 @@ struct RunwayMenu: View {
                 Button("Until I resume") { Task { await store.pauseAll(.untilResumed) } }
             }
         }
+        if !store.hiddenProjects.isEmpty {
+            Menu("Hidden projects") {
+                ForEach(store.hiddenProjects) { project in
+                    Button("Show \(project.name)") { store.unhide(project.label) }
+                }
+            }
+        }
         Divider()
         Menu("Scripts") {
             Text(store.tools?.runwayScript ?? "Not found")

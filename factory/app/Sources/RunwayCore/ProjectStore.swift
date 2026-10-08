@@ -26,10 +26,15 @@ public final class ProjectStore {
     public private(set) var lastError: String?
     /// The dc-dev-plugins checkout holding `schedule.sh` and `runway.py`; nil means the one the plists point at.
     public private(set) var checkout: String?
+    /// Labels of projects hidden from the app. Hiding touches nothing on disk; the loop, plist and repo stay as they are.
+    public private(set) var hidden: Set<String>
+    /// Projects found but hidden, so the menu can offer them back.
+    public private(set) var hiddenProjects: [Project] = []
 
     public static let checkoutKey = "dcDevPluginsCheckout"
     public static let knownReposKey = "knownRepos"
     public static let knownScriptKey = "knownRunwayScript"
+    public static let hiddenKey = "hiddenProjects"
 
     @ObservationIgnored private let discovery: ProjectDiscovery
     @ObservationIgnored private let interval: TimeInterval
@@ -64,6 +69,16 @@ public final class ProjectStore {
         self.deliver = deliver
         self.ledger = deliver == nil ? NotificationLedger() : NotificationLedger.load(from: ledgerURL)
         self.checkout = defaults.string(forKey: Self.checkoutKey)
+        self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
+    }
+
+    public func hide(_ label: String) { setHidden(hidden.union([label])) }
+    public func unhide(_ label: String) { setHidden(hidden.subtracting([label])) }
+
+    private func setHidden(_ labels: Set<String>) {
+        hidden = labels
+        defaults.set(labels.sorted(), forKey: Self.hiddenKey)
+        refresh()
     }
 
     public var tools: RunwayTools? { RunwayTools.locate(checkoutSetting: checkout, projects: projects) }
@@ -87,6 +102,9 @@ public final class ProjectStore {
         var found = discovery.discover()
         remember(found)
         found += stoppedProjects(besides: found)
+        let shelved = found.filter { hidden.contains($0.label) }
+        if shelved != hiddenProjects { hiddenProjects = shelved }
+        found.removeAll { hidden.contains($0.label) }
         if found != projects { projects = found }
 
         let now = Date()
