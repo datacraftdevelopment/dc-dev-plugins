@@ -65,6 +65,7 @@ def test_sync_conflict_aborts_and_skips_tickets(tmp_path, monkeypatch):
     monkeypatch.setattr(runway, "notify", lambda c, r, m: notes.append(m))
     ran = []
     monkeypatch.setattr(runway, "run_ticket", lambda *a: ran.append(a))
+    monkeypatch.setattr(runway, "signin_waiting_for_work", lambda *a: False)
 
     class Tracker:
         def sync(self): pass

@@ -117,7 +117,8 @@ public struct RunwayTools: Equatable, Sendable {
         Command(executable: "/usr/bin/env", arguments: ["python3", runwayScript, "--root", repo, "status", "--json"])
     }
 
-    public func pause(_ choice: PauseChoice, now: Date = Date(), calendar: Calendar = .current) -> Command {
+    public func pause(_ choice: PauseChoice, mode: MachineRules.PauseMode = .finish, now: Date = Date(),
+                      calendar: Calendar = .current) -> Command {
         var args = ["python3", runwayScript, "pause"]
         switch choice {
         case .oneHour: args += ["--for", "1h"]
@@ -125,6 +126,7 @@ public struct RunwayTools: Equatable, Sendable {
             args += ["--until", Self.isoLocal(Self.nextEightAM(after: now, calendar: calendar), calendar: calendar)]
         case .untilResumed: break
         }
+        if mode == .stop { args.append("--stop-now") }
         return Command(executable: "/usr/bin/env", arguments: args)
     }
 

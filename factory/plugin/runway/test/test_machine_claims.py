@@ -106,11 +106,18 @@ class LinearClaims(unittest.TestCase):
         with mock.patch.object(runway, "machine_name", return_value=me), \
                 mock.patch.object(runway, "run_ticket", side_effect=lambda cfg, r, tr, t: ran.append(t.id)), \
                 mock.patch.object(runway, "sync_base", return_value=True), \
+                mock.patch.object(runway, "signin_waiting_for_work", return_value=False), \
                 mock.patch.object(runway, "log", lg):
             tr = FakeLinear(nodes)
             tr.sync = lambda: None
             runway.tick(dict(runway.DEFAULT_CONFIG), Path("/r"), tr)
         return ran, [c.args[1] for c in lg.call_args_list]
+
+    def test_skip_is_logged_for_a_ticket_another_mac_is_running(self):
+        claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."
+        ran, logs = self._tick_linear("Mini-Two", [node(1, ["ready-for-agent"], "started", [claim])])
+        self.assertEqual(ran, [])
+        self.assertIn("skip DAT-1 claimed by Mini-One", logs)
 
     def test_pause_stop_then_other_machine_claims(self):
         claim = "\U0001f6eb runway · Claimed-by: Mini-One · Started on `b`."

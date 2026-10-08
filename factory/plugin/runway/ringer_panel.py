@@ -110,6 +110,8 @@ def main() -> int:
     ap.add_argument("--base", required=True)
     ap.add_argument("--brief-file", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--budget-s", type=int, default=2 * SEAT_TIMEOUT_S + 300,
+                    help="give up and kill the ringer group after this long (the caller's own timeout is longer)")
     a = ap.parse_args()
 
     ringer = find_ringer()
@@ -133,18 +135,25 @@ def main() -> int:
         print(f"ringer lint failed: {(lint.stdout + lint.stderr).strip()[-500:]}", file=sys.stderr)
     else:
         try:
+            # Its own process group, so a stop or timeout reaches the codex and claude seat workers too.
             proc = subprocess.Popen([*cmd, "run", str(mpath)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True)
+                                    text=True, start_new_session=True)
 
-            def stop(signum, frame):  # pause --stop-now signals this process; take ringer down with it
-                proc.terminate()
+            def kill_group(sig):
+                try:
+                    os.killpg(proc.pid, sig)
+                except OSError:
+                    pass
+
+            def stop(signum, frame):  # pause --stop-now signals this process; take ringer and its workers down with it
+                kill_group(signal.SIGTERM)
                 sys.exit(1)
             signal.signal(signal.SIGTERM, stop)
             try:
-                output, _ = proc.communicate(timeout=2 * SEAT_TIMEOUT_S + 300)
+                output, _ = proc.communicate(timeout=a.budget_s)
                 run_ok = proc.returncode == 0
             except subprocess.TimeoutExpired:
-                proc.kill()
+                kill_group(signal.SIGKILL)
                 proc.communicate()
                 print("ringer run timed out", file=sys.stderr)
         except OSError as e:

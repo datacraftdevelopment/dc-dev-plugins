@@ -129,6 +129,21 @@ Edit that file only when Joe asks for a specific change, show him the result
 with `RUNWAY machine`, and never change it to get a ticket moving. The rules
 stop new starts only; a running agent is never touched.
 
+## Sign-ins
+
+Before a tick claims a ticket, preps a packet or starts the finish step, Runway
+runs status commands (never a model call): `claude auth status` (Codex:
+`codex login status`), `gh auth status` when a draft PR will be opened, the
+Linear key on a Linear project, and both review seats when `review` is `panel`.
+Idle ticks check nothing. If one fails, nothing is claimed, the heartbeat goes
+to `waiting` with a reason like "Claude Code needs signing in (`claude auth
+login`)", the log says the same and one notification goes out until it clears.
+The app shows that reason like a quiet-time reason. `RUNWAY machine` and
+`status --json` (`signin`) list each check's result. Joe signs in; the next tick
+checks again. A status command can say "logged in" while the token refresh is
+already dead (unverified whether `claude auth status` catches it), so the rule
+behind it stands: the first agent call that fails on auth pauses the loop.
+
 ## Harnesses
 
 A harness is the agent CLI that does a ticket's work. The default is Claude

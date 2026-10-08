@@ -39,6 +39,7 @@ def make_repo(tickets, check="true"):
     cmd = f"{sys.executable} {root / 'fake_agent.py'}"
     (root / "runway.json").write_text(json.dumps({
         "agent_cmd": cmd, "prep_cmd": cmd, "review_cmd": cmd, "check_cmd": check,
+        "signin_cmds": {k: f"{sys.executable} -c pass" for k in ("claude", "codex", "gh")},  # never the real CLIs
         "worktree_dir": "../" + root.name + "-wt"}))
     git(root, "init", "-q", "-b", "main")
     git(root, "config", "user.email", "t@example.com")
@@ -125,6 +126,7 @@ class Heartbeat(unittest.TestCase):
         finally:
             os.replace = orig
         target = str(root / "_pm" / "runway-state.json")
+        calls = [(a, b) for a, b in calls if "runway-state" in str(b)]  # the sign-in file is atomic too
         self.assertTrue(calls and all(str(b) == target and str(a) != target for a, b in calls))
         self.assertEqual([p.name for p in (root / "_pm").glob("runway-state*")], ["runway-state.json"])
 

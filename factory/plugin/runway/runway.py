@@ -47,6 +47,8 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               comment). A ready ticket claimed by another machine is skipped and logged
               `skip <id> claimed by <machine>`.
   paused      The pause in force (the ~/.runway/pause contents), or null.
+  signin      The last sign-in check, or null before any ran: {"at", "ok", "notified": [name...],
+              "checks": [{"name", "ok", "detail"}]} (the _pm/runway-signin.json file).
   claimed_by  The machine that holds the ticket's claim, or null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
@@ -87,6 +89,16 @@ starts on (a 22:00-06:00 window on fri runs into Saturday morning). idle_only co
 any repo; dead pids are swept). A reader that can't answer (no battery info, no ioreg) lets that rule pass.
 A skipped tick logs `waiting: <reason>` and writes heartbeat phase `waiting` with a `reason` field.
 `runway machine` prints the rules and whether a tick would run now, and why not.
+
+Sign-ins are checked before a tick starts work (claims a ticket, preps a packet) and before the finish
+step, never on an idle tick. Each check is a status command, not a model call: `claude auth status`
+(Codex: `codex login status`), `gh auth status` when a draft PR will be opened, the Linear key when the
+tracker is Linear, and both review seats when "review" is "panel". Override a command under "signin_cmds".
+Any failure claims nothing: it logs `waiting: <reason>`, writes heartbeat `waiting` with that `reason` (the
+app shows it as it shows quiet-time reasons), sends one notification until the check passes again, and
+keeps the results in `_pm/runway-signin.json` (shown by `runway machine` and `status --json`). The next
+tick checks again. A status command can report "logged in" while the token refresh is already dead, so the
+rule behind it stands: the first agent call that fails on auth pauses the loop (pause_for_auth).
 
 Trackers (config key "tracker"):
   markdown (default)  pm's local markdown (.scratch/<effort>/issues/NN-slug.md) with
@@ -155,6 +167,9 @@ DEFAULT_CONFIG = {
     # Optional, e.g. osascript -e 'display notification "{msg}" with title "Runway"'
     "notify_cmd": "",
     "agent_timeout_s": 3600,
+    # Sign-in status commands by tool (claude, codex, gh) when the defaults don't fit this Mac.
+    # A string or an argument list; exit 0 means signed in. Never a model call.
+    "signin_cmds": {},
 }
 
 
@@ -229,6 +244,24 @@ def paused_now(root: Path) -> bool:
     return True
 
 
+def write_pause(end: dt.datetime | None, mode: str) -> None:
+    p = pause_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
+                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
+    os.replace(tmp, p)
+
+
+def pause_for_auth(cfg: dict, root: Path) -> None:
+    """The agent's sign-in is gone: pause the whole machine (what `runway pause` sets) and say so once.
+    A pause already in force is left as it is, and so is its notification."""
+    if active_pause():
+        return
+    write_pause(None, "finish")
+    notify(cfg, root, "Runway: Claude Code needs signing in")
+
+
 def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -> None:
     if until and span:
         sys.exit("Use --until or --for, not both.")
@@ -240,27 +273,28 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
             end = dt.datetime.now().astimezone() + parse_span(span)
     except ValueError as e:
         sys.exit(str(e))
-    p = pause_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None,
-                               "mode": "stop" if stop_now else "finish",
-                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
-    os.replace(tmp, p)
+    write_pause(end, "stop" if stop_now else "finish")
     print("paused until " + (end.isoformat(timespec="seconds") if end else "resumed") + (" (stop)" if stop_now else ""))
     if stop_now:
-        pids = set()  # every live agent on this Mac, plus this repo's heartbeat pid
+        pids = set()  # every registered agent on this Mac (run_agent registers the heartbeat's agent_pid too)
         for f in agents_dir().glob("*"):
             try:
-                pids.add(int(f.name))
+                pid = int(f.name)
             except ValueError:
-                pass
-        try:
-            pid = json.loads((root / "_pm" / "runway-state.json").read_text()).get("agent_pid")
-            if pid:
-                pids.add(int(pid))
-        except (OSError, ValueError):
-            pass
+                continue
+            try:
+                lines = f.read_text().splitlines()
+            except OSError:
+                continue  # the agent finished and unregistered while we scanned
+            recorded = lines[1] if len(lines) > 1 else ""
+            actual = process_started(pid)
+            if actual is None:
+                f.unlink(missing_ok=True)  # gone
+            elif not recorded or recorded == actual:  # no start time: a registration from before they were recorded
+                pids.add(pid)
+            else:  # the pid was reused by some other process: not ours to signal
+                print(f"pid {pid} is no longer a Runway agent; left alone")
+                f.unlink(missing_ok=True)
         if not pids:
             print("no agent running; nothing to stop")
             return
@@ -327,11 +361,21 @@ def agents_dir() -> Path:
     return runway_home() / "agents"
 
 
+def process_started(pid: int) -> str | None:
+    """When the process with this pid started (ps's lstart text), or None if it isn't running."""
+    try:
+        out = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.strip() or None
+
+
 def register_agent(pid: int, root: Path) -> None:
-    """Mark an agent as running on this Mac: a file named for its pid, holding the repo path."""
+    """Mark an agent as running on this Mac: a file named for its pid, holding the repo path and, on a second
+    line, the process start time, so a reused pid is never mistaken for the agent."""
     try:
         agents_dir().mkdir(parents=True, exist_ok=True)
-        (agents_dir() / str(pid)).write_text(str(root) + "\n")
+        (agents_dir() / str(pid)).write_text(f"{root}\n{process_started(pid) or ''}\n")
     except OSError:
         pass  # counting is best effort; it must never take the loop down
 
@@ -345,7 +389,15 @@ def running_agents() -> int:
     n = 0
     for f in agents_dir().glob("*"):
         try:
-            os.kill(int(f.name), 0)
+            pid = int(f.name)
+            os.kill(pid, 0)
+            try:
+                lines = f.read_text().splitlines()
+            except OSError:
+                continue
+            if len(lines) > 1 and lines[1] and lines[1] != process_started(pid):
+                f.unlink(missing_ok=True)  # the pid was reused by some other process
+                continue
             n += 1
         except ProcessLookupError:
             f.unlink(missing_ok=True)
@@ -406,7 +458,7 @@ def machine_waiting(root: Path) -> bool:
     return True
 
 
-def describe_machine() -> str:
+def describe_machine(root: Path | None = None) -> str:
     """What `runway machine` prints: the rules and whether a tick would run now."""
     try:
         rules = load_machine_rules()
@@ -426,6 +478,10 @@ def describe_machine() -> str:
             lines.append(f"max agents  {rules['max_agents']}")
         if not lines:
             lines.append("no rules" + ("" if (runway_home() / "machine.json").exists() else " (no machine.json)"))
+    last = read_signin(root) if root else None
+    if last:
+        lines.append(f"sign-ins  last checked {last.get('at')}")
+        lines += [f"  {c['name']:<7} {'ok' if c['ok'] else 'FAILED'}  {c['detail']}" for c in last.get("checks", [])]
     reason = machine_block()
     lines.append("would not run now: " + reason if reason else "would run now: no rule blocks a start")
     return "\n".join(lines)
@@ -708,6 +764,119 @@ def notify(cfg: dict, root: Path, msg: str) -> None:
         sh([a.replace("{msg}", safe) for a in shlex.split(cfg["notify_cmd"])], root)
 
 
+SIGNIN_TOOLS = {  # key: (name Joe knows it by, status command, the command that signs in)
+    "claude": ("Claude Code", "claude auth status", "claude auth login"),
+    "codex": ("Codex", "codex login status", "codex login"),
+    "gh": ("GitHub CLI", "gh auth status", "gh auth login"),
+}
+
+
+def signin_path(root: Path) -> Path:
+    return root / "_pm" / "runway-signin.json"
+
+
+def read_signin(root: Path) -> dict | None:
+    """The last sign-in check's result (what status --json and `runway machine` show), else None."""
+    try:
+        data = json.loads(signin_path(root).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def tool_signin(cfg: dict, root: Path, key: str) -> dict:
+    """One status command, never a model call. A status command can say "logged in" while the token
+    refresh is already dead, so the first agent call that fails on auth still pauses the loop."""
+    label, default, fix = SIGNIN_TOOLS[key]
+    cmd = (cfg.get("signin_cmds") or {}).get(key) or default
+    try:
+        r = sh(cmd, root, timeout=30)
+    except subprocess.TimeoutExpired:
+        return {"name": key, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
+    if r.returncode == 127:
+        return {"name": key, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
+    try:
+        out = json.loads(r.stdout)
+    except ValueError:
+        out = None
+    if r.returncode != 0 or (isinstance(out, dict) and out.get("loggedIn") is False):
+        return {"name": key, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
+    return {"name": key, "ok": True, "detail": f"{label} signed in"}
+
+
+def linear_signin(cfg: dict) -> dict:
+    """The Linear key is present (environment or keychain). Nothing goes over the network."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import linear_tracker
+    lc = dict(linear_tracker.DEFAULTS, **cfg.get("linear", {}))
+    try:
+        linear_tracker.api_key(lc)
+    except SystemExit:
+        return {"name": "linear", "ok": False,
+                "detail": f"Linear needs its key ({lc['api_key_env']} or the keychain item `{lc['keychain_service']}`)"}
+    return {"name": "linear", "ok": True, "detail": "Linear key found"}
+
+
+def harness_signin_key(cfg: dict, name: str) -> str | None:
+    """Which status check covers a harness: its parser decides (claude, codex), else none."""
+    parser = (harness_profiles(cfg).get(name) or {}).get("parser") or ("claude" if name == "claude" else None)
+    return parser if parser in ("claude", "codex") else None
+
+
+def signin_checks(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> list:
+    """Every tool the next step will use, checked. harnesses: names of the harnesses about to run.
+    panel: the next step is the Ringer review panel (both its seats). finish: the finish step is next,
+    so gh counts when it will open a draft PR."""
+    keys = [harness_signin_key(cfg, name) for name in harnesses]
+    if panel:
+        keys += ["codex", "claude"]
+    if cfg.get("tracker") == "github" or (finish and cfg.get("pr") == "draft"):
+        keys.append("gh")
+    results = [tool_signin(cfg, root, k) for k in dict.fromkeys(k for k in keys if k)]
+    if cfg.get("tracker") == "linear":
+        results.append(linear_signin(cfg))
+    return results
+
+
+def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> bool:
+    """Check sign-ins before work starts. True (after logging, heartbeat `waiting` with the reason, and
+    one notification until it clears) when any check fails; the caller then starts nothing."""
+    results = signin_checks(cfg, root, harnesses, panel, finish)
+    failing = [c for c in results if not c["ok"]]
+    prev = read_signin(root) or {}
+    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
+    new = [c for c in failing if c["name"] not in notified]
+    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
+           "checks": results, "notified": notified + [c["name"] for c in new]}
+    p = signin_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(out) + "\n")
+    os.replace(tmp, p)
+    if not failing:
+        return False
+    reason = "; ".join(c["detail"] for c in failing)
+    log(root, f"waiting: {reason}")
+    beat(root, "waiting", reason=reason)
+    if new:
+        notify(cfg, root, "Runway: " + "; ".join(c["detail"].split(" (")[0] for c in new))
+    return True
+
+
+def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
+    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+    me = machine_name()
+    names = []
+    for t in tickets:
+        if t.status != "ready" or harness_error(cfg, t):
+            continue
+        prep_it = t.gate == "human" and will_unblock_without_joe(t, tickets)
+        run_it = t.gate in RUNNABLE_GATES and unblocked(t, tickets) and (not t.claimed_by or t.claimed_by == me)
+        if prep_it or run_it:
+            names.append(resolve_harness(cfg, t)["name"])
+    return bool(names) and signin_waiting(cfg, root, list(dict.fromkeys(names)))
+
+
 def record(root: Path, rec: dict) -> None:
     p = root / "_pm" / "runway-runs.jsonl"
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -750,7 +919,8 @@ def resolve_harness(cfg: dict, t=None) -> dict:
 def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
     """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns and usage,
     each None when the harness doesn't report it. Unparseable output comes back as text unchanged."""
-    meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None}
+    meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None, "is_error": False,
+            "subtype": None}
     if parser == "claude":
         try:
             d = json.loads(stdout)
@@ -758,7 +928,8 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
             return stdout, meta
         if isinstance(d, dict) and "result" in d:
             meta.update(session_id=d.get("session_id"), cost_usd=d.get("total_cost_usd"),
-                        num_turns=d.get("num_turns"), usage=d.get("usage"))
+                        num_turns=d.get("num_turns"), usage=d.get("usage"),
+                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"))
             return d.get("result") or "", meta
     elif parser == "codex":
         # `codex exec --json` prints one event per line: thread.started, item.completed, turn.completed.
@@ -784,6 +955,30 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
     return stdout, meta
 
 
+AUTH_RE = re.compile(r"authentication_failed|authentication_error|oauth (session|token)[^.\n]*expired|"
+                     r"invalid api key|please run /login|not logged in", re.I)
+
+
+def agent_failure(r, text: str, meta: dict) -> str | None:
+    """Why this agent call did not really run, else None: a non-zero exit, an is_error result, or no
+    turns and no output at all. The reason carries the agent's own error text."""
+    said = (text or r.stdout or "").strip()
+    err = (r.stderr or "").strip()
+    detail = "\n".join(x for x in (said, err) if x)[-1500:] or "no output"
+    if r.returncode != 0:
+        return f"the agent exited {r.returncode}: {detail}"
+    if meta.get("is_error"):
+        return f"the agent reported an error: {detail}"
+    out = (meta.get("usage") or {}).get("output_tokens")
+    if meta.get("num_turns") == 0 and not out:
+        return "the agent ran no turns and wrote no output"
+    return None
+
+
+def fix_failure_note(reason: str) -> str:
+    return f"The fix pass failed ({reason.splitlines()[0][:200]}); the findings stand."
+
+
 def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: str, kind: str, attempt: int = 1,
               harness: dict | None = None):
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
@@ -807,6 +1002,11 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
                   "exit": r.returncode, "secs": round(time.time() - t0),
                   "session_id": meta["session_id"], "cost_usd": meta["cost_usd"],
                   "num_turns": meta["num_turns"], "usage": meta["usage"]})
+    r.failure = agent_failure(r, text, meta)
+    r.auth = bool(r.failure and (meta.get("subtype") == "authentication_failed" or AUTH_RE.search(
+        "\n".join((text, r.stdout or "", r.stderr or "")))))
+    if r.auth:
+        pause_for_auth(cfg, root)
     return r, text
 
 
@@ -842,7 +1042,7 @@ def prep(cfg: dict, root: Path, t) -> None:
     if stop_requested():
         log(root, f"stopped by pause  prep {t.id}")
         return
-    packet = text.strip() if r.returncode == 0 and text.strip() else f"Prep failed:\n\n```\n{r.stderr[-2000:]}\n```"
+    packet = text.strip() if not r.failure and text.strip() else f"Prep failed:\n\n```\n{r.failure or r.stderr[-2000:]}\n```"
     t.post_packet(packet)
     notify(cfg, root, f"Decision ready: {t.id} {t.title}")
 
@@ -907,6 +1107,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     branch = f"runway/{t.effort}-{t.slug}"
     wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
     t.mark_claimed(branch, machine_name())
+    # No tracker can claim atomically, so read the claim back: if another Mac stamped it after us, it keeps it.
+    now_held = next((x.claimed_by for x in tracker.load() if x.id == t.id), None)
+    if now_held and now_held != machine_name():
+        log(root, f"skip {t.id} claimed by {now_held}")
+        return
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
     if wt.exists():
@@ -916,16 +1121,24 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
     extra, ok, detail, attempt = "", False, "", 0
     hp = resolve_harness(cfg, t)
-    stopped = False
+    stopped = signed_out = False
     for attempt in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
             stopped = True
             break
         beat(root, "agent", t.id, attempt)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
-        run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
+        r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
         if stop_requested():
             stopped = True
+            break
+        if r.auth:  # not the ticket's fault: back in the queue, loop paused machine-wide
+            signed_out = True
+            break
+        if r.failure:
+            detail = f"Agent failed on attempt {attempt}: {r.failure}"
+            log(root, f"fail  {t.id} attempt {attempt}: agent did not run")
+            beat_update(root, last_result="fail")
             break
         q = wt / "RUNWAY_QUESTION.md"
         if q.exists():
@@ -933,6 +1146,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             break
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-m", f"runway: {t.title} (auto-commit)"], wt)
+        made = sh(["git", "rev-list", "--count", f"{cfg['integration_branch']}..HEAD"], wt).stdout.strip()
+        if made in ("", "0"):  # a ticket always changes something; one that doesn't needs Joe to say so
+            detail = f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something."
+            log(root, f"fail  {t.id} attempt {attempt}: no commits")
+            break
         beat(root, "check", t.id, attempt)
         c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
         if c.returncode == 0:
@@ -948,6 +1166,11 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         t.mark_ready("stopped by pause")
         log(root, f"stopped by pause  {t.id}")
         record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "stopped", "detail": ""})
+        return
+    if signed_out:  # the ticket goes back to ready; the queue behind it is untouched
+        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
+        record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "signed-out", "detail": ""})
+        sh(["git", "worktree", "remove", "--force", str(wt)], root)
         return
     if ok:
         beat(root, "merge", t.id)
@@ -1071,7 +1294,8 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
         register_agent(pid, root)  # so max_agents counts the panel and pause --stop-now can stop it
     try:
         r = sh([sys.executable, str(Path(__file__).resolve().parent / "ringer_panel.py"), "--repo", str(wt),
-                "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out)], root,
+                "--base", cfg["base_branch"], "--brief-file", str(brief), "--out", str(out),
+                "--budget-s", str(max(cfg["agent_timeout_s"] - 60, 60))], root,
                timeout=cfg["agent_timeout_s"], on_start=started)
     finally:
         if pids:
@@ -1130,6 +1354,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if not force and state.get("head") == head:
         return False
 
+    if signin_waiting(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True):
+        return False
     beat(root, "finish")
     log(root, f"finish {integ} ({ahead} commits ahead of {base})")
     wt = integration_worktree(cfg, root)
@@ -1151,11 +1377,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                             REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
                             "finish", "review", harness=hp)
         findings = text.strip()
-        if r.returncode != 0 or not findings:
-            findings, has_findings = f"Review failed (exit {r.returncode}).", False
+        if r.failure or not findings:
+            findings, has_findings = f"Review failed ({r.failure or 'no output'}).", False
         else:
             has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
-    if stop_requested():
+    if stop_requested() or (not panel and r.auth):
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
 
@@ -1167,12 +1393,17 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         fix_prompt = PANEL_FIX_PROMPT if panel else FIX_PROMPT
         fr, fix_text = run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt,
                                  fix_prompt.format(findings=findings), "finish", "fix", harness=hp)
+        if fr.failure:
+            sh(["git", "reset", "--hard", "-q", before], wt)
+            sh(["git", "clean", "-fdq"], wt)
         if panel:
             triage = fix_text.strip() or f"(The fixer returned no triage table, exit {fr.returncode}.)"
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-qm", "runway: review fixes (auto-commit)"], wt)
         after = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
-        if after == before:
+        if fr.failure:
+            fix_note = fix_failure_note(fr.failure)
+        elif after == before:
             fix_note = "The fix pass made no changes; the findings stand."
         elif sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"]).returncode == 0:
             fix_note = f"The fix pass committed {after[:8]} and the check still passes."
@@ -1348,6 +1579,8 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     beat(root, "sync", tick_started=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
     tracker.sync()
     tickets = tracker.load()
+    if signin_waiting_for_work(cfg, root, tickets):
+        return False
     # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
     for t in tickets:
         if active_pause():
@@ -1368,12 +1601,15 @@ def tick(cfg: dict, root: Path, tracker) -> bool:
     tickets = tracker.load()
     me = machine_name()
     for t in tickets:
-        if t.status == "ready" and t.gate in RUNNABLE_GATES and unblocked(t, tickets):
-            if park_bad_harness(cfg, root, t):
-                did = True
-                continue
+        if t.gate in RUNNABLE_GATES and t.status in ("ready", "claimed") and unblocked(t, tickets):
+            # A ticket another Mac is running reads as claimed, not ready, so the check covers both.
             if t.claimed_by and t.claimed_by != me:
                 log(root, f"skip {t.id} claimed by {t.claimed_by}")
+                continue
+            if t.status != "ready":
+                continue
+            if park_bad_harness(cfg, root, t):
+                did = True
                 continue
             run_ticket(cfg, root, tracker, t)
             return True
@@ -1433,6 +1669,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
+            "signin": read_signin(root),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "tickets": [entry(t) for t in loaded if t.id in grouped]}
@@ -1519,7 +1756,7 @@ def main() -> None:
         cmd_resume()
         return
     if a.cmd == "machine":
-        print(describe_machine())
+        print(describe_machine(root))
         return
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
@@ -1553,7 +1790,8 @@ def main() -> None:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
                         if active_pause() or machine_block():
-                            return  # paused or waiting: no finish step, keep that heartbeat phase
+                            beat(root, "idle")  # paused or waiting: no finish step, and no stale phase under a dead pid
+                            return
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
