@@ -46,6 +46,10 @@ issues carrying a Runway label (one GraphQL page of 50 issues each, labels, assi
 comments and native blockers included), plus one call only when some issue names a blocker in its body
 that isn't already loaded. Nothing else is fetched. `reload()` is one call.
 
+Every `gh` call is cut off after `github.timeout_s` (default 60). A timeout, a connection reset or a 5xx is
+retried twice, then the tick ends cleanly (see transient.py). A comment or close that timed out is looked up
+before it is repeated, so it is never posted twice.
+
 Auth: `gh` must be installed and signed in (`gh auth login`, or GH_TOKEN in the environment). Anything
 else is one clear error naming both, not a traceback.
 """
@@ -59,6 +63,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import transient  # noqa: E402
+
 MARK = "🛫 runway"  # every comment Runway writes starts with this, so Joe's are told apart
 TRUSTED = ("OWNER", "MEMBER", "COLLABORATOR")
 PAGE = 50
@@ -67,6 +74,7 @@ GO_RE = re.compile(r"go\b[\s:,.-]*", re.I)
 DEFAULTS = {
     "repo": "",
     "gh": "gh",
+    "timeout_s": 60,
     "agent_label": "ready-for-agent",
     "human_label": "ready-for-human",
     "approve_label": "go",
@@ -75,6 +83,12 @@ DEFAULTS = {
 AUTH_HELP = "GitHub CLI isn't ready. Install gh and run `gh auth login`, or set GH_TOKEN."
 AUTH_RE = re.compile(r"gh auth login|GH_TOKEN|GITHUB_TOKEN|not logged in|authentication|bad credentials|HTTP 401",
                      re.I)
+
+# What gh prints when GitHub or the network hiccups (retried), as opposed to a real refusal.
+TRANSIENT_RE = re.compile(r"timed? ?out|timeout|connection (reset|refused|closed|aborted)|HTTP 5\d\d|HTTP 429|"
+                          r"\b50[0234]\b|bad gateway|service unavailable|gateway time|unexpected EOF|\bEOF\b|"
+                          r"no such host|could not resolve host|network is unreachable|TLS handshake|rate limit|"
+                          r"temporarily unavailable", re.I)
 
 ISSUE_FIELDS = """
   number title body url state stateReason
@@ -111,17 +125,26 @@ def repo_from_origin(root: Path) -> str:
 class GitHub:
     def __init__(self, cfg: dict):
         self.cmd = shlex.split(cfg["gh"])
+        self.timeout = float(cfg.get("timeout_s") or 60)
 
-    def run(self, args: list[str]) -> str:
-        try:
-            r = subprocess.run(self.cmd + args, capture_output=True, text=True)
-        except FileNotFoundError:
-            sys.exit(AUTH_HELP)
-        if r.returncode != 0:
-            if AUTH_RE.search(r.stderr + r.stdout):
+    def run(self, args: list[str], landed=None) -> str:
+        """One gh call, cut off after `timeout_s`. A timeout, a reset or a 5xx is retried (transient.py),
+        then raises TrackerDown. landed: for a write that isn't safe to repeat, a check that it is there."""
+        def once() -> str:
+            try:
+                r = subprocess.run(self.cmd + args, capture_output=True, text=True, timeout=self.timeout)
+            except FileNotFoundError:
                 sys.exit(AUTH_HELP)
-            raise RuntimeError(f"gh failed: {(r.stderr or r.stdout).strip()[:500]}")
-        return r.stdout
+            if r.returncode != 0:
+                out = r.stderr + r.stdout
+                if AUTH_RE.search(out):
+                    sys.exit(AUTH_HELP)
+                if TRANSIENT_RE.search(out):
+                    raise transient.TransientError(f"gh failed: {out.strip()[:200]}")
+                raise RuntimeError(f"gh failed: {out.strip()[:500]}")
+            return r.stdout
+        out = transient.retry(once, "gh " + " ".join(args[:2]), landed)
+        return out or ""
 
     def graphql(self, query: str, **variables) -> dict:
         args = ["api", "graphql", "-f", f"query={query}"]
@@ -260,11 +283,21 @@ class GitHubTicket:
 
     # -- write side --
 
-    def _issue(self, verb: str, *args: str) -> None:
-        self.tr.api.run(["issue", verb, self.num[1:], "--repo", self.tr.repo, *args])
+    def _issue(self, verb: str, *args: str, landed=None) -> None:
+        self.tr.api.run(["issue", verb, self.num[1:], "--repo", self.tr.repo, *args], landed=landed)
+
+    def _landed(self, full: str):
+        """A check that a comment written from now on is already on the issue (for a write that timed out)."""
+        since = transient.since_mark()
+
+        def check() -> bool:
+            node = self.tr.fetch(self)
+            return transient.posted_since(node["comments"]["nodes"], full, since)
+        return check
 
     def _comment(self, body: str) -> None:
-        self._issue("comment", "--body", f"{MARK} · {body.strip()}")
+        full = f"{MARK} · {body.strip()}"
+        self._issue("comment", "--body", full, landed=self._landed(full))
 
     def _unassign(self) -> list[str]:
         """Args that drop whoever holds the issue (the gh user when the node doesn't say)."""
@@ -276,7 +309,8 @@ class GitHubTicket:
         self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
 
     def mark_resolved(self, note: str) -> None:
-        self._issue("close", "--reason", "completed", "--comment", f"{MARK} · {note.strip()}")
+        full = f"{MARK} · {note.strip()}"
+        self._issue("close", "--reason", "completed", "--comment", full, landed=self._landed(full))
 
     def mark_needs_human(self, why: str, detail: str) -> None:
         label = self.tr.c["needs_human_label"]
@@ -307,7 +341,8 @@ class GitHubTicket:
 
     def decline(self, note: str) -> None:
         if note.lower().startswith("drop"):
-            self._issue("close", "--reason", "not planned", "--comment", f"{MARK} · Dropped. {note}".strip())
+            full = f"{MARK} · Dropped. {note}".strip()
+            self._issue("close", "--reason", "not planned", "--comment", full, landed=self._landed(full))
         else:
             self._comment(f"Joe said no: {note}")
 
@@ -397,9 +432,12 @@ class GitHubTracker:
             tickets[-1].id = tickets[-1].num = bid
         return tickets
 
-    def reload(self, t: GitHubTicket) -> GitHubTicket:
+    def fetch(self, t: GitHubTicket) -> dict:
         d = self.api.graphql(Q_ONE, owner=self.owner, name=self.name, number=int(t.num.rsplit('#', 1)[1]))
-        return GitHubTicket(d["repository"]["issue"], self)
+        return d["repository"]["issue"]
+
+    def reload(self, t: GitHubTicket) -> GitHubTicket:
+        return GitHubTicket(self.fetch(t), self)
 
     def _log_once(self, line: str) -> None:
         p = self.root / "_pm" / "runway.log"
