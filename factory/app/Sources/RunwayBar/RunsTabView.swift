@@ -63,7 +63,7 @@ struct RunsTab: View {
             TableColumn("When") { Text($0.at).monospacedDigit() }.width(min: 120, ideal: 150)
             TableColumn("Ticket") { record in
                 if let url = linearURL(record.ticket) {
-                    Link(record.ticket, destination: url).font(.body.monospaced()).help("Open \(record.ticket) in Linear")
+                    Link(record.ticket, destination: url).font(.body.monospaced()).help(TicketLink.openHint(ticket: record.ticket, tracker: entry.project.tracker))
                 } else {
                     Text(record.ticket).font(.body.monospaced())
                 }
@@ -111,7 +111,7 @@ struct RunsTab: View {
                 if !title.isEmpty { Text(title).font(.headline).lineLimit(1) }
                 Spacer()
                 if let url = linearURL(record.ticket) {
-                    Link(destination: url) { Label("Open in Linear", systemImage: "arrow.up.right.square") }
+                    Link(destination: url) { Label(TicketLink.buttonTitle(tracker: entry.project.tracker), systemImage: "arrow.up.right.square") }
                 }
                 if let id = record.sessionID, !id.isEmpty {
                     Button { openSession(id) } label: { Label("Show session", systemImage: "doc.text.magnifyingglass") }
