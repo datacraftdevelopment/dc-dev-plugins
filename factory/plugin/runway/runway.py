@@ -9,7 +9,9 @@ The loop never waits on Joe. Each tick it:
      then the check command. Pass -> merged into the integration branch, resolved.
      Fail -> one retry with the failure output, then parked as needs-human.
 
-When the queue is finished, `loop` runs a finish step once per integration head:
+When the queue is finished, `loop` runs a finish step once per integration head
+that carries new ticket work (heads moved only by `runway: merge <base> into <integration>` syncs
+are skipped and recorded; `runway finish` always runs):
 a review of the whole branch against the tickets, one fix pass, the check, and a
 PR body (written to _pm/runway-pr.md, or opened as a draft PR with "pr": "draft").
 
@@ -1353,9 +1355,26 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     return findings, has_findings
 
 
+def ticket_work_since(cfg: dict, root: Path, reviewed) -> bool:
+    """True if anything but Runway's own base syncs landed on the integration branch since `reviewed`.
+    A missing, unreadable or non-ancestor reviewed head counts as work (finish re-runs, as it always did)."""
+    integ = cfg["integration_branch"]
+    if not isinstance(reviewed, str) or not reviewed:
+        return True
+    if sh(["git", "merge-base", "--is-ancestor", reviewed, integ], root).returncode != 0:
+        return True
+    r = sh(["git", "rev-list", "--first-parent", "--format=%s", f"{reviewed}..{integ}"], root)
+    if r.returncode != 0:
+        return True
+    sync = f"runway: merge {cfg['base_branch']} into {integ}"
+    subjects = [l for l in r.stdout.splitlines() if l and not l.startswith("commit ")]
+    return any(sub != sync for sub in subjects)
+
+
 def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     """Review the integration branch as a whole, fix once, check, and write the PR body.
-    Runs once per integration head unless forced. Returns True if it ran."""
+    Runs once per integration head that carries new ticket work (base syncs alone don't), unless forced.
+    Returns True if it ran."""
     base, integ = cfg["base_branch"], cfg["integration_branch"]
     if sh(["git", "rev-parse", "--verify", integ], root).returncode != 0:
         return False
@@ -1368,9 +1387,19 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         if mode == "all_done" and not all(t.status in DONE for t in tickets):
             return False
     state_p = root / "_pm" / "runway-finish.json"
-    state = json.loads(state_p.read_text()) if state_p.exists() else {}
+    try:
+        state = json.loads(state_p.read_text()) if state_p.exists() else {}
+    except (OSError, ValueError):
+        state = {}  # unreadable: no reviewed head, so finish runs as it always did
+    if not isinstance(state, dict):
+        state = {}
     head = sh(["git", "rev-parse", integ], root).stdout.strip()
     if not force and state.get("head") == head:
+        return False
+    if not force and not ticket_work_since(cfg, root, state.get("head")):
+        # Only base syncs moved the head: nothing new to review. Record it so the next check is cheap.
+        (root / "_pm").mkdir(exist_ok=True)
+        state_p.write_text(json.dumps({"head": head, "at": now()}))
         return False
 
     if signin_waiting(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True):
