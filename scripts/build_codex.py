@@ -16,16 +16,15 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '.dc-codex-build.json'
 PLUGINS = {
-    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, delivery checks, the credential guard and macOS UI tests.'),
+    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, delivery checks, the credential guard, macOS UI tests and Runway, the unattended ticket loop.'),
     'design-dc': ('DataCraft Design', 'Design handoffs, HTML artifacts, Excalidraw, and design-system workflows.'),
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
-    'factory': ('DataCraft Factory', 'Runway: run ready Linear tickets unattended and gate the rest for a human.'),
 }
 # Local plugins with no Codex edition.
 CLAUDE_ONLY = set()
 # Plugin source folders that differ from the plugin name.
-SOURCES = {'factory': 'factory/plugin'}
+SOURCES = {}
 # Codex leaves these paths of a plugin out. pm's gate kit and review policy install
 # Claude Code hooks into a repo's own settings and dispatch a Claude Code agent, so pm's
 # Codex edition carries the credential guard and ui-test but not gate-hooks or review-policy.
