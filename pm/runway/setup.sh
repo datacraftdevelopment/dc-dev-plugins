@@ -46,8 +46,13 @@ else
   MSG="Track issues in Linear ($TEAM / $PROJECT); add runway.json"
 fi
 # Matt's other two docs: seed when missing, never overwrite (his setup or Joe's edits win).
-[ -f docs/agents/triage-labels.md ] || cp "$HERE/triage-labels.md.template" docs/agents/triage-labels.md
-[ -f docs/agents/domain.md ] || cp "$HERE/domain.md.template" docs/agents/domain.md
+STAGE=(docs/agents/issue-tracker.md CLAUDE.md runway.json)
+if [ ! -f docs/agents/triage-labels.md ]; then
+  cp "$HERE/triage-labels.md.template" docs/agents/triage-labels.md; STAGE+=(docs/agents/triage-labels.md)
+fi
+if [ ! -f docs/agents/domain.md ]; then
+  cp "$HERE/domain.md.template" docs/agents/domain.md; STAGE+=(docs/agents/domain.md)
+fi
 # The Agent skills block has Matt's three sub-blocks; an existing block is left alone.
 if ! grep -q '^## Agent skills' CLAUDE.md 2>/dev/null; then
   cat >> CLAUDE.md <<MD
@@ -67,7 +72,8 @@ Matt's five defaults, plus Runway's \`go\`, \`needs-human\` and \`spec\`. See \`
 Single-context: \`GLOSSARY.md\` and \`docs/adr/\` at the repo root, created when first needed. See \`docs/agents/domain.md\`.
 MD
 fi
-git add docs/agents CLAUDE.md runway.json
-git commit -qm "$MSG" || true
+# Stage only what this run owns; a dirty worker-env.md or a kept doc must not ride along.
+git add -- "${STAGE[@]}"
+git commit -qm "$MSG" -- "${STAGE[@]}" || true
 echo "Repo ready: $REPO"
 echo "Next: python3 \"$HERE/runway.py\" --root \"$REPO\" setup"

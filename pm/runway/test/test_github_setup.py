@@ -224,6 +224,37 @@ class SetupScript(unittest.TestCase):
             self.sh(str(repo), *self.ARGS["github"])
             self.assertIn("Never put both labels", (repo / "docs/agents/issue-tracker.md").read_text())
 
+    def test_rerun_commits_only_files_it_owns(self):
+        for mode, args in self.ARGS.items():
+            with self.subTest(mode), tempfile.TemporaryDirectory() as d:
+                repo = Path(d) / "proj"
+                self.assertEqual(self.sh(str(repo), *args).returncode, 0)
+                git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True,
+                                                check=True).stdout
+                (repo / "docs/agents/worker-env.md").write_text("committed\n")
+                (repo / "docs/agents/issue-tracker.md").write_text("plain doc\n")   # setup restores it, so it commits
+                git("add", "docs/agents/worker-env.md", "docs/agents/issue-tracker.md")
+                git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "worker env")
+                (repo / "docs/agents/worker-env.md").write_text("dirty edit\n")
+                (repo / "docs/agents/notes.md").write_text("untracked\n")
+                (repo / "docs/agents/triage-labels.md").write_text("MINE labels\n")
+                r = self.sh(str(repo), *args)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(git("show", "--name-only", "--format=", "HEAD").split(), ["docs/agents/issue-tracker.md"])
+                status = git("status", "--porcelain")
+                for path in ("worker-env.md", "notes.md", "triage-labels.md"):
+                    self.assertIn(path, status)
+
+    def test_fresh_repo_commits_all_three_docs(self):
+        for mode, args in self.ARGS.items():
+            with self.subTest(mode), tempfile.TemporaryDirectory() as d:
+                repo = Path(d) / "proj"
+                self.assertEqual(self.sh(str(repo), *args).returncode, 0)
+                files = subprocess.run(["git", "-C", str(repo), "show", "--name-only", "--format=", "HEAD"],
+                                       capture_output=True, text=True, check=True).stdout.split()
+                self.assertEqual(sorted(files), ["CLAUDE.md", "docs/agents/domain.md", "docs/agents/issue-tracker.md",
+                                                 "docs/agents/triage-labels.md", "runway.json"])
+
     def test_linear_mode_unchanged(self):
         with tempfile.TemporaryDirectory() as d:
             repo = Path(d) / "proj"
