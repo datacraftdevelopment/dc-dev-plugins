@@ -104,9 +104,16 @@ public struct RunwayConfig: Equatable, Sendable {
 
 /// What the "open the ticket" button says, by the project's tracker.
 public enum TicketLink {
-    public static func buttonTitle(tracker: String?) -> String {
-        tracker == "github" ? "Open in GitHub" : "Open in Linear"
+    /// The tracker's display name; anything but GitHub reads as Linear, as before.
+    public static func name(tracker: String?) -> String {
+        tracker == "github" ? "GitHub" : "Linear"
     }
+
+    public static func buttonTitle(tracker: String?) -> String { "Open in \(name(tracker: tracker))" }
+
+    public static func openHint(ticket: String, tracker: String?) -> String { "Open \(ticket) in \(name(tracker: tracker))" }
+
+    public static func doubleClickHint(tracker: String?) -> String { "Double-click to open in \(name(tracker: tracker))." }
 }
 
 /// One Runway loop as the views see it.

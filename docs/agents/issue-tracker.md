@@ -45,6 +45,13 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 Create a GitHub issue.
 
+## When a skill says "publish a spec"
+
+`/to-spec` publishes the spec as an issue. Label it `spec`, and never `ready-for-agent` or `ready-for-human`,
+whatever the skill says about triage. Runway skips any issue labelled `spec`, and any issue that has sub-issues,
+so the spec doesn't run as a ticket alongside its own tickets. `/to-tickets` then publishes the build tickets as
+sub-issues of the spec (see **Make an issue a sub-issue of a parent**), and those carry the triage labels.
+
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --comments`.

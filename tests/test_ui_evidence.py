@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 
-PLUGIN = Path(__file__).resolve().parents[1] / "ui-test"
+PLUGIN = Path(__file__).resolve().parents[1] / "pm"
 SCRIPTS = PLUGIN / "skills/ui-test/scripts"
 REFERENCES = PLUGIN / "skills/ui-test/references"
 # A fully encoded 2x2 RGB PNG (red, green, blue, white), not a screenshot.

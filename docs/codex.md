@@ -42,7 +42,7 @@ Add new source files to Git's index before building. This prevents local virtual
 environments, sandbox databases, personal tracking, and client files entering a
 package. The `fm-lens` plugin (formerly `fm-adt-helper`) is intentionally outside this build; its source moved to the private FM_Agent_Lens repo (`lens/`) on 2026-09-16.
 
-Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,ui-test,basecamp-dc}`, validates
+Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,basecamp-dc}`, validates
 them with Codex's plugin-creator helper, registers them in
 `~/.agents/plugins/marketplace.json`, and runs `codex plugin add` for each.
 Unrelated package folders are never overwritten. Existing generated folders are
@@ -85,8 +85,8 @@ package, including converted commands and agent procedures.
 
 ### UI testing and Basecamp
 
-`ui-test` uses the existing Ringer runner/verifier flow from either host. Install
-its Python dependencies from `ui-test/requirements.txt` in the Python runtime
+`ui-test` (a pm skill since pm 0.25.0) uses the existing Ringer runner/verifier flow from either host. Install
+its Python dependencies from `pm/requirements.txt` in the Python runtime
 used by the checks. Computer-use availability and target-app approvals belong to
 the actual worker environment; a successful package build does not establish them.
 
@@ -314,7 +314,6 @@ claude plugin marketplace add .
 claude plugin install pm@dc-dev-plugins --scope user
 claude plugin install design-dc@dc-dev-plugins --scope user
 claude plugin install fm-dc@dc-dev-plugins --scope user
-claude plugin install ui-test@dc-dev-plugins --scope user
 claude plugin install basecamp-dc@dc-dev-plugins --scope user
 ```
 

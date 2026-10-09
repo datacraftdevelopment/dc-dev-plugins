@@ -6,11 +6,14 @@ experiments that produced it are one folder up in `factory/` and don't ship.
 | Piece | What it is |
 |---|---|
 | `skills/runway/` | Set up a repo for Runway, plan and label its tickets, run and watch the loop, answer decisions, retro. |
-| `runway/runway.py`, `runway/linear_tracker.py` | The engine. Python 3.9+ and git only. |
-| `runway/setup.sh` | Points a repo at a Linear project: `docs/agents/issue-tracker.md`, `runway.json`, CLAUDE.md section. |
+| `runway/runway.py`, `runway/linear_tracker.py`, `runway/github_tracker.py` | The engine and its two tracker adapters. Python 3.9+ and git only. |
+| `runway/setup.sh` | Points a repo at a Linear project or a GitHub repo (`--github`): `docs/agents/issue-tracker.md`, `runway.json`, CLAUDE.md section. |
 | `runway/schedule.sh` | Installs, fires, shows or removes the launchd job that runs the loop. |
-| `runway/issue-tracker-linear.md` | The tracker file `setup.sh` stamps: labels, the gating rule, the conflict screen. |
+| `runway/issue-tracker-linear.md`, `runway/issue-tracker-github.md` | The tracker file `setup.sh` stamps for each tracker: labels, the gating rule, the conflict screen. |
+| `runway/runway.json.template`, `runway/runway.json.github.template` | The `runway.json` `setup.sh` writes for Linear and for GitHub. |
 | `runway/worker-env.md` | Template for a repo's `docs/agents/worker-env.md`, which every ticket run reads first. |
+
+Runway works either tracker, one per repo, chosen in `runway.json`.
 
 Ringer is optional here. Only the review panel (`"review": "panel"`) uses it; without
 Ringer, Runway falls back to the single Claude review. See the runway skill.
@@ -29,7 +32,7 @@ Ringer, Runway falls back to the single Claude review. See the runway skill.
 
 The runway skill has the full detail.
 
-Install alongside `sdlc` (the credential guard and gates) and Matt Pocock's
+Install alongside `pm` (the credential guard and gates) and Matt Pocock's
 skills (`/to-spec`, `/to-tickets`, `/tdd`, `/code-review`, `/pr`, `/retro`).
 
 ```

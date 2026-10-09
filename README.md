@@ -1,7 +1,7 @@
 # dc-dev-plugins
 
 Datacraft's plugins for **Claude Code and Codex**. The `pm/`, `design-dc/`,
-`fm-dc/`, `ui-test/`, and `basecamp-dc/` folders are the shared source. Claude Code installs them from
+`fm-dc/`, and `basecamp-dc/` folders are the shared source. Claude Code installs them from
 `.claude-plugin/marketplace.json`; the Codex builder creates compatible editions
 from the same tracked files. See [Codex installation and compatibility](docs/codex.md).
 
@@ -23,9 +23,9 @@ What assumes it:
   `build-swarm` can execute a prepared real ticket frontier in worktree waves.
 - `cross-review-gate` — an explicitly needed two-seat review runs through Ringer;
   PM's conditional schedule owns when to use it.
-- `ui-test` skill `ui-test` — the UI runner (Codex computer-use) and its
+- `pm` skill `ui-test` — the UI runner (Codex computer-use) and its
   verifier are both Ringer tasks; also needs a one-time Codex computer-use
-  approval per target app (see `ui-test/README.md`).
+  approval per target app (see `pm/UI-TEST.md`).
 
 Where it lives (none of it ships in this repo):
 
@@ -94,12 +94,10 @@ Update everything later with:
 
 | Plugin | Command / skills | What it does |
 |---|---|---|
-| **pm** | `/pm:pm-scaffold`, `whats-next`, `orchestrate`, `stepping-away`, `session-succession` (beta), `okf` | Outcome-sized tickets, one orchestrator, up to six subagents working a dependency graph, proportionate verification and concise handoffs. See [`pm/README.md`](pm/README.md). |
+| **pm** | `/pm:pm-scaffold`, `whats-next`, `orchestrate`, `stepping-away`, `session-succession` (beta), `okf`; `credential-guard` (hook and skill), `gate-hooks`, `review-policy`, agent `policy-reviewer`; `ui-test` | Outcome-sized tickets, one orchestrator, up to six subagents working a dependency graph, proportionate verification and concise handoffs. Also carries what the sdlc and ui-test plugins were (folded in at 0.25.0): the credential guard, repo-level gate hooks and a `REVIEW.md` policy with a read-only reviewer (Claude Code only; see [`pm/GATES.md`](pm/GATES.md)), and the macOS UI runner and independent verifier through Ringer (see [`pm/UI-TEST.md`](pm/UI-TEST.md)). See [`pm/README.md`](pm/README.md). |
 | **design-dc** | `design-handoff`, `html-artifacts`, `excalidraw-artifacts`, `design-sync` | Design handoffs and artifacts. Direct DesignSync requires a host that exposes that tool. |
-| **ui-test** | `ui-test` | macOS UI runner and independent verifier through Ringer, with decoded PNG evidence and explicit PASS/FAIL/BLOCKED outcomes. See [`ui-test/README.md`](ui-test/README.md). |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
-| **sdlc** | `gate-hooks`, `review-policy`; agent `policy-reviewer` | Repo-level enforcement kits: gate hooks installed into a repo's `.claude/` (production gate, protected paths, test lock) and a `REVIEW.md` policy with a read-only reviewer. Claude Code only: no Codex edition, no `pm` or Ringer dependency. See [`sdlc/README.md`](sdlc/README.md). |
 
 ### Not a plugin: `factory/`
 

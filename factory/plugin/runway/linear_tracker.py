@@ -7,6 +7,11 @@ Matt Pocock's triage labels, which /to-tickets already applies:
   ready-for-human   Needs Joe. Runway preps a packet first.         (Gate: human)
   go                Joe's approval on a ready-for-human ticket.     (Gate: approved)
   needs-human       Parked: waiting on Joe. Runway never picks it.  (Status: needs-human)
+  spec              A spec (what /to-spec publishes). Never run, even with a Runway label.
+
+An issue with child issues is a spec too, label or not: its children are the tickets. A spec has gate
+`none`, so Runway never runs it, but it still gates a ticket that names it as a blocker. The first time a
+labelled spec is skipped, one line goes to `_pm/runway.log`.
 
 Anything else in the project (wayfinder decision tickets, Joe's own issues) is ignored,
 except as a blocker. Status comes from the workflow state: completed or canceled is done,
@@ -23,6 +28,7 @@ API key: LINEAR_API_KEY, or the macOS keychain item `runway-linear`
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
 import re
@@ -44,6 +50,7 @@ DEFAULTS = {
     "human_label": "ready-for-human",
     "approve_label": "go",
     "needs_human_label": "needs-human",
+    "spec_label": "spec",
     "claimed_state": "In Progress",
     "done_state": "Done",
     "api_key_env": "LINEAR_API_KEY",
@@ -55,6 +62,7 @@ ISSUE_FIELDS = """
   id identifier number title description url
   state { id name type }
   labels(first: 20) { nodes { id name } }
+  children(first: 1) { nodes { id } }
   comments(first: 25) { nodes { body createdAt } }
   inverseRelations(first: 10) { nodes { type issue { identifier number title state { type } } } }
 """
@@ -182,8 +190,15 @@ class LinearTicket:
         return "ready"
 
     @property
+    def is_spec(self) -> bool:
+        """A spec is labelled `spec` or has child issues. Runway never runs one."""
+        return self.tr.c["spec_label"] in self.labels or bool((self.node.get("children") or {}).get("nodes"))
+
+    @property
     def gate(self) -> str:
         c = self.tr.c
+        if self.is_spec:
+            return "none"
         if c["human_label"] in self.labels:
             return "approved" if c["approve_label"] in self.labels else "human"
         if c["agent_label"] in self.labels:
@@ -204,14 +219,19 @@ class LinearTicket:
 
     @property
     def claimed_by(self) -> str | None:
-        """The machine named in Runway's latest claim comment while the ticket is claimed, else None."""
+        """The machine named in the first claim comment of the current claim cycle, else None. First stamp wins, so
+        two Macs that both stamped agree on the owner whichever order they read back in."""
         if self.status != "claimed":
             return None  # parked, paused or retried: the old stamp no longer holds the ticket
+        owner = None
         for cm in reversed(self.comments):
-            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
-            if m:
-                return m.group(1).strip()
-        return None
+            if not cm["body"].startswith(MARK):
+                continue  # Joe's comments don't end a cycle
+            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
+            if not m:
+                break  # a park, release or note: earlier claims belong to an earlier cycle
+            owner = m.group(1).strip()
+        return owner
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
@@ -268,8 +288,13 @@ class LinearTicket:
     def mark_needs_human(self, why: str, detail: str) -> None:
         # Back to an unstarted state, so clearing the label makes it ready again.
         self._update(stateId=self.tr.state_id(None, "unstarted"))
-        self._labels(add=[self.tr.c["needs_human_label"]])
-        self._comment(f"Parked: {why}. Remove `{self.tr.c['needs_human_label']}` or comment `go` to retry.\n\n{detail}")
+        # An approval is spent by the run it let through: dropping `go` here keeps sync from re-approving every tick.
+        c = self.tr.c
+        gated = self.gate == "approved"
+        self._labels(add=[c["needs_human_label"]], remove=[c["approve_label"]])
+        retry = (f"Comment `go` (or re-add the `{c['approve_label']}` label) to retry." if gated
+                 else f"Remove `{c['needs_human_label']}` or comment `go` to retry.")
+        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(None, "unstarted"))
@@ -343,6 +368,10 @@ class LinearTracker:
             after = d["pageInfo"]["endCursor"]
         tickets = [LinearTicket(n, self) for n in sorted(nodes, key=lambda n: n["number"])]
         # Blockers outside the project still gate; add them as stubs Runway never runs.
+        for t in tickets:
+            if self.c["spec_label"] in t.labels and t.status != "resolved":
+                self._log_once(f"skip  {t.id} is labelled {self.c['spec_label']}: a spec, never run "
+                               "(its child issues are the tickets)")
         known = {t.num for t in tickets}
         for t in list(tickets):
             for r in t.node["inverseRelations"]["nodes"]:
@@ -355,6 +384,15 @@ class LinearTracker:
                         "labels": {"nodes": []}, "comments": {"nodes": []}, "inverseRelations": {"nodes": []},
                     }, self))
         return tickets
+
+    def _log_once(self, line: str) -> None:
+        p = self.root / "_pm" / "runway.log"
+        if p.exists() and line in p.read_text():
+            return
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a") as f:
+            f.write(f"{dt.datetime.now().strftime('%Y-%m-%d %H:%M')}  {line}\n")
+        print(line)
 
     def reload(self, t: LinearTicket) -> LinearTicket:
         return LinearTicket(self.api.gql(Q_ISSUE, {"id": t.node["id"]})["issue"], self)
@@ -383,7 +421,8 @@ class LinearTracker:
         for name in (self.c["claimed_state"], self.c["done_state"]):
             self.state_id(name)
         print(f"States: {self.c['claimed_state']}, {self.c['done_state']} ok")
-        colors = {"agent_label": "#4EA7FC", "human_label": "#F2994A", "approve_label": "#4CB782", "needs_human_label": "#EB5757"}
+        colors = {"agent_label": "#4EA7FC", "human_label": "#F2994A", "approve_label": "#4CB782", "needs_human_label": "#EB5757",
+                  "spec_label": "#8B8FA3"}
         for k, color in colors.items():
             name = self.c[k]
             if name in team["all_labels"]:

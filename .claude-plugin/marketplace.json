@@ -8,12 +8,12 @@
     {
       "name": "pm",
       "source": "./pm",
-      "description": "DataCraft PM, the hands-on way of working: outcome-sized tickets, one session per outcome by default, sibling sessions for independent tickets, opt-in orchestration with up to six subagents, proportionate verification, delivery acceptance and concise handoffs. Unattended ticket runs live in the factory plugin; the credential guard moved to sdlc (0.24.0). Existing project requirements and permissions remain binding."
+      "description": "DataCraft PM, the hands-on way of working: outcome-sized tickets, one session per outcome by default, sibling sessions for independent tickets, opt-in orchestration with up to six subagents, proportionate verification, delivery acceptance and concise handoffs. Also carries what the sdlc and ui-test plugins used to: the credential guard (a PreToolUse hook that blocks staging or committing credential-shaped files), gate-hooks (one gate script in a repo's .claude/: production gate, protected paths, a test lock for fix tasks, a commit and Stop backstop), review-policy with its read-only policy-reviewer agent, and ui-test (agent-run UI tests for macOS apps: a Codex computer-use runner under Ringer, executed checks on the receipt, a separate verifier). Its Codex edition carries the credential guard and ui-test, not gate-hooks or review-policy. Unattended ticket runs live in the factory plugin. Existing project requirements and permissions remain binding."
     },
     {
       "name": "factory",
       "source": "./factory/plugin",
-      "description": "DataCraft software factory: Runway, a deterministic loop that runs ready Linear tickets unattended in git worktrees, preps decision packets for the tickets that need Joe, and finishes with a whole-branch review and a PR body. The runway skill covers kickoff, the gating rule for ready-for-agent vs ready-for-human, worker-env.md, the conflict screen, scheduling and retro. Install with sdlc and Matt Pocock's skills."
+      "description": "DataCraft software factory: Runway, a deterministic loop that runs a repo's ready tickets (Linear or GitHub Issues, chosen in runway.json) unattended in git worktrees, preps decision packets for the tickets that need Joe, and finishes with a whole-branch review and a PR body. The runway skill covers kickoff, the gating rule for ready-for-agent vs ready-for-human, worker-env.md, the conflict screen, scheduling and retro. Install with pm and Matt Pocock's skills."
     },
     {
       "name": "design-dc",
@@ -44,19 +44,9 @@
       "description": "The agenticdev Claris ADT standards pack (naming, patterns, advisory; prose only, as ADT 0.9 reads no checks file) — the house FileMaker conventions fm-lens points at. Install, then run `adt standards use agenticdev` in the project. Source of truth is standards/pack in the private FM_Agent_Lens repo; this entry only points at it."
     },
     {
-      "name": "ui-test",
-      "source": "./ui-test",
-      "description": "Agent-run UI tests for any macOS app with a window (native Swift apps, FileMaker Pro, Electron): ui-test splits assertions by evidence channel, writes a typed runner instruction, dispatches a Codex computer-use worker under Ringer, validates the returned receipt (screenshots + on-screen reads) with executed checks, and hands a fresh verifier task the verdict. PASS-OBSERVED / FAIL / BLOCKED outcomes; per-app target profiles; ships the tool matrix observed on this stack."
-    },
-    {
       "name": "basecamp-dc",
       "source": "./basecamp-dc",
       "description": "Basecamp client-face layer, opt-in per repo via .basecamp/config.json (inert without it; pm never depends on it). bc-client-face carries the conventions — client's side (New requests, Questions for you) and Joe's side (Shipped / Active / Backlog as the status), Work items as clusters with Ref footers, [bc:<id>] tokens in TASKS.md, plain-English voice, quirk safety rules; bc-close-out ships a task (move to Shipped unchecked, comment, prepend to What shipped without duplicating images); a session-start hook surfaces the project when the config is present. Rides on the official basecamp CLI and its /basecamp skill for mechanics."
-    },
-    {
-      "name": "sdlc",
-      "source": "./sdlc",
-      "description": "The credential guard (a PreToolUse hook that blocks staging or committing credential-shaped files, active wherever sdlc is installed; moved from pm in 0.2.0) plus repo-level enforcement kits, Claude Code only, no pm or Ringer dependency. gate-hooks installs one gate script into a repo's .claude/ — production gate, protected paths, a test lock for fix tasks, a commit and Stop backstop — driven by .claude/sdlc/gates.json. review-policy sets up REVIEW.md and runs a read-only, fresh-context policy reviewer against it. Its Codex edition carries the credential guard only."
     }
   ]
 }

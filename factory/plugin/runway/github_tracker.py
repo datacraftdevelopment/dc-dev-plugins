@@ -7,7 +7,12 @@ Linear adapter reads:
   ready-for-human   Needs Joe. Runway preps a packet first.         (Gate: human)
   go                Joe's approval on a ready-for-human issue.      (Gate: approved)
   needs-human       Parked: waiting on Joe. Runway never picks it.  (Status: needs-human)
+  spec              A spec (what /to-spec publishes). Never run, even with a Runway label.
   harness:<name>    Per-issue harness override.
+
+An issue with sub-issues is a spec too, label or not: its sub-issues are the tickets. A spec has gate
+`none`, so Runway never runs it, but it still gates a ticket that names it as a blocker. The first
+time a labelled spec is skipped, one line goes to `_pm/runway.log`.
 
 Config: `"tracker": "github"`, and the repo from `"github": {"repo": "owner/name"}`, else from the
 clone's `origin` remote. Optional `"github": {"gh": "<gh command>"}` (default `gh`).
@@ -79,6 +84,7 @@ DEFAULTS = {
     "human_label": "ready-for-human",
     "approve_label": "go",
     "needs_human_label": "needs-human",
+    "spec_label": "spec",
 }
 AUTH_HELP = "GitHub CLI isn't ready. Install gh and run `gh auth login`, or set GH_TOKEN."
 AUTH_RE = re.compile(r"gh auth login|GH_TOKEN|GITHUB_TOKEN|not logged in|authentication|bad credentials|HTTP 401",
@@ -95,10 +101,20 @@ ISSUE_FIELDS = """
   labels(first: 30) { nodes { name } }
   assignees(first: 10) { totalCount nodes { login } }
   comments(last: 50) { nodes { body createdAt authorAssociation author { login } } }
+  subIssues { totalCount }
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
 """
 
-Q_ISSUES = """query($owner: String!, $name: String!, $labels: [String!], $after: String) {
+# Matt Pocock's five triage labels; `runway setup` creates any that are missing (his skills expect them).
+MATT_LABELS = [
+    ("needs-triage", "FBCA04", "Maintainer needs to evaluate this issue"),
+    ("needs-info", "D4C5F9", "Waiting on reporter for more information"),
+    ("ready-for-agent", "4EA7FC", "Fully specified, ready for an AFK agent"),
+    ("ready-for-human", "F2994A", "Needs a human"),
+    ("wontfix", "FFFFFF", "Will not be actioned"),
+]
+
+Q_ISSUES ="""query($owner: String!, $name: String!, $labels: [String!], $after: String) {
   repository(owner: $owner, name: $name) {
     issues(first: %d, after: $after, labels: $labels, states: [OPEN, CLOSED],
            orderBy: {field: CREATED_AT, direction: ASC}) {
@@ -231,8 +247,15 @@ class GitHubTicket:
         return "ready"
 
     @property
+    def is_spec(self) -> bool:
+        """A spec is labelled `spec` or has sub-issues. Runway never runs one."""
+        return self.tr.c["spec_label"] in self.labels or (self.node.get("subIssues") or {}).get("totalCount", 0) > 0
+
+    @property
     def gate(self) -> str:
         c = self.tr.c
+        if self.is_spec:
+            return "none"
         if c["human_label"] in self.labels:
             return "approved" if c["approve_label"] in self.labels else "human"
         if c["agent_label"] in self.labels:
@@ -257,14 +280,19 @@ class GitHubTicket:
 
     @property
     def claimed_by(self) -> str | None:
-        """The machine named in Runway's latest claim comment while the issue is claimed, else None."""
+        """The machine named in the first claim comment of the current claim cycle, else None. First stamp wins, so
+        two Macs that both stamped agree on the owner whichever order they read back in."""
         if self.status != "claimed":
             return None
+        owner = None
         for cm in reversed(self.comments):
-            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M) if cm["body"].startswith(MARK) else None
-            if m:
-                return m.group(1).strip()
-        return None
+            if not cm["body"].startswith(MARK):
+                continue
+            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
+            if not m:
+                break  # a park, release or note: earlier claims belong to an earlier cycle
+            owner = m.group(1).strip()
+        return owner
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
@@ -317,9 +345,11 @@ class GitHubTicket:
     def mark_needs_human(self, why: str, detail: str) -> None:
         label = self.tr.c["needs_human_label"]
         approve = self.tr.c["approve_label"]
+        gated = self.gate == "approved"
         gone = ["--remove-label", approve] if approve in self.labels else []
         self._issue("edit", "--add-label", label, *gone, *self._unassign())  # a spent approval needs a fresh go
-        self._comment(f"Parked: {why}. Remove `{label}` to retry.\n\n{detail}")
+        retry = f"Comment `go` (or re-add the `{approve}` label) to retry." if gated else f"Remove `{label}` to retry."
+        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:
         self._issue("edit", *self._unassign())
@@ -381,9 +411,11 @@ class GitHubTracker:
         wanted = {"agent_label": ("4EA7FC", "Runway: AFK build work"),
                   "human_label": ("F2994A", "Runway: needs Joe's call first"),
                   "approve_label": ("4CB782", "Runway: Joe approved a ready-for-human issue"),
-                  "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe")}
-        for key, (color, desc) in wanted.items():
-            name = self.c[key]
+                  "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe"),
+                  "spec_label": ("8B8FA3", "A spec: its sub-issues are the tickets. Runway never runs it")}
+        todo = [(self.c[key], color, desc) for key, (color, desc) in wanted.items()]
+        todo += [(n, c, d) for n, c, d in MATT_LABELS if n not in {t[0] for t in todo}]  # Matt's five, for his skills
+        for name, color, desc in todo:
             if name.lower() in have:
                 print(f"Label {name}: exists")
                 continue
@@ -409,6 +441,10 @@ class GitHubTracker:
                 break
             after = d["pageInfo"]["endCursor"]
         tickets = [GitHubTicket(n, self) for n in sorted(nodes, key=lambda n: n["number"])]
+        for t in tickets:
+            if self.c["spec_label"] in t.labels and t.node["state"] != "CLOSED":
+                self._log_once(f"skip  {t.id} is labelled {self.c['spec_label']}: a spec, never run "
+                               "(its sub-issues are the tickets)")
         known = {t.id for t in tickets}
         stubs: dict[str, dict] = {}
         for t in tickets:

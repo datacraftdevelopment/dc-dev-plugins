@@ -1,7 +1,9 @@
-# sdlc
+# Gates and review policy (formerly the sdlc plugin)
 
-Repo-level enforcement kits for the agentic SDLC. `pm` runs the session: intent,
-tickets, verification, delivery. This plugin holds what `pm` leaves to
+Repo-level enforcement kits for the agentic SDLC. They were the `sdlc` plugin
+until pm 0.25.0, when they folded into pm: one install now gives the session
+workflow and these kits. The rest of pm runs the session: intent,
+tickets, verification, delivery. This half holds what the session leaves to
 deterministic tools: gates a session cannot talk its way past, and a written
 review policy read by a reviewer that did not write the change.
 
@@ -21,7 +23,7 @@ managed settings       lock        the admin's layer; mapped here, not deployed
 
 | Piece | What it does |
 |---|---|
-| hook `credential-guard` (`hooks/`, `scripts/credential_guard.py`, `scripts/credential-policy.json`) and skill `credential-guard` | Machine-wide, no per-repo setup: a PreToolUse hook on Bash that blocks `git add`, `git stage` and `git commit` when a credential-shaped file would be staged or committed. Moved here from pm on 2026-10-07 (sdlc 0.2.0). Tests: `bash sdlc/hooks/test-credential-guard.sh` and `tests/test_sdlc_credential_guard.py`. The Codex edition of sdlc carries this guard and nothing else. |
+| hook `credential-guard` (`hooks/`, `scripts/credential_guard.py`, `scripts/credential-policy.json`) and skill `credential-guard` | Machine-wide, no per-repo setup: a PreToolUse hook on Bash that blocks `git add`, `git stage` and `git commit` when a credential-shaped file would be staged or committed. In pm until 0.24.0, the sdlc plugin from 2026-10-07, and back in pm from 0.25.0. Tests: `bash pm/hooks/test-credential-guard.sh` and `tests/test_sdlc_credential_guard.py`. pm's Codex edition carries this guard, ui-test and the rest of pm, and leaves out `gate-hooks` and `review-policy`. |
 | skill `gate-hooks` | Installs the gate kit into a repo and writes its rules with the user. |
 | `kit/sdlc_gate.py` | The gate. A PreToolUse and Stop hook: production commands, protected paths, a test lock for fix tasks, a commit backstop, and protection for its own files. It also provides the `lock`, `unlock`, `status` and `check` commands. The lock and the decision log are kept in `.git/sdlc-gate/`, where `git clean` cannot remove them. |
 | `scripts/install_gates.py` | Copies the kit into `<repo>/.claude/`, merges the hook entries into `settings.json`, backs up what it replaces. Safe to repeat. |
@@ -46,13 +48,16 @@ delivery (`ship-acceptance`). What was missing was the enforcement side:
 
 The library page is `_Core/library/wiki/craft/agents/ai-native-sdlc.md`.
 
-### Why a separate plugin
+### Why these were a separate plugin, and why they are not now
 
 `docs/sdlc/RIFF.md` at the repo root (2026-09-03) concluded the SDLC gap belonged in `pm`, and for Ship it
 did: that became `ship-acceptance`. These kits are different in kind. `pm` is a
 workflow you run every session. A gate is installed once per repo and then runs
 on its own. Keeping the kits out of `pm` keeps `pm` from growing a fifth job,
 and it leaves a half that can be taught or shared without Ringer.
+That reasoning held until pm 0.25.0 (GitHub #5), when sdlc and ui-test were folded
+into pm so that installing pm alone gives the whole set.
+The kits still use Claude Code features only, and nothing in them needs Ringer.
 
 ### Parked, and what would un-park it
 
@@ -75,7 +80,7 @@ and it leaves a half that can be taught or shared without Ringer.
 
 ```
 /plugin marketplace update dc-dev-plugins
-/plugin install sdlc@dc-dev-plugins
+/plugin install pm@dc-dev-plugins
 ```
 
 Then, in a repo, ask for a gate or a review policy and the skills take it from
@@ -204,18 +209,25 @@ Not proven:
 ## Layout
 
 ```
-sdlc/
-├── .claude-plugin/plugin.json
+pm/   (only the parts that came from sdlc)
 ├── agents/policy-reviewer.md
+├── hooks/                      ← credential-guard hook, hooks.json
 ├── kit/
 │   ├── sdlc_gate.py           ← copied to <repo>/.claude/hooks/
 │   └── gates.starter.json     ← becomes <repo>/.claude/sdlc/gates.json
-├── scripts/install_gates.py
+├── scripts/
+│   ├── install_gates.py
+│   └── credential_guard.py, credential_policy.py, credential-policy.json
 ├── skills/
+│   ├── credential-guard/
 │   ├── gate-hooks/            ← SKILL.md, managed-settings.md
 │   └── review-policy/         ← SKILL.md
 └── templates/REVIEW.md
 ```
+
+The `.claude/sdlc/` config folder, the `sdlc_gate.py` file name and the
+`.git/sdlc-gate/` lock folder keep their names, so repos that already installed
+the gate keep working.
 
 The 2026-09-03 riff this grew from, and pm's WORKFLOW before the doctrine
 split, are design notes and do not ship: `docs/sdlc/` at the repo root.

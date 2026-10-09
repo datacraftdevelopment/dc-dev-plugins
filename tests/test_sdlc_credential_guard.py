@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-HOOK = ROOT / 'sdlc/hooks/credential-guard.sh'
+HOOK = ROOT / 'pm/hooks/credential-guard.sh'
 
 
 class CredentialGuardTests(unittest.TestCase):
