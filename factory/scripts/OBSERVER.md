@@ -15,8 +15,8 @@ across those batches; records appended after the initial boundary are new.
 Detected rotation or truncation starts a new source generation and clears the
 old historical boundary, including truncation that preserves the source inode.
 
-Events cover completed prep calls, parked/failed work, finish results, pause or
-waiting transitions, and phases exceeding their configured time budget. An
+Events cover completed prep calls, parked/failed work, finish results, failed or
+held `verdict` rows, `merge` rows, pause or waiting transitions, and phases exceeding their configured time budget. An
 overdue phase is a request to verify liveness, not proof of a dead process.
 Normal successful ticket runs do not emit events. No model runs per poll.
 Repeated waiting reasons are suppressed across ticks until the condition changes
@@ -107,26 +107,45 @@ Uninstall tolerates a verified absent service (`launchctl print` reports error
 errors are surfaced without removing the plist. This also permits recovery from
 a failed bootstrap. No Runway plist, logs or user data is removed.
 
-## Independent completion and merge gate
+## Merge gate: Runway applies it, the observer watches
 
-For the one-candidate pilot, prepare a bounded evidence packet containing:
+One contract. At finish Runway reviews the integration branch and writes a
+`verdict` row to `_pm/runway-runs.jsonl` (verdict, blocking findings, criteria,
+`hold`, reviewed `sha`, per-seat provenance). What the engine now owns, so
+nobody repeats it by hand: the full check after the last edit, the independent
+review panel with the reviewed SHA on every seat, the pass/fail call, the fix
+ticket on a fail, and the merge itself.
 
-- Original ticket and acceptance criteria; map each criterion to evidence.
-- Exact candidate SHA, base SHA and relevant diff; recheck before merging.
-- Relevant tests plus the full repository check, executed after the last edit.
-- Behavioral/end-to-end evidence for user-facing or integration behavior when
-  applicable. Missing access or an unverified requirement is blocked.
-- Fresh independent review artifacts with run ID, SHA, time and reviewer identity.
-  Reused output, stale reports and successful report-format checks do not count.
+`merge` in `runway.json` has three modes:
+
+| Mode | Engine does |
+|---|---|
+| `off` | Verdict only. Joe merges the integration branch. |
+| `shadow` | Verdict, plus a fix ticket on a fail. Never merges; says "would merge" on a pass. |
+| `on_pass` | Same, and a pass with no `hold` merges the reviewed SHA into base. A moved head merges nothing. |
+
+**This repo is in `shadow`**: Runway reports and files fix tickets, and Joe
+(or the assistant, on Joe's go) still does the integration-to-main merge.
+
+The observer turns these rows into events, with no model per poll:
+
+- `verdict` that failed, or passed but was held for Joe. A fail means Runway
+  filed (or commented on) a fix ticket; the row has no ticket id, so find it
+  under the original issue. A clean pass is a normal run and emits nothing.
+- `merge` (only in `on_pass`): Runway merged the reviewed SHA into base.
+
+What the engine still does not cover, and stays with the assistant:
+
+- Behavioral/end-to-end evidence for user-facing or integration behavior. The
+  verdict is a diff-and-check review. Missing access or an unverified
+  requirement is blocked.
 - Consequential findings resolved or explicitly accepted by the user.
+- In `shadow`/`off`, the final merge. Recheck the head against the verdict's
+  `sha`, plus migration/marketplace impact and human gates, immediately before it.
 
-Permit one scoped repair attempt and repeat verification of its changed head;
-if that attempt fails, retain a durable issue and stop for triage rather than
-repeatedly spending tokens. Do not restart, merge, delete branches or publish
-releases from observer events. Do not bypass protections. Final integration-to-
-main merging remains an assistant action after these checks; successful ticket-
-to-integration merges inside Runway are separate. Recheck migration/marketplace
-impact and human gates immediately before the final merge.
+Do not restart Runway, merge, delete branches or publish releases from observer
+events, and do not bypass protections. A failed second round parks the fix
+ticket for triage; do not spend tokens looping.
 
 ## Failure ownership and tracker records
 
