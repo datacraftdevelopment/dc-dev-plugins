@@ -87,6 +87,44 @@ class Facts(unittest.TestCase):
             self.assertEqual(t.claimed_by, "Mini-Two")
             self.assertIsNone(one(rules, comments=[(old, True)]).claimed_by)
 
+    def test_a_long_ticket_keeps_its_claim_owner(self):
+        """2 stamps then chatter, at and around the 25 and 50 comment marks: the window never moves the owner."""
+        stamp = lambda who, at: (f"{M} · Claimed-by: {who} · Started on `b`.", True, "u", "N", at)
+        for rules in (P.GITHUB, P.LINEAR):
+            for chatter in (23, 24, 25, 48, 49, 50, 120):
+                comments = [stamp("Mini-One", "2026-10-01T10:00:00Z"), stamp("Mini-Two", "2026-10-01T10:00:09Z")]
+                comments += [(f"note {i}", True, "u", "N", f"2026-10-02T10:{i // 60:02d}:{i % 60:02d}Z")
+                             for i in range(chatter)]
+                tr = tracker(rules, issue("X-1", held=True, comments=comments))
+                tr.window = 50
+                self.assertEqual(tr.load()[0].claimed_by, "Mini-One", (rules.name, chatter))
+
+    def test_paging_back_stops_at_the_previous_cycle(self):
+        old = f"{M} · Parked: x."
+        stamp = f"{M} · Claimed-by: Mini-Two · Started on `b`."
+        chatter = [(f"note {i}", True, "u", "N", f"2026-10-02T10:00:{i:02d}Z") for i in range(30)]
+        comments = ([(f"{M} · Claimed-by: Ancient · Started on `b`.", True, "u", "N", "2026-09-01T10:00:00Z")] * 200
+                    + [(old, True, "u", "N", "2026-09-02T10:00:00Z"), (stamp, True, "u", "N", "2026-10-01T10:00:00Z")]
+                    + chatter)
+        tr = tracker(P.GITHUB, issue("X-1", held=True, comments=comments))
+        tr.window = 10
+        self.assertEqual(tr.load()[0].claimed_by, "Mini-Two")
+        self.assertEqual(tr.page_backs, 3)  # the park sits 3 pages back; the 200 ancient stamps are never read
+
+    def test_paging_only_for_a_claimed_ticket_and_only_once(self):
+        tr = tracker(P.GITHUB, issue("X-1", held=True, comments=[(f"{M} · Parked: x", True), ("go", True),
+                                                                  (f"{M} · Claimed-by: A · Started on `b`.", True)]))
+        tr.window = 2
+        t = tr.load()[0]
+        self.assertEqual(t.claimed_by, "A")
+        self.assertEqual(tr.page_backs, 1)  # the park is one page back
+        self.assertEqual(t.claimed_by, "A")
+        self.assertEqual(tr.page_backs, 1)  # and asking again does not page again
+        tr2 = tracker(P.GITHUB, issue("X-2", held=False, comments=[(f"c{i}", True) for i in range(9)]))
+        tr2.window = 2
+        self.assertIsNone(tr2.load()[0].claimed_by)
+        self.assertEqual(tr2.page_backs, 0)
+
     def test_abandoned_stamp_never_wins(self):
         """A stamps, its claim transition fails; later B claims and runs. A's orphaned stamp must not hold it."""
         for rules in (P.GITHUB, P.LINEAR):

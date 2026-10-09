@@ -6,11 +6,17 @@ the park / approve / decline / release / packet wording, and sync's go and drop 
 
 Facts (an adapter ticket sets these in `__init__` by calling `Ticket.__init__`, and defines the three
 properties):
-  id, num, title, url, body, labels, comments (as dicts: body, createdAt, trusted, who, assoc)
+  id, num, title, url, body, labels, comments (as dicts: body, createdAt, trusted, who, assoc): the latest
+  50 comments on both trackers, which is all that ticket text, packet and joe_replies read
   closed        the issue is done or cancelled (resolved)
   held          the tracker says someone holds it (an assignee, a started state)
   has_children  it has sub-issues or child issues (a spec)
   blocked_by    ids of the tickets that gate it
+
+Paging (optional; the default has nothing older):
+  _older_comments()            the next page of comments older than any read so far, oldest first, [] at the
+                               start of history. claimed_by asks for pages until it reaches the start of the
+                               current claim cycle, so a long ticket never loses its owner. Pagination stays here.
 
 Writes (each an adapter method; the protocol decides which, in what order, with what words):
   _post(full)                  post a comment; `full` is already marked
@@ -32,6 +38,7 @@ from pathlib import Path
 MARK = "🛫 runway"  # every comment Runway writes starts with this, so Joe's are told apart
 ANSWER_RE = re.compile(r"(go|drop)\b", re.I)
 GO_RE = re.compile(r"go\b[\s:,.-]*", re.I)
+CLAIMED_RE = re.compile(r"Claimed-by: (.+?)(?: · |$)", re.M)
 
 
 @dataclass(frozen=True)
@@ -84,6 +91,10 @@ class Ticket:
         self.comments = [c for c in every if c["trusted"]]
         self.untrusted = len(every) - len(self.comments)
         self.strangers = [c for c in every if not c["trusted"]]
+        self._cycle: list[dict] | None = None
+
+    def _older_comments(self) -> list[dict]:
+        return []
 
     # -- read side --
 
@@ -148,10 +159,10 @@ class Ticket:
         if self.status != "claimed":
             return None  # parked, paused or retried: the old stamp no longer holds the ticket
         stamps = []
-        for cm in reversed(self.comments):
+        for cm in reversed(self._claim_cycle()):
             if not cm["body"].startswith(MARK):
                 continue  # Joe's comments don't end a cycle
-            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
+            m = CLAIMED_RE.search(cm["body"])
             if not m:
                 break  # a park, release or note: earlier claims belong to an earlier cycle
             stamps.append((m.group(1).strip(), _when(cm["createdAt"])))
@@ -160,6 +171,22 @@ class Ticket:
             if owner is None or at - owner[1] > CLAIM_LEASE:
                 owner = (who, at)
         return owner[0] if owner else None
+
+    def _claim_cycle(self) -> list[dict]:
+        """Trusted comments, oldest first, back to the previous Runway non-claim marker (which ends an earlier
+        cycle) or the start of history. The ticket's own window when it already reaches that far; otherwise the
+        adapter pages back, once per ticket."""
+        if self._cycle is None:
+            def ends_cycle(cm):
+                return cm["body"].startswith(MARK) and not CLAIMED_RE.search(cm["body"])
+            got = list(self.comments)
+            while not any(ends_cycle(cm) for cm in got):
+                page = self._older_comments()
+                if not page:
+                    break  # the start of history
+                got = sorted((cm for cm in page if cm["trusted"]), key=lambda c: c["createdAt"]) + got
+            self._cycle = got
+        return self._cycle
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":

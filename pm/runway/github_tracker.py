@@ -93,14 +93,15 @@ TRANSIENT_RE = re.compile(r"timed? ?out|timeout|connection (reset|refused|closed
                           r"no such host|could not resolve host|network is unreachable|TLS handshake|rate limit|"
                           r"temporarily unavailable", re.I)
 
+COMMENT_FIELDS = "body createdAt authorAssociation author { login }"
 ISSUE_FIELDS = """
   number title body url state stateReason
   labels(first: 30) { nodes { name } }
   assignees(first: 10) { totalCount nodes { login } }
-  comments(last: 50) { nodes { body createdAt authorAssociation author { login } } }
+  comments(last: 50) { pageInfo { hasPreviousPage startCursor } nodes { %s } }
   subIssues { totalCount }
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
-"""
+""" % COMMENT_FIELDS
 
 # Matt Pocock's five triage labels; `runway setup` creates any that are missing (his skills expect them).
 MATT_LABELS = [
@@ -120,6 +121,12 @@ Q_ISSUES ="""query($owner: String!, $name: String!, $labels: [String!], $after: 
     }
   }
 }""" % (PAGE, ISSUE_FIELDS)
+
+Q_OLDER = """query($owner: String!, $name: String!, $number: Int!, $before: String!) {
+  repository(owner: $owner, name: $name) { issue(number: $number) {
+    comments(last: %d, before: $before) { pageInfo { hasPreviousPage startCursor } nodes { %s } }
+  } }
+}""" % (PAGE, COMMENT_FIELDS)
 
 Q_ONE = """query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) { issue(number: $number) { %s } }
@@ -198,13 +205,28 @@ class GitHubTicket(ticket_protocol.Ticket):
     def __init__(self, node: dict, tracker: "GitHubTracker"):
         self.node = node
         number = node["number"]
-        comments = [{"body": c["body"], "createdAt": c["createdAt"],
-                     "trusted": c.get("authorAssociation") in TRUSTED,
-                     "who": (c.get("author") or {}).get("login") or "unknown",
-                     "assoc": c.get("authorAssociation", "NONE")} for c in node["comments"]["nodes"]]
+        comments = [self._fact(c) for c in node["comments"]["nodes"]]
+        self._back = (node["comments"].get("pageInfo") or {})  # where the next older page starts
         super().__init__(tracker, id=f"#{number}", num=f"#{number}", title=node["title"], url=node.get("url"),
                          body=node.get("body"), labels={l["name"] for l in node["labels"]["nodes"]},
                          comments=comments, slug_head=f"gh-{number}")  # the engine matches blockers by num
+
+    @staticmethod
+    def _fact(c: dict) -> dict:
+        return {"body": c["body"], "createdAt": c["createdAt"],
+                "trusted": c.get("authorAssociation") in TRUSTED,
+                "who": (c.get("author") or {}).get("login") or "unknown",
+                "assoc": c.get("authorAssociation", "NONE")}
+
+    def _older_comments(self) -> list[dict]:
+        """The next 50 comments back from what has been read (one call), oldest first; [] at the start of history."""
+        if not self._back.get("hasPreviousPage"):
+            return []
+        d = self.tr.api.graphql(Q_OLDER, owner=self.tr.owner, name=self.tr.name,
+                                number=int(self.num.rsplit("#", 1)[1]),
+                                before=self._back["startCursor"])["repository"]["issue"]["comments"]
+        self._back = d["pageInfo"]
+        return [self._fact(c) for c in d["nodes"]]
 
     # -- facts --
 
