@@ -160,6 +160,9 @@ DEFAULT_CONFIG = {
     # "single": review_cmd reviews the integration branch. "panel": Joe's two-seat review (codex +
     # claude) through Ringer, see ringer_panel.py. Without Ringer or any seat report it falls back to single.
     "review": "single",
+    # What the round's pass/fail verdict is for. "off": only record it. "shadow": record it and say what
+    # would have merged. "on_pass": reserved for auto-merge (not wired yet). Nothing here ever merges.
+    "merge": "off",
     # Which harness runs tickets by default: "claude" (the top-level commands above) or a key of
     # "harnesses". A ticket overrides it: Linear label `harness:<name>` or header `Harness: <name>`.
     "harness": "claude",
@@ -1331,6 +1334,118 @@ anything; nobody is waiting to answer, so make your best judgment on every findi
 {findings}
 """
 
+JUDGE_PROMPT = """You are the judge for a finished Runway round. Do NOT change any files. Decide pass or fail for the
+current branch (`{integration}`, reviewed against `{base}`; `git diff {base}...HEAD` shows the change).
+The check `{check}` was run after the last edit and exited {code}.
+
+Triage the review findings with these rules:
+1. Merge duplicates. A finding both seats raise (the same problem, even worded differently) is BLOCKING unless
+   you show from the code that it is wrong.
+2. A finding only one seat raises: verify it against the code first. Blocking only if it is real and matters;
+   otherwise non-blocking, or drop it with a reason. Claude-seat-only findings get extra scrutiny: that seat
+   shares priors with the builder. Codex-only findings are the cross-vendor catches; don't dismiss one for
+   being unfamiliar.
+3. If a seat's section says NO REPORT, only one reviewer ran: treat every finding as single-seat.
+4. For every acceptance criterion in every done ticket below, name the evidence (a test, a file:line, a command
+   output). A criterion with no evidence is a blocking finding.
+5. Never ask anyone anything. Make your best judgment.
+
+Reply with one JSON object and nothing after it:
+{{"verdict": "pass" or "fail",
+  "blocking": ["finding, with file:line and why"],
+  "non_blocking": ["finding"],
+  "criteria": [{{"ticket": "id", "criterion": "text", "evidence": "what shows it, or empty if none"}}]}}
+"verdict" is "pass" only when "blocking" is empty.
+
+Done tickets and their text:
+{tickets}
+
+Review findings (fix pass: {fix_note}):
+{findings}
+"""
+
+
+def _json_objects(text: str):
+    dec, i = json.JSONDecoder(), 0
+    while True:
+        i = text.find("{", i)
+        if i < 0:
+            return
+        try:
+            obj, end = dec.raw_decode(text, i)
+        except ValueError:
+            i += 1
+            continue
+        if isinstance(obj, dict):
+            yield obj
+        i = end
+
+
+def parse_verdict(text: str):
+    """The judge's JSON object, normalised, or None when nothing parseable came back."""
+    for obj in reversed(list(_json_objects(text or ""))):
+        if "verdict" not in obj:
+            continue
+
+        def strs(key):
+            v = obj.get(key)
+            return [str(x).strip() for x in v if str(x).strip()] if isinstance(v, list) else []
+        raw = obj.get("criteria")
+        crit = [c for c in (raw if isinstance(raw, list) else []) if isinstance(c, dict)]
+        return {"verdict": str(obj.get("verdict")).strip().lower(), "blocking": strs("blocking"),
+                "non_blocking": strs("non_blocking"),
+                "criteria": [{"ticket": str(c.get("ticket", "")), "criterion": str(c.get("criterion", "")),
+                              "evidence": str(c.get("evidence") or "").strip()} for c in crit]}
+    return None
+
+
+def decide_verdict(check_exit: int, parsed) -> dict:
+    """pass/fail for the round. Fails on a red check, an unparseable judge, any blocking finding or a
+    criterion with no evidence. Never passes by default."""
+    blocking = list(parsed["blocking"]) if parsed else []
+    non_blocking = list(parsed["non_blocking"]) if parsed else []
+    criteria = list(parsed["criteria"]) if parsed else []
+    if check_exit != 0:
+        blocking.insert(0, f"The check failed after the last edit (exit {check_exit}).")
+    if parsed is None:
+        blocking.insert(0, "The judge returned nothing parseable, so nothing was shown to pass.")
+    for c in criteria:
+        if not c["evidence"]:
+            blocking.append(f"No evidence for acceptance criterion ({c['ticket']}): {c['criterion']}")
+    ok = parsed is not None and parsed["verdict"] == "pass" and check_exit == 0 and not blocking
+    return {"verdict": "pass" if ok else "fail", "blocking": blocking, "non_blocking": non_blocking,
+            "criteria": criteria}
+
+
+def is_one_way(pr_body: str, tickets: list) -> bool:
+    """True when the batch must never auto-merge: the PR body's merge danger says one-way (or says nothing
+    clear), or any ticket was gated for a human (needs-human, or a human gate Joe later approved)."""
+    if any(t.gate in ("human", "approved") or t.status == "needs-human" for t in tickets):
+        return True
+    m = re.search(r"^#+\s*Merge danger\s*$(.*?)(?=^#+\s|\Z)", pr_body, re.M | re.S | re.I)
+    door = re.search(r"\b(one|two)[- ]way\b", m.group(1), re.I) if m else None
+    return door is None or door.group(1).lower() == "one"
+
+
+def verdict_line(v: dict, merge: str, hold: bool) -> str:
+    n = len(v["blocking"])
+    if v["verdict"] != "pass":
+        return f"Review: FAIL, {n} blocking finding{'' if n == 1 else 's'}"
+    if hold:
+        return "Review: PASS (hold: one-way door, never auto-merges)"
+    return "Review: PASS (would merge)" if merge in ("shadow", "on_pass") else "Review: PASS"
+
+
+def verdict_report(v: dict, line: str, hold: bool, sha: str) -> str:
+    bl = lambda xs: "\n".join(f"- {x}" for x in xs) or "- none"
+    rows = "\n".join(f"| {c['ticket']} | {c['criterion'].replace('|', '/')} | "
+                     f"{c['evidence'].replace('|', '/') or 'NONE'} |" for c in v["criteria"])
+    table = ("| ticket | criterion | evidence |\n|---|---|---|\n" + rows) if rows else "none listed"
+    return (f"{line}\n\nReviewed SHA: `{sha}`  \nHold: {'yes' if hold else 'no'}\n\n"
+            f"### Blocking findings\n\n{bl(v['blocking'])}\n\n### Non-blocking findings\n\n{bl(v['non_blocking'])}"
+            f"\n\n### Acceptance criteria and evidence\n\n{table}\n")
+
+
 PR_PROMPT = """Write the pull request body for merging `{integration}` into `{base}`. Do NOT change any files.
 If the /pr skill is available, use it. Otherwise use exactly these three sections:
 
@@ -1535,6 +1650,18 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     check_out = (c.stdout + c.stderr)[-3000:]
     stat = sh(["git", "diff", "--stat", f"{base}...HEAD"], wt).stdout[-3000:]
 
+    # 3b. The judge: pass/fail from the final state. Reads only; the check result is already in hand.
+    sha = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
+    ttext = "\n\n".join(f"### {t.id} {t.title}\n{t.text[:4000]}" for t in done) or "(none)"
+    jr, judge_text = run_agent(cfg, root, hp["review_cmd"], wt,
+                               JUDGE_PROMPT.format(integration=integ, base=base, check=cfg["check_cmd"],
+                                                   code=c.returncode, tickets=ttext, fix_note=fix_note,
+                                                   findings=findings), "finish", "judge", harness=hp)
+    verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text))
+    if stop_requested():
+        log(root, "finish stopped by pause; the review is not recorded for this head.")
+        return False
+
     # 4. The PR body, /pr style.
     review_line = f"{fix_note}\n\n{findings}" if has_findings else fix_note
     if triage:
@@ -1549,6 +1676,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
+    hold = is_one_way(body, tickets)
+    vline = verdict_line(verdict, cfg.get("merge", "off"), hold)
+    body = vline + "\n\n" + body
     refs = refs_block(done)
     if refs:
         body += f"\n\n## Tickets\n\n{refs}"
@@ -1556,7 +1686,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
              f"Tickets:\n{tlist}\n</details>\n")
     (root / "_pm").mkdir(exist_ok=True)
     (root / "_pm" / "runway-review.md").write_text(
-        findings + "\n\n" + fix_note + "\n" + (f"\n## Triage\n\n{triage}\n" if triage else ""))
+        verdict_report(verdict, vline, hold, sha) + "\n## Findings\n\n" + findings + "\n\n" + fix_note + "\n"
+        + (f"\n## Triage\n\n{triage}\n" if triage else ""))
     pr_file = root / "_pm" / "runway-pr.md"
     pr_file.write_text(body)
 
@@ -1567,8 +1698,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     state_p.write_text(json.dumps({"head": head, "at": now()}))
     record(root, {"kind": "finish", "ticket": "finish", "findings": has_findings, "fix": fix_note,
                   "check_exit": c.returncode, "pr": where})
-    verdict = "check passes" if c.returncode == 0 else "CHECK FAILS"
-    notify(cfg, root, f"Ready for review: {len(done)} tickets on {integ}, {verdict}. PR: {where}")
+    record(root, {"kind": "verdict", "ticket": "finish", "sha": sha, "verdict": verdict["verdict"],
+                  "blocking": verdict["blocking"], "non_blocking": verdict["non_blocking"],
+                  "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off")})
+    check_note = "check passes" if c.returncode == 0 else "CHECK FAILS"
+    notify(cfg, root, f"Ready for review: {len(done)} tickets on {integ}, {check_note}. {vline}. PR: {where}")
     return True
 
 
@@ -1616,7 +1750,7 @@ def cmd_retro(root: Path, last: int) -> None:
     if not p.exists():
         sys.exit("No runs logged yet (_pm/runway-runs.jsonl).")
     recs = [json.loads(l) for l in p.read_text().splitlines() if l.strip()][-last:]
-    calls = [r for r in recs if r["kind"] in ("prep", "run", "review", "fix", "pr")]
+    calls = [r for r in recs if r["kind"] in ("prep", "run", "review", "fix", "judge", "pr")]
     outcomes = {r["ticket"]: r for r in recs if r["kind"] == "outcome"}
     finishes = [r for r in recs if r["kind"] == "finish"]
 
