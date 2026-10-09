@@ -98,6 +98,12 @@ def inspect(root, saved):
                 saved['baseline_identity'] = st.st_ino
                 saved['baseline_end'] = st.st_size if 'offset' not in saved else 0
             if identity != st.st_ino or st.st_size < offset:
+                if identity is not None:
+                    # Rotation/truncation begins a new source generation. Its
+                    # records arrived after startup, so none inherit the old
+                    # historical backlog boundary, even when the inode survives.
+                    saved['baseline_identity'] = st.st_ino
+                    saved['baseline_end'] = 0
                 offset = 0
             stream.seek(offset)
             for _ in range(500):

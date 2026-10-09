@@ -12,6 +12,8 @@ a bounded JSONL projection, a lock, rotating logs, and its own check duration.
 The initial source inode and byte boundary are persisted until its backlog is
 drained across 500-record batches. Historical records remain `baseline: true`
 across those batches; records appended after the initial boundary are new.
+Detected rotation or truncation starts a new source generation and clears the
+old historical boundary, including truncation that preserves the source inode.
 
 Events cover completed prep calls, parked/failed work, finish results, pause or
 waiting transitions, and phases exceeding their configured time budget. An

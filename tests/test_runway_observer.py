@@ -78,6 +78,25 @@ class ObserverTests(unittest.TestCase):
             self.assertTrue(second[0]['baseline'])
             self.assertFalse(second[1]['baseline'])
 
+    def test_same_inode_truncation_does_not_reuse_historical_boundary(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pm = root / '_pm'
+            pm.mkdir()
+            path = pm / 'runway-runs.jsonl'
+            path.write_text(''.join(json.dumps({'kind': 'finish', 'ticket': str(n)}) + '\n' for n in range(501)))
+            first = observer.tick(root, pm / 'observer')
+            second = observer.tick(root, pm / 'observer')
+            self.assertEqual(len(first) + len(second), 501)
+            self.assertTrue(all(p['baseline'] for p in first + second))
+            inode = path.stat().st_ino
+            path.write_text(json.dumps({'kind': 'finish', 'ticket': 'new failure', 'check_exit': 1}) + '\n')
+            self.assertEqual(path.stat().st_ino, inode)
+            packets = observer.tick(root, pm / 'observer')
+            self.assertEqual(len(packets), 1)
+            self.assertFalse(packets[0]['baseline'])
+            self.assertEqual(json.loads((pm / 'observer/state.json').read_text())['baseline_end'], 0)
+
     def test_queue_and_service_logs_have_bounded_retention(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
