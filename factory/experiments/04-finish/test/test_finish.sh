@@ -3,7 +3,7 @@
 # one fix pass, check, PR body, draft PR through a fake gh) and `runway retro`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNWAY="$HERE/../../../plugin/runway/runway.py"
+RUNWAY="$HERE/../../../../pm/runway/runway.py"
 TMP="$(mktemp -d)"
 # Isolate from this Mac's real ~/.runway (pause, quiet time, agent registry).
 export RUNWAY_HOME="$TMP/runway-home"; mkdir -p "$RUNWAY_HOME"

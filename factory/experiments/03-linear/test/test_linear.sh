@@ -4,7 +4,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # Isolate from this Mac's real ~/.runway (pause, quiet time, agent registry).
 export RUNWAY_HOME="$(mktemp -d)"
-RUNWAY="$HERE/../../../plugin/runway/runway.py"
+RUNWAY="$HERE/../../../../pm/runway/runway.py"
 PORT=${PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')}
 python3 "$HERE/fake_linear.py" $PORT & SRV=$!
 trap 'kill $SRV' EXIT

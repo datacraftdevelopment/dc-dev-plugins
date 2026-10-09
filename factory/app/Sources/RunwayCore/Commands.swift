@@ -80,7 +80,7 @@ public struct RunwayTools: Equatable, Sendable {
 
     /// A dc-dev-plugins checkout.
     public init(checkout: String) {
-        let engine = URL(fileURLWithPath: checkout).appendingPathComponent("factory/plugin/runway")
+        let engine = URL(fileURLWithPath: checkout).appendingPathComponent("pm/runway")
         self.init(scheduleScript: engine.appendingPathComponent("schedule.sh").path,
                   runwayScript: engine.appendingPathComponent("runway.py").path)
     }
