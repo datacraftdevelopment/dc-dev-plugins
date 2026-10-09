@@ -533,12 +533,24 @@ def now() -> str:
     return dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
 
 
+KILL_GRACE_S = 5  # after a timeout: seconds between SIGTERM and SIGKILL, and again to drain the pipes
+
+
+def _kill_group(pgid: int, sig: int) -> None:
+    try:
+        os.killpg(pgid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
 def sh(cmd, cwd: Path, stdin: str | None = None, timeout: int | None = None, check=False, on_start=None):
-    """Run a command. on_start(pid) is called once the child is running."""
+    """Run a command in its own process group. on_start(pid) is called once the child is running.
+    On timeout the whole group is killed (SIGTERM, then SIGKILL after KILL_GRACE_S), so a grandchild
+    holding the pipes open can't hang the loop; the drain is bounded too. Raises TimeoutExpired."""
     args = shlex.split(cmd) if isinstance(cmd, str) else cmd
     try:
         p = subprocess.Popen(args, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             stdin=subprocess.PIPE if stdin is not None else None)
+                             stdin=subprocess.PIPE if stdin is not None else None, start_new_session=True)
     except FileNotFoundError as e:  # e.g. claude or gh not installed
         r = subprocess.CompletedProcess(args, 127, "", str(e))
     else:
@@ -547,8 +559,18 @@ def sh(cmd, cwd: Path, stdin: str | None = None, timeout: int | None = None, che
         try:
             out, err = p.communicate(stdin, timeout=timeout)
         except subprocess.TimeoutExpired:
-            p.kill()
-            p.communicate()
+            _kill_group(p.pid, signal.SIGTERM)
+            try:
+                p.communicate(timeout=KILL_GRACE_S)
+            except subprocess.TimeoutExpired:
+                pass
+            _kill_group(p.pid, signal.SIGKILL)  # also reaps grandchildren that outlived a clean exit
+            try:
+                p.communicate(timeout=KILL_GRACE_S)
+            except subprocess.TimeoutExpired:
+                for f in (p.stdout, p.stderr):
+                    if f:
+                        f.close()
             raise
         r = subprocess.CompletedProcess(args, p.returncode, out, err)
     if check and r.returncode != 0:
@@ -1043,6 +1065,8 @@ def agent_failure(r, text: str, meta: dict) -> str | None:
     err = (r.stderr or "").strip()
     detail = "\n".join(x for x in (said, err) if x)[-1500:] or "no output"
     if r.returncode != 0:
+        if r.returncode == 124 and err.startswith("timed out"):
+            return f"the agent {err}"
         return f"the agent exited {r.returncode}: {detail}"
     if meta.get("is_error"):
         return f"the agent reported an error: {detail}"
@@ -1070,6 +1094,9 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
         beat_update(root, agent_pid=pid)
     try:
         r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started)
+    except subprocess.TimeoutExpired:
+        r = subprocess.CompletedProcess(cmd, 124, "", f"timed out after {cfg['agent_timeout_s']}s")
+        log(root, f"timeout  {ticket} {kind} attempt {attempt}: agent killed after {cfg['agent_timeout_s']}s")
     finally:
         beat_update(root, agent_pid=None)
         if pids:
@@ -1243,7 +1270,11 @@ def attempt(cfg: dict, root: Path, t) -> Outcome:
             return Outcome("no-commits", n,
                            f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something.")
         beat(root, "check", t.id, n)
-        c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
+        try:
+            c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
+        except subprocess.TimeoutExpired:
+            log(root, f"timeout  {t.id} check attempt {n}: killed after {cfg['agent_timeout_s']}s")
+            c = subprocess.CompletedProcess(cfg["check_cmd"], 124, "", f"the check timed out after {cfg['agent_timeout_s']}s")
         record(root, {"kind": "check", "ticket": t.id, "attempt": n, "exit": c.returncode})
         if c.returncode == 0:
             beat(root, "merge", t.id)
