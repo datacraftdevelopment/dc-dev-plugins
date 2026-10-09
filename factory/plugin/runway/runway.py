@@ -1166,7 +1166,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             detail = "Agent stopped with a question:\n\n" + q.read_text()
             break
         sh(["git", "add", "-A"], wt)
-        sh(["git", "commit", "-m", f"runway: {t.title} (auto-commit)"], wt)
+        sh(["git", "commit", "-m", auto_commit_msg(t)], wt)
         made = sh(["git", "rev-list", "--count", f"{cfg['integration_branch']}..HEAD"], wt).stdout.strip()
         if made in ("", "0"):  # a ticket always changes something; one that doesn't needs Joe to say so
             detail = f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something."
@@ -1195,7 +1195,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         return
     if ok:
         beat(root, "merge", t.id)
-        if merge_into_integration(cfg, root, branch):
+        if merge_into_integration(cfg, root, branch, commit_ref(t)):
             t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
             log(root, f"done  {t.id}")
         else:
@@ -1218,9 +1218,33 @@ def integration_worktree(cfg: dict, root: Path) -> Path:
     return tmp
 
 
-def merge_into_integration(cfg: dict, root: Path, branch: str) -> bool:
+def commit_ref(t) -> str:
+    """The ticket's reference for a commit subject: `(#12)` on GitHub, `(DAT-41)` on Linear (which links it),
+    nothing for pm's local tickets. Matt's /code-review reads these to find the tickets behind a change."""
+    return f"({t.id})" if getattr(t, "effort", "") in ("github", "linear") else ""
+
+
+def auto_commit_msg(t) -> str:
+    return " ".join(p for p in ("runway:", t.title, commit_ref(t), "(auto-commit)") if p)
+
+
+def refs_block(done: list) -> str:
+    """The PR body's ticket list. `Refs`, never `Closes`: Runway closes an issue when its branch merges into
+    integration, so merging the PR must not try to close it again."""
+    lines = []
+    for t in done:
+        eff = getattr(t, "effort", "")
+        if eff == "github":
+            lines.append(f"Refs {t.id}")
+        elif eff == "linear":
+            lines.append(f"Refs {t.ref}")
+    return "\n".join(lines)
+
+
+def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") -> bool:
     tmp = integration_worktree(cfg, root)
-    r = sh(["git", "merge", "--no-ff", "-m", f"runway: merge {branch}", branch], tmp)
+    msg = f"runway: merge {branch}" + (f" {ref}" if ref else "")
+    r = sh(["git", "merge", "--no-ff", "-m", msg, branch], tmp)
     if r.returncode != 0:
         sh(["git", "merge", "--abort"], tmp)
         return False
@@ -1279,7 +1303,8 @@ Proof that it works, taken from the check output below. Claim nothing the output
 Two-way door (easy to walk back) or one-way door (migrations, removed APIs, data changes),
 and the blast radius: what breaks if it's wrong.
 
-Start directly with the Summary heading. No preamble.
+Start directly with the Summary heading. No preamble. Do not write `Closes`, `Fixes` or `Resolves`
+for a ticket: Runway closes tickets itself and adds the `Refs` lines.
 
 Tickets:
 {tickets}
@@ -1484,6 +1509,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
+    refs = refs_block(done)
+    if refs:
+        body += f"\n\n## Tickets\n\n{refs}"
     body += (f"\n\n<details><summary>Runway review</summary>\n\n{review_line}\n\n"
              f"Tickets:\n{tlist}\n</details>\n")
     (root / "_pm").mkdir(exist_ok=True)
