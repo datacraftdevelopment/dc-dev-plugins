@@ -43,7 +43,7 @@ def issue(number, labels=("ready-for-agent",), state="OPEN", assignees=0, body="
             "stateReason": "COMPLETED" if state == "CLOSED" else None,
             "labels": {"nodes": [{"name": n} for n in labels]},
             "assignees": {"totalCount": assignees}, "subIssues": {"totalCount": subs},
-            "comments": {"nodes": [{"body": b, "createdAt": f"2026-10-0{i + 1}T10:00:00Z", "authorAssociation": a}
+            "comments": {"nodes": [{"body": b, "createdAt": f"2026-10-01T10:00:{i:02d}Z", "authorAssociation": a}
                                    for i, (b, a) in enumerate(comments)]},
             "blockedBy": {"nodes": [{"number": n, "title": f"Blocker {n}", "state": s,
                                      "repository": {"nameWithOwner": r}} for n, s, r in blocked]}}

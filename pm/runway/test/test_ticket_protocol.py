@@ -81,11 +81,45 @@ class Facts(unittest.TestCase):
         parked = f"{M} · Parked: x."
         for rules in (P.GITHUB, P.LINEAR):
             t = one(rules, held=True, comments=[(old, True), (parked, True),
-                                                (f"{M} · Claimed-by: Mini-Two · Started on `b`.", True),
+                                                (f"{M} · Claimed-by: Mini-Two · Started on `b`.", True, "u", "N", "2026-10-03T10:00:00Z"),
                                                 ("go", True),
-                                                (f"{M} · Claimed-by: Mini-One · Started on `b`.", True)])
+                                                (f"{M} · Claimed-by: Mini-One · Started on `b`.", True, "u", "N", "2026-10-03T10:00:09Z")])
             self.assertEqual(t.claimed_by, "Mini-Two")
             self.assertIsNone(one(rules, comments=[(old, True)]).claimed_by)
+
+    def test_abandoned_stamp_never_wins(self):
+        """A stamps, its claim transition fails; later B claims and runs. A's orphaned stamp must not hold it."""
+        for rules in (P.GITHUB, P.LINEAR):
+            tr = tracker(rules, issue("X-1"))
+            tr.now, tr.claim_fails = "2026-10-09T10:00:00Z", True
+            with self.assertRaises(RuntimeError):
+                tr.load()[0].mark_claimed("b", "Mini-A")
+            t = tr.load()[0]
+            self.assertEqual(t.status, "ready")
+            self.assertIsNone(t.claimed_by)
+            tr.now, tr.claim_fails = "2026-10-09T11:00:00Z", False
+            tr.load()[0].mark_claimed("b", "Mini-B")
+            self.assertEqual(tr.load()[0].claimed_by, "Mini-B")
+
+    def test_abandoned_stamps_chain(self):
+        for rules in (P.GITHUB, P.LINEAR):
+            stamp = lambda who, at: (f"{M} · Claimed-by: {who} · Started on `b`.", True, "u", "N", at)
+            t = one(rules, held=True, comments=[stamp("A", "2026-10-09T10:00:00Z"), stamp("B", "2026-10-09T11:00:00Z"),
+                                                stamp("C", "2026-10-09T12:00:00Z"), stamp("D", "2026-10-09T12:00:02Z")])
+            self.assertEqual(t.claimed_by, "C")
+
+    def test_overlapping_live_claims_have_one_runner(self):
+        for rules in (P.GITHUB, P.LINEAR):
+            tr = tracker(rules, issue("X-1"))
+            tr.now = "2026-10-09T10:00:00Z"
+            a, b = tr.load()[0], tr.load()[0]   # both Macs saw it ready
+            a._comment("Claimed-by: Mini-A · Started on `b`.")
+            tr.now = "2026-10-09T10:00:03Z"
+            b._comment("Claimed-by: Mini-B · Started on `b`.")
+            a._claim()
+            b._claim()
+            seen = {x.claimed_by for x in tr.load()}
+            self.assertEqual(seen, {"Mini-A"})
 
     def test_packet_and_replies(self):
         t = one(P.GITHUB, comments=[("early", True), (f"{M} · **Decision packet**\n\nPick", True), ("go A", True)])

@@ -54,6 +54,15 @@ LINEAR = Rules(name="Linear", children="child issues", where="in Linear", truste
                close_with_comment=False)
 
 
+# How long a Mac has to finish a claim (the stamp, then the assignment or state change) before a later stamp
+# means it never did. Two live Macs stamp seconds apart; a dead one's stamp is older than this by the next tick.
+CLAIM_LEASE = dt.timedelta(minutes=5)
+
+
+def _when(stamp: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+
+
 def marked(body: str) -> str:
     return f"{MARK} · {body.strip()}"
 
@@ -137,19 +146,25 @@ class Ticket:
 
     @property
     def claimed_by(self) -> str | None:
-        """The machine named in the first claim comment of the current claim cycle, else None. First stamp wins, so
-        two Macs that both stamped agree on the owner whichever order they read back in."""
+        """The machine that holds the current claim cycle, else None. First stamp wins, so two Macs that both
+        stamped agree on the owner whichever order they read back in. A stamp is abandoned when a later stamp
+        lands more than CLAIM_LEASE after it: a Mac only stamps a ticket it saw ready, so the earlier claim never
+        completed (its Mac died between the stamp and the claim), and the later stamp takes over."""
         if self.status != "claimed":
             return None  # parked, paused or retried: the old stamp no longer holds the ticket
-        owner = None
+        stamps = []
         for cm in reversed(self.comments):
             if not cm["body"].startswith(MARK):
                 continue  # Joe's comments don't end a cycle
             m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
             if not m:
                 break  # a park, release or note: earlier claims belong to an earlier cycle
-            owner = m.group(1).strip()
-        return owner
+            stamps.append((m.group(1).strip(), _when(cm["createdAt"])))
+        owner = None
+        for who, at in reversed(stamps):
+            if owner is None or at - owner[1] > CLAIM_LEASE:
+                owner = (who, at)
+        return owner[0] if owner else None
 
     def h(self, key: str, default: str = "") -> str:
         if key == "Waiting on" and self.status == "needs-human":
