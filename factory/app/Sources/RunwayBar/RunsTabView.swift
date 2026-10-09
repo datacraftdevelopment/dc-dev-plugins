@@ -62,12 +62,15 @@ struct RunsTab: View {
         Table(records, selection: $selected) {
             TableColumn("When") { Text($0.at).monospacedDigit() }.width(min: 120, ideal: 150)
             TableColumn("Ticket") { record in
-                if let url = linearURL(record.ticket) {
-                    Link(record.ticket, destination: url).font(.body.monospaced()).help(TicketLink.openHint(ticket: record.ticket, tracker: entry.project.tracker))
-                } else {
-                    Text(record.ticket).font(.body.monospaced())
+                HStack(spacing: 4) {
+                    if let url = linearURL(record.ticket) {
+                        Link(record.ticket, destination: url).font(.body.monospaced()).help(TicketLink.openHint(ticket: record.ticket, tracker: entry.project.tracker))
+                    } else {
+                        Text(record.ticket).font(.body.monospaced())
+                    }
+                    if let kind = errored(record.ticket) { ErroredFlag(kind: kind, compact: true).labelStyle(.iconOnly) }
                 }
-            }.width(min: 60, ideal: 80)
+            }.width(min: 60, ideal: 90)
             TableColumn("Kind") { Text($0.kind) }.width(min: 50, ideal: 70)
             TableColumn("Harness") { Text($0.harness ?? "—") }.width(min: 50, ideal: 70)
             TableColumn("Attempt") { Text($0.attempt.map(String.init) ?? "—") }.width(min: 40, ideal: 55)
@@ -98,6 +101,15 @@ struct RunsTab: View {
         .font(.callout.monospacedDigit().bold()).padding(10)
     }
 
+    private func errored(_ ticket: String) -> String? {
+        store.snapshot(for: entry.project.label)?.errored[ticket]
+    }
+
+    /// A failed attempt of a ticket that is still waiting or errored: the engine only discusses those.
+    private func canTalk(_ record: RunRecord) -> Bool {
+        record.result == .fail && store.snapshot(for: entry.project.label)?.canTalkThrough(record.ticket) == true
+    }
+
     private func linearURL(_ ticket: String) -> URL? {
         store.snapshot(for: entry.project.label)?.urls[ticket]
     }
@@ -117,6 +129,8 @@ struct RunsTab: View {
                     Button { openSession(id) } label: { Label("Show session", systemImage: "doc.text.magnifyingglass") }
                         .buttonStyle(.link)
                 }
+                if let kind = errored(record.ticket) { ErroredFlag(kind: kind) }
+                if canTalk(record) { TalkButton(store: store, project: entry.project, ticket: record.ticket) }
                 Button { selected = nil } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless).foregroundStyle(.secondary).help("Close details")
             }

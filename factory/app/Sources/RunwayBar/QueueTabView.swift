@@ -70,6 +70,19 @@ struct QueueTab: View {
     }
 
     private func row(_ ticket: QueueTicket, number: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            openRow(ticket, number: number)
+            if let errored = ticket.errored {
+                HStack(spacing: 10) {
+                    ErroredFlag(kind: errored)
+                    TalkButton(store: store, project: entry.project, ticket: ticket.id)
+                }
+                .padding(.leading, number == nil ? 0 : 22)
+            }
+        }
+    }
+
+    private func openRow(_ ticket: QueueTicket, number: Int?) -> some View {
         Button {
             if let url = ticket.url.flatMap(URL.init(string:)), url.scheme?.hasPrefix("http") == true { openURL(url) }
         } label: {

@@ -33,6 +33,11 @@ struct RunwayWindow: View {
                             .font(.caption.bold()).foregroundStyle(.white)
                             .padding(.horizontal, 6).background(.orange, in: Capsule())
                     }
+                    if entry.status.errored > 0 {
+                        Label("\(entry.status.errored)", systemImage: "flag.fill")
+                            .font(.caption.bold()).foregroundStyle(.red)
+                            .help("Tickets whose latest attempt didn't merge")
+                    }
                 }
                 .padding(.vertical, 2)
                 .tag(entry.project.label)
@@ -89,6 +94,11 @@ struct RunwayWindow: View {
         }
         .frame(minWidth: 760, minHeight: 480)
         .onChange(of: store.requestedRoute) { _, _ in applyRoute() }
+        // Picking a project in error lands on its Now tab, where the error is at the top.
+        .onChange(of: selection) { _, label in
+            if let label, let picked = store.entries.first(where: { $0.project.label == label }),
+               case .error = picked.status.state { tab = .now }
+        }
         // A route set from the menu while the window was closed is already there when the window opens.
         .onAppear { applyRoute() }
     }
@@ -96,7 +106,11 @@ struct RunwayWindow: View {
     private func applyRoute() {
         guard let route = store.requestedRoute else { return }
         selection = route.projectLabel
-        tab = route.tab == .decisions ? .decisions : .now
+        switch route.tab {
+        case .decisions: tab = .decisions
+        case .queue: tab = .queue
+        case .projects: tab = .now
+        }
         store.requestedRoute = nil
     }
 
@@ -215,6 +229,7 @@ struct NowTab: View {
                                     loopOn: project.loaded, now: now)
 
         VStack(alignment: .leading, spacing: 16) {
+            if case .error = entry.status.state { errorBanner(project: project) }
             ForEach(Array(banners.enumerated()), id: \.offset) { _, banner in
                 Label(bannerText(banner), systemImage: "exclamationmark.circle.fill")
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
@@ -253,6 +268,26 @@ struct NowTab: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .padding(16)
+    }
+
+    /// The project's error in full (`ProjectStatus.detail`), the last log lines, and the button.
+    private func errorBanner(project: Project) -> some View {
+        let lines = log.lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.suffix(6)
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(entry.status.detail, systemImage: "exclamationmark.triangle.fill")
+                .font(.headline).foregroundStyle(.red).textSelection(.enabled)
+            if lines.isEmpty {
+                Text("No log lines yet.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text(lines.joined(separator: "\n")).font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled).lineLimit(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            TalkButton(store: store, project: project)
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.red.opacity(0.5), lineWidth: 1))
     }
 
     private func cell(_ title: String, _ icon: String, _ value: String) -> some View {
