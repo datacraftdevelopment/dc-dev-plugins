@@ -30,6 +30,9 @@ if cmd == "lint":
     if any("{{" + n + "}}" in text for n in ("RUN_SLUG", "WORKDIR", "REVIEW_SCOPE", "ARTIFACT_PATH_OR_DIFF_COMMAND", "REVIEW_FOCUS", "KIT_DIR")):
         print("unfilled placeholder"); sys.exit(1)
     sys.exit(0)
+import re
+mh = re.search(r"current head ([0-9a-f]{40})", text)
+head = mh.group(1) if mh else "1" * 40
 seats = dict(p.split("=") for p in os.environ["FAKE_SEATS"].split(","))
 code = 0
 for t in m["tasks"]:
@@ -41,6 +44,9 @@ for t in m["tasks"]:
     body = "## Summary\\nNO FINDINGS\\n" if how == "ok" else "## Summary\\nFinding: x\\nPriority: P1\\n"
     if t["key"] == "review-claude" and how == "ok":
         body = "## Summary\\nFinding: a bug\\nEvidence: f.py:1\\nImpact: i\\nFix: f\\nPriority: P1\\nConfidence: high\\n"
+    sha = "0" * 40 if how == "stale" else head
+    if how != "nosha":
+        body = "Reviewed: " + sha + "\\n" + body
     open(os.path.join(d, "report.md"), "w").write(body)
     if how == "bad":
         print(t["key"], "FAIL (check)"); code = 1
@@ -207,8 +213,9 @@ class FinishPanel(unittest.TestCase):
         (self.repo / "fix_agent.py").write_text(
             'import sys\nopen(%r, "a").write(sys.stdin.read() + "\\n=====\\n")\nopen("fixed.txt", "w").write("x")\n'
             % str(self.repo / "prompts.log"))
-        (self.repo / "single_review.py").write_text("import sys, json\nsys.stdin.read()\n"
-                                                    "print(json.dumps({'result': '- single review finding'}))\n")
+        (self.repo / "single_review.py").write_text("import sys, json, re\np = sys.stdin.read()\n"
+                                                    "m = re.search(r'head under review is ([0-9a-f]{40})', p)\n"
+                                                    "print(json.dumps({'result': ('Reviewed: ' + m.group(1) + '\\n' if m else '') + '- single review finding'}))\n")
         cfg = json.loads((self.repo / "runway.json").read_text())
         cfg.update(review="panel", review_cmd=f"{sys.executable} {self.repo / 'single_review.py'}",
                    fix_cmd=f"{sys.executable} {self.repo / 'fix_agent.py'}",
@@ -300,6 +307,42 @@ class FinishPanel(unittest.TestCase):
         self.assertEqual(panel["seats"], {"codex": "MISSING", "claude": "PASS"})
         self.assertFalse((self.repo / "_pm" / "runway-review-codex.md").exists())
         self.assertTrue((self.repo / "_pm" / "runway-review-claude.md").exists())
+
+    def verdict_row(self, rows):
+        return [r for r in rows if r["kind"] == "verdict"][0]
+
+    def test_stale_sha_report_is_rejected_and_seat_is_no_report(self):
+        rows = self.finish("codex=stale,claude=ok")
+        pm = self.repo / "_pm"
+        self.assertFalse((pm / "runway-review-codex.md").exists())
+        self.assertIn("NO REPORT (status STALE)", (pm / "runway-review.md").read_text())
+        self.assertIn("discarded", (pm / "runway.log").read_text())
+        seats = {s["seat"]: s for s in self.verdict_row(rows)["seats"]}
+        self.assertEqual(seats["codex"]["status"], "STALE")
+        self.assertEqual(seats["codex"]["sha"], "0" * 40)
+
+    def test_report_without_sha_line_is_rejected(self):
+        rows = self.finish("codex=nosha,claude=ok")
+        self.assertFalse((self.repo / "_pm" / "runway-review-codex.md").exists())
+        seats = {s["seat"]: s for s in self.verdict_row(rows)["seats"]}
+        self.assertEqual(seats["codex"]["status"], "NO SHA")
+        self.assertIsNone(seats["codex"]["sha"])
+
+    def test_one_valid_seat_still_counts_and_row_records_run_sha_time(self):
+        rows = self.finish("codex=stale,claude=ok")
+        seats = {s["seat"]: s for s in self.verdict_row(rows)["seats"]}
+        self.assertEqual(seats["claude"]["status"], "PASS")
+        self.assertRegex(seats["claude"]["sha"], r"^[0-9a-f]{40}$")
+        self.assertTrue(seats["claude"]["run_id"])
+        self.assertTrue(seats["claude"]["at"])
+        self.assertTrue((self.repo / "_pm" / "runway-review-claude.md").exists())
+        self.assertIn("a bug", (self.repo / "prompts.log").read_text())
+
+    def test_no_valid_seat_is_a_fail_verdict(self):
+        rows = self.finish("codex=stale,claude=nosha")
+        v = self.verdict_row(rows)
+        self.assertEqual(v["verdict"], "fail")
+        self.assertTrue(any("proved which commit" in b for b in v["blocking"]))
 
     def test_ringer_missing_falls_back_to_single(self):
         rows = self.finish(ringer=False)

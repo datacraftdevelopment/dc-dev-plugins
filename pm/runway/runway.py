@@ -1350,8 +1350,10 @@ merged together. Review the whole change (`git diff {base}...HEAD`) against the 
 the tickets. If the /code-review skill is available, use it. Look for bugs, tickets that are
 missing or half done, and places where separately built tickets don't fit together.
 
-Reply with only a Markdown list of findings, most severe first, each with file:line and why
-it matters. If nothing is worth fixing, reply with exactly: NO FINDINGS
+Start your reply with a line `Reviewed: <sha>`, the full output of `git rev-parse HEAD` as you see it
+(the head under review is {head}); a reply without it is thrown away. Then a Markdown list of findings,
+most severe first, each with file:line and why it matters. If nothing is worth fixing, reply with
+exactly: NO FINDINGS
 {spec}
 Tickets:
 {tickets}
@@ -1447,7 +1449,7 @@ def parse_verdict(text: str):
     return None
 
 
-def decide_verdict(check_exit: int, parsed) -> dict:
+def decide_verdict(check_exit: int, parsed, valid_reviews=None) -> dict:
     """pass/fail for the round. Fails on a red check, an unparseable judge, any blocking finding or a
     criterion with no evidence. Never passes by default."""
     blocking = list(parsed["blocking"]) if parsed else []
@@ -1455,12 +1457,14 @@ def decide_verdict(check_exit: int, parsed) -> dict:
     criteria = list(parsed["criteria"]) if parsed else []
     if check_exit != 0:
         blocking.insert(0, f"The check failed after the last edit (exit {check_exit}).")
+    if valid_reviews == 0:
+        blocking.insert(0, "No review seat proved which commit it reviewed (no valid Reviewed: <sha> report).")
     if parsed is None:
         blocking.insert(0, "The judge returned nothing parseable, so nothing was shown to pass.")
     for c in criteria:
         if not c["evidence"]:
             blocking.append(f"No evidence for acceptance criterion ({c['ticket']}): {c['criterion']}")
-    ok = parsed is not None and parsed["verdict"] == "pass" and check_exit == 0 and not blocking
+    ok = parsed is not None and parsed["verdict"] == "pass" and check_exit == 0 and not blocking and valid_reviews != 0
     return {"verdict": "pass" if ok else "fail", "blocking": blocking, "non_blocking": non_blocking,
             "criteria": criteria}
 
@@ -1526,8 +1530,21 @@ def runway_tickets(tickets: list) -> list:
     return [t for t in tickets if t.gate in RUNNABLE_GATES + ("human",)]
 
 
+def reviewed_sha(text: str):
+    """The sha on a report's `Reviewed: <sha>` line, or None. Only the first non-blank line counts."""
+    for line in text.splitlines():
+        if line.strip():
+            m = re.match(r"^\W*Reviewed:\s*`?([0-9a-fA-F]{7,40})\b", line.strip())
+            return m.group(1).lower() if m else None
+    return None
+
+
+def sha_matches(claimed, head: str) -> bool:
+    return bool(claimed) and len(claimed) >= 7 and head.lower().startswith(claimed)
+
+
 def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
-    """The two-seat Ringer review. Returns (findings, has_findings), or None when Ringer is missing or
+    """The two-seat Ringer review. Returns (findings, has_findings, seat_rows), or None when Ringer is missing or
     no seat wrote a report (the caller then runs the single review)."""
     pm = root / "_pm"
     out = pm / "runway-panel"
@@ -1540,6 +1557,8 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     brief = out / "brief.md"
     brief.write_text(f"Runway integration branch `{integ}`, reviewed against `{base}`.\n"
                      f"Review the range `{base}...{integ}`, current head {head}. Ignore any other commit.\n"
+                     f"Start your report with a line `Reviewed: <sha>`: the full output of `git rev-parse HEAD`\n"
+                     f"in the tree you reviewed (it must be {head}). A report without it, or with another sha, is discarded.\n"
                      f"{spec}\nTickets:\n{tlist}\n")
     t0 = time.time()
     pids: list = []
@@ -1559,23 +1578,35 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
         log(root, "ringer not found; falling back to the single review.")
         return None
     try:
-        seats = json.loads(r.stdout.strip().splitlines()[-1])["seats"]
+        rjson = json.loads(r.stdout.strip().splitlines()[-1])
+        seats = rjson["seats"]
     except (ValueError, KeyError, IndexError):
-        seats = {}
-    sections, statuses, missing = [], {}, []
+        rjson, seats = {}, {}
+    sections, statuses, missing, seat_rows = [], {}, [], []
+    run_id = rjson.get("run_id") or time.strftime("runway-%Y%m%d-%H%M%S", time.gmtime(t0))
     for seat in ("codex", "claude"):
         info = seats.get(seat) or {}
         statuses[seat] = info.get("status", "MISSING")
         report = Path(info["report"]) if info.get("report") else None
+        claimed = None
         if report and report.is_file():
             text = report.read_text().strip()
-            (pm / f"runway-review-{seat}.md").write_text(text + "\n")
-            note = ("\n(Ringer's check rejected this report; its findings are still worth reading.)\n"
-                    if statuses[seat] == "FAIL" else "")
-            sections.append(f"### {seat}{note}\n{text}")
+            claimed = reviewed_sha(text)
+            if sha_matches(claimed, head):
+                (pm / f"runway-review-{seat}.md").write_text(text + "\n")
+                note = ("\n(Ringer's check rejected this report; its findings are still worth reading.)\n"
+                        if statuses[seat] == "FAIL" else "")
+                sections.append(f"### {seat}{note}\n{text}")
+            else:
+                why = "no Reviewed: line" if claimed is None else f"reviewed {claimed}, not {head[:12]}"
+                log(root, f"{seat} seat report discarded: {why}.")
+                statuses[seat] = "STALE" if claimed else "NO SHA"
+                missing.append(seat)
         else:
             missing.append(seat)
-    if not sections:
+        seat_rows.append({"seat": seat, "run_id": run_id, "sha": claimed, "at": now(),
+                          "status": statuses[seat]})
+    if not seat_rows or all(r["status"] == "MISSING" for r in seat_rows):
         log(root, f"ringer panel wrote no reports (exit {r.returncode}); falling back to the single review.")
         return None
     record(root, {"kind": "review", "ticket": "finish", "harness": "ringer-panel", "exit": r.returncode,
@@ -1586,7 +1617,7 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     for seat in missing:
         findings += (f"\n\n### {seat}\nNO REPORT (status {statuses[seat]}). This was a single-seat review: "
                      f"nothing here was cross-checked by the {seat} seat.")
-    return findings, has_findings
+    return findings, has_findings, seat_rows
 
 
 def ticket_work_since(cfg: dict, root: Path, reviewed) -> bool:
@@ -1660,18 +1691,31 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 1. Review the whole branch against the tickets.
     hp = resolve_harness(cfg)
+    review_head = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
     panel = panel_review(cfg, root, wt, tlist, spec) if cfg.get("review") == "panel" else None
     if panel:
-        findings, has_findings = panel
+        findings, has_findings, seat_rows = panel
     else:
         r, text = run_agent(cfg, root, hp["review_cmd"], wt,
-                            REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist),
+                            REVIEW_PROMPT.format(integration=integ, base=base, spec=spec, tickets=tlist,
+                                                 head=review_head),
                             "finish", "review", harness=hp)
         findings = text.strip()
+        claimed = reviewed_sha(findings)
+        status = "PASS"
         if r.failure or not findings:
             findings, has_findings = f"Review failed ({r.failure or 'no output'}).", False
+            status = "MISSING"
+        elif not sha_matches(claimed, review_head):
+            why = "no Reviewed: line" if claimed is None else f"reviewed {claimed}, not {review_head[:12]}"
+            log(root, f"single review discarded: {why}.")
+            findings, has_findings = f"Review discarded ({why}). NO REPORT.", False
+            status = "STALE" if claimed else "NO SHA"
         else:
+            findings = re.sub(r"^\s*\W*Reviewed:[^\n]*\n?", "", findings, count=1).strip()
             has_findings = findings.upper().rstrip(".") != "NO FINDINGS"
+        seat_rows = [{"seat": "single", "run_id": f"single-{int(time.time())}", "sha": claimed, "at": now(),
+                      "status": status}]
     if stop_requested() or (not panel and r.auth):
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
@@ -1725,7 +1769,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                                JUDGE_PROMPT.format(integration=integ, base=base, check=cfg["check_cmd"],
                                                    code=c.returncode, tickets=ttext, fix_note=fix_note,
                                                    findings=findings), "finish", "judge", harness=hp)
-    verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text))
+    valid_reviews = sum(1 for r_ in seat_rows if r_["status"] in ("PASS", "FAIL"))
+    verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text), valid_reviews)
     if stop_requested():
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
@@ -1773,7 +1818,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                   "check_exit": c.returncode, "pr": where})
     record(root, {"kind": "verdict", "ticket": "finish", "sha": sha, "verdict": verdict["verdict"],
                   "blocking": verdict["blocking"], "non_blocking": verdict["non_blocking"],
-                  "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off")})
+                  "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off"),
+                  "seats": seat_rows})
     check_note = "check passes" if c.returncode == 0 else "CHECK FAILS"
     if fix_msg:
         notify(cfg, root, fix_msg)

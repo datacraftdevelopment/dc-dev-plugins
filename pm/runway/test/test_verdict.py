@@ -2,6 +2,7 @@
 Pure tests cover parsing and deciding; the finish tests stub run_agent per call kind and use a real repo."""
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -114,7 +115,8 @@ class FinishVerdict(unittest.TestCase):
         os.environ.pop("RUNWAY_HOME", None) if self._env is None else os.environ.__setitem__("RUNWAY_HOME", self._env)
 
     def _agent(self, cfg, root, cmd, cwd, prompt, ticket, kind, *a, **k):
-        text = {"review": "NO FINDINGS", "judge": self.judge_text, "pr": self.pr_text}.get(kind, "")
+        m = re.search(r"head under review is ([0-9a-f]{40})", prompt)
+        text = {"review": f"Reviewed: {m.group(1)}\nNO FINDINGS" if m else "NO FINDINGS", "judge": self.judge_text, "pr": self.pr_text}.get(kind, "")
         return SimpleNamespace(failure=None, returncode=0, auth=False, stderr=""), text
 
     def finish(self, check="true"):

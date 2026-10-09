@@ -127,9 +127,10 @@ def main() -> int:
     shutil.rmtree(workdir, ignore_errors=True)
     for key in SEATS.values():
         (out / f"{key}.md").unlink(missing_ok=True)
+    run_id = time.strftime("runway-%Y%m%d-%H%M%S")
     manifest = build_manifest(load_template(root / TEMPLATE), a.repo.resolve(), a.base, a.brief_file.read_text(),
                               workdir, root / "templates" / "adversarial-review",
-                              slug=time.strftime("runway-%Y%m%d-%H%M%S"))
+                              slug=run_id)
     mpath = out / "manifest.json"
     mpath.write_text(json.dumps(manifest, indent=2))
 
@@ -173,7 +174,7 @@ def main() -> int:
         shutil.copyfile(src, dest)
         # A report that exists is kept even when the check failed (it rejects honest prose like "patched the").
         seats[seat] = {"status": "PASS" if seat_passed(output, key, run_ok) else "FAIL", "report": str(dest)}
-    print(json.dumps({"seats": seats}))
+    print(json.dumps({"run_id": run_id, "seats": seats}))
     return 0 if any(s["report"] for s in seats.values()) else 1
 
 
