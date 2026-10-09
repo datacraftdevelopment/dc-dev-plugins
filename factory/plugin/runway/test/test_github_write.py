@@ -146,6 +146,71 @@ class GitHubWrites(unittest.TestCase):
         with self.assertRaises(Exception):
             t.mark_claimed("b", "Mini-One")
 
+    # -- an approved ticket that parks waits for a fresh go (gh-13) --
+
+    def park_approved(self):
+        self.data(issue(1, labels=("ready-for-human", "go")))
+        self.ticket().mark_claimed("b", "Mini-One")
+        self.ticket().mark_needs_human("checks failed", "boom")
+
+    def labels(self):
+        return [lb["name"] for lb in self.stored()["labels"]["nodes"]]
+
+    def test_park_of_an_approved_ticket_drops_go_and_says_to_comment_go(self):
+        self.park_approved()
+        self.assertIn("needs-human", self.labels())
+        self.assertNotIn("go", self.labels())
+        self.assertIn("Parked: checks failed. Comment `go` (or re-add the `go` label) to retry.", self.comments()[-1])
+
+    def test_park_then_sync_leaves_it_parked_across_ticks(self):
+        self.park_approved()
+        for _ in range(3):
+            self.tracker().sync()
+            self.assertEqual(self.ticket().status, "needs-human")
+        self.assertEqual(self.tick_as("Mini-Two")[0], [])
+        self.assertEqual(len(self.comments()), 2)  # claim + park: no "Approved." churn
+
+    def test_park_then_go_comment_approves_and_retries(self):
+        self.park_approved()
+        s = self.stored()
+        s["comments"]["nodes"].append({"body": "go", "createdAt": "2026-10-10T10:00:00Z", "authorAssociation": "OWNER"})
+        self.data(s)
+        self.tracker().sync()
+        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+
+    def test_park_then_go_label_readded_approves_and_retries(self):
+        self.park_approved()
+        s = self.stored()
+        s["labels"]["nodes"].append({"name": "go"})
+        self.data(s)
+        self.tracker().sync()
+        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+
+    def test_a_go_comment_from_before_the_park_does_not_count(self):
+        self.data(issue(1, labels=("ready-for-human", "go"), comments=[("go", "OWNER")]))
+        self.ticket().mark_claimed("b", "Mini-One")
+        self.ticket().mark_needs_human("checks failed", "boom")
+        self.tracker().sync()
+        self.assertEqual(self.ticket().status, "needs-human")
+
+    def test_a_parked_ready_for_agent_ticket_is_ready_when_the_label_goes(self):
+        self.data(issue(1))
+        self.ticket().mark_claimed("b", "Mini-One")
+        self.ticket().mark_needs_human("x", "d")
+        self.tracker().sync()
+        self.assertEqual(self.ticket().status, "needs-human")
+        s = self.stored()
+        s["labels"]["nodes"] = [lb for lb in s["labels"]["nodes"] if lb["name"] != "needs-human"]
+        self.data(s)
+        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+
+    def test_release_keeps_go_so_the_approved_ticket_runs_again(self):
+        self.data(issue(1, labels=("ready-for-human", "go")))
+        self.ticket().mark_claimed("b", "Mini-One")
+        self.ticket().mark_ready("stopped by pause")
+        self.assertIn("go", self.labels())
+        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+
     # -- claims between Macs (mirrors the Linear claim tests) --
 
     def tick_as(self, me):
