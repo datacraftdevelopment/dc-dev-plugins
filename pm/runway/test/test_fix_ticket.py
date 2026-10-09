@@ -2,6 +2,7 @@
 repo, run_agent stubbed per call kind. Run: python3 -m pytest -q test_fix_ticket.py"""
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -50,7 +51,8 @@ class FixTicket(unittest.TestCase):
 
     def _agent(self, cfg, root, cmd, cwd, prompt, ticket, kind, *a, **k):
         self.kinds.append(kind)
-        text = {"review": FINDINGS, "judge": self.judge, "pr": TWO_WAY}.get(kind, "")
+        m = re.search(r"head under review is ([0-9a-f]{40})", prompt)
+        text = {"review": (f"Reviewed: {m.group(1)}\n" if m else "") + FINDINGS, "judge": self.judge, "pr": TWO_WAY}.get(kind, "")
         return SimpleNamespace(failure=None, returncode=0, auth=False, stderr=""), text
 
     def finish(self):
