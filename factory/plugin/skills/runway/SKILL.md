@@ -1,6 +1,6 @@
 ---
 name: runway
-description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
+description: Set up and run Runway, the factory loop that works a repo's ready tickets unattended, from either Linear or GitHub Issues (one tracker per repo, chosen in runway.json). Use when the user wants to start a new factory project, point a repo at Linear or GitHub for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
 ---
 
 # Runway
@@ -44,8 +44,8 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
    to `docs/agents/worker-env.md` and fill it in from the repo: what a fresh
    worktree lacks, the verify command, paths to leave alone. Every ticket run
    reads it first. Commit it.
-5. **Plan.** `/to-spec`, then `/to-tickets`, published to the Linear project
-   (or the GitHub repo).
+5. **Plan.** `/to-spec`, then `/to-tickets`, published to the repo's tracker
+   (the Linear project or the GitHub repo).
    Label each ticket with the gating rule below and add blocks relations for
    the conflict screen.
 6. **Schedule.** `bash "${CLAUDE_PLUGIN_ROOT}/runway/schedule.sh" install <repo> [minutes]`
@@ -221,4 +221,5 @@ kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
 across repos, and the app's script paths after the engine move. 0.4.2 ignores `_` notes in `"harnesses"` and parks a
 ticket with an unknown harness label instead of crashing the tick. 0.5.0 sets a repo up for GitHub Issues:
 `setup.sh --github`, a GitHub tracker doc, and `RUNWAY setup` for GitHub (auth, repo,
-Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9.
+Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9. 0.5.10 updates the docs and
+descriptions to say Runway works either Linear or GitHub, one tracker per repo, chosen in `runway.json`.

@@ -13,7 +13,7 @@
     {
       "name": "factory",
       "source": "./factory/plugin",
-      "description": "DataCraft software factory: Runway, a deterministic loop that runs ready Linear tickets unattended in git worktrees, preps decision packets for the tickets that need Joe, and finishes with a whole-branch review and a PR body. The runway skill covers kickoff, the gating rule for ready-for-agent vs ready-for-human, worker-env.md, the conflict screen, scheduling and retro. Install with sdlc and Matt Pocock's skills."
+      "description": "DataCraft software factory: Runway, a deterministic loop that runs a repo's ready tickets (Linear or GitHub Issues, chosen in runway.json) unattended in git worktrees, preps decision packets for the tickets that need Joe, and finishes with a whole-branch review and a PR body. The runway skill covers kickoff, the gating rule for ready-for-agent vs ready-for-human, worker-env.md, the conflict screen, scheduling and retro. Install with sdlc and Matt Pocock's skills."
     },
     {
       "name": "design-dc",
