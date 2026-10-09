@@ -8,9 +8,12 @@ unchanged, plus the two header lines pm reads and two notes for this repo.
 plugins). Its issues are public too. No client names, no credentials and nothing
 under NDA go into an issue or a comment.
 
-**Runway is still on Linear here** (team DAT, project "Runway app") until the
-GitHub adapter (DAT-34) lands. Then `runway.json` switches to `"tracker": "github"`
-and Runway works this repo's GitHub issues.
+**Runway works this repo's GitHub issues** (`"tracker": "github"` in
+`runway.json`, since 2026-10-08; it was on Linear, team DAT, before). It runs
+open `ready-for-agent` issues and preps a decision packet on `ready-for-human`
+ones; Joe approves with a `go` comment or label. Until #11 lands, publish a spec
+from `/to-spec` without `ready-for-agent`, or Runway will try to build the spec
+itself.
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
