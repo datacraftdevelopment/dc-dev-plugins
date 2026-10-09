@@ -169,6 +169,29 @@ final class ProjectDiscoveryTests: XCTestCase {
         XCTAssertNotNil(projects[0].error)
     }
 
+    func testSkipsObserverAndOtherNonLoopJobs() throws {
+        let root = try tempDir()
+        let agents = root.appendingPathComponent("agents")
+        try FileManager.default.createDirectory(at: agents, withIntermediateDirectories: true)
+        let repo = root.appendingPathComponent("alpha")
+        try FileManager.default.createDirectory(at: repo, withIntermediateDirectories: true)
+        try writePlist(agents, label: "com.joe.runway.alpha", repo: repo.path)
+        let observer = """
+        <plist version="1.0"><dict>
+          <key>Label</key><string>com.joe.runway.observer.alpha</string>
+          <key>ProgramArguments</key><array>
+            <string>/opt/homebrew/bin/python3</string><string>\(repo.path)/factory/scripts/observe.py</string>
+            <string>--root</string><string>\(repo.path)</string><string>--interval</string><string>600</string>
+          </array>
+        </dict></plist>
+        """
+        try observer.write(to: agents.appendingPathComponent("com.joe.runway.observer.alpha.plist"),
+                           atomically: true, encoding: .utf8)
+        let projects = ProjectDiscovery(launchAgentsDir: agents) { _ in nil }.discover()
+        XCTAssertEqual(projects.map(\.label), ["com.joe.runway.alpha"])
+        XCTAssertNil(projects[0].error)
+    }
+
     func testMissingAgentsDirIsEmpty() {
         let nowhere = URL(fileURLWithPath: "/nonexistent-\(UUID().uuidString)")
         XCTAssertEqual(ProjectDiscovery(launchAgentsDir: nowhere) { _ in nil }.discover().count, 0)
