@@ -105,7 +105,16 @@ ISSUE_FIELDS = """
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
 """
 
-Q_ISSUES = """query($owner: String!, $name: String!, $labels: [String!], $after: String) {
+# Matt Pocock's five triage labels; `runway setup` creates any that are missing (his skills expect them).
+MATT_LABELS = [
+    ("needs-triage", "FBCA04", "Maintainer needs to evaluate this issue"),
+    ("needs-info", "D4C5F9", "Waiting on reporter for more information"),
+    ("ready-for-agent", "4EA7FC", "Fully specified, ready for an AFK agent"),
+    ("ready-for-human", "F2994A", "Needs a human"),
+    ("wontfix", "FFFFFF", "Will not be actioned"),
+]
+
+Q_ISSUES ="""query($owner: String!, $name: String!, $labels: [String!], $after: String) {
   repository(owner: $owner, name: $name) {
     issues(first: %d, after: $after, labels: $labels, states: [OPEN, CLOSED],
            orderBy: {field: CREATED_AT, direction: ASC}) {
@@ -404,8 +413,9 @@ class GitHubTracker:
                   "approve_label": ("4CB782", "Runway: Joe approved a ready-for-human issue"),
                   "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe"),
                   "spec_label": ("8B8FA3", "A spec: its sub-issues are the tickets. Runway never runs it")}
-        for key, (color, desc) in wanted.items():
-            name = self.c[key]
+        todo = [(self.c[key], color, desc) for key, (color, desc) in wanted.items()]
+        todo += [(n, c, d) for n, c, d in MATT_LABELS if n not in {t[0] for t in todo}]  # Matt's five, for his skills
+        for name, color, desc in todo:
             if name.lower() in have:
                 print(f"Label {name}: exists")
                 continue

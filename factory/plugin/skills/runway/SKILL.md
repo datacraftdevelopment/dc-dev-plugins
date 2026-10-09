@@ -18,20 +18,26 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
 
 1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he
    named). GitHub: confirm the repo (`owner/name`) and that Joe's `gh` is signed in.
-2. **Point the repo at it.**
+2. **Point the repo at it.** If Joe wants Matt's interactive setup
+   (`/setup-matt-pocock-skills`, which only he can type), run it first, then
+   `setup.sh`: it keeps Matt's `triage-labels.md`, `domain.md` and Agent skills
+   block and rewrites `issue-tracker.md` with Runway's gating rule. Re-running
+   `setup.sh` after Matt's setup restores that rule. Without Matt's setup,
+   `setup.sh` seeds all three docs itself.
    Linear: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> <TEAM-KEY> "<project name>"`.
    GitHub: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> --github [owner/name]`
    (the repo defaults to the clone's github.com origin).
    Either writes `docs/agents/issue-tracker.md` (the labels and gating rule below),
-   a `runway.json` and an "Agent skills" section in `CLAUDE.md`, then commits.
+   `triage-labels.md` and `domain.md` when missing, a `runway.json` and an "Agent
+   skills" section in `CLAUDE.md` (Matt's three sub-blocks), then commits.
    The GitHub doc keeps Matt's GitHub conventions as they are and adds Runway's
    labels and gating rule. Edit `runway.json` before the first run: `check_cmd`
    must be the repo's real test command, and `agent_cmd`'s `--allowedTools`
    must allow it.
 3. **Labels.** `RUNWAY setup` for Linear checks the key (Mac keychain service
    `runway-linear`), the team and the project. For GitHub it checks `gh` auth,
-   the repo and that Issues is on. Both create Runway's four labels when they're
-   missing and never recolor existing ones. On GitHub it also warns when the
+   the repo and that Issues is on. Both create Runway's labels when they're
+   missing and never recolor existing ones; GitHub also creates Matt's five triage labels. On GitHub it also warns when the
    repo is public: issues and Runway's comments are public then, so no client
    names, credentials or NDA material.
 4. **Worker environment.** Copy `${CLAUDE_PLUGIN_ROOT}/runway/worker-env.md`

@@ -76,7 +76,7 @@ class TrackerSetup(unittest.TestCase):
                 "GitHubTracker(Path('.'), {'github': {'repo': 'o/r', 'gh': %r}}).setup()" % (str(RUNWAY_DIR), str(fake.gh)))
 
     def test_creates_only_missing_labels_and_never_recolors(self):
-        fake = self.fake(labels=["ready-for-agent", "go"], private=True)
+        fake = self.fake(labels=["ready-for-agent", "go", "needs-triage", "needs-info", "wontfix"], private=True)
         tracker(fake).setup()
         made = [c[2] for c in fake.creates()]
         self.assertEqual(sorted(made), ["needs-human", "ready-for-human", "spec"])
@@ -84,7 +84,8 @@ class TrackerSetup(unittest.TestCase):
         self.assertTrue(all("--repo" in c and "o/r" in c for c in fake.creates()))
 
     def test_all_labels_present_creates_nothing(self):
-        fake = self.fake(labels=["ready-for-agent", "ready-for-human", "go", "needs-human", "spec"])
+        fake = self.fake(labels=["ready-for-agent", "ready-for-human", "go", "needs-human", "spec",
+                                 "needs-triage", "needs-info", "wontfix"])
         tracker(fake).setup()
         self.assertEqual(fake.creates(), [])
 
@@ -129,7 +130,19 @@ class TrackerSetup(unittest.TestCase):
         r = subprocess.run([sys.executable, str(RUNWAY_DIR / "runway.py"), "--root", str(root), "setup"],
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(len(fake.creates()), 5)
+        self.assertEqual(len(fake.creates()), 8)   # Runway's five plus needs-triage, needs-info, wontfix
+
+    def test_creates_matts_five_triage_labels_when_missing(self):
+        fake = self.fake(labels=[])
+        tracker(fake).setup()
+        made = {c[2] for c in fake.creates()}
+        self.assertTrue({"needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix"} <= made)
+
+    def test_existing_matt_labels_are_left_alone(self):
+        fake = self.fake(labels=["Needs-Triage", "needs-info", "wontfix", "ready-for-agent", "ready-for-human",
+                                 "go", "needs-human", "spec"])
+        tracker(fake).setup()
+        self.assertEqual(fake.creates(), [])
 
 
 class SetupScript(unittest.TestCase):
@@ -170,6 +183,46 @@ class SetupScript(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             r = self.sh(str(Path(d) / "proj"), "--github")
             self.assertNotEqual(r.returncode, 0)
+
+    BLOCK_HEADS = ("## Agent skills", "### Issue tracker", "### Triage labels", "### Domain docs")
+    ARGS = {"github": ("--github", "acme/widgets"), "linear": ("DAT", "Runway app")}
+
+    def check_matt_files(self, repo):
+        for head in self.BLOCK_HEADS:
+            self.assertIn(head, (repo / "CLAUDE.md").read_text())
+        labels = (repo / "docs/agents/triage-labels.md").read_text()
+        for word in ("needs-triage", "needs-info", "wontfix", "`go`", "`needs-human`", "`spec`", "Joe decides"):
+            self.assertIn(word, labels)
+        self.assertIn("GLOSSARY.md", (repo / "docs/agents/domain.md").read_text())
+
+    def test_both_trackers_write_all_three_docs_and_full_block(self):
+        for mode, args in self.ARGS.items():
+            with self.subTest(mode), tempfile.TemporaryDirectory() as d:
+                repo = Path(d) / "proj"
+                self.assertEqual(self.sh(str(repo), *args).returncode, 0)
+                self.check_matt_files(repo)
+
+    def test_existing_docs_and_block_are_never_overwritten(self):
+        for mode, args in self.ARGS.items():
+            with self.subTest(mode), tempfile.TemporaryDirectory() as d:
+                repo = Path(d) / "proj"
+                self.assertEqual(self.sh(str(repo), *args).returncode, 0)
+                (repo / "docs/agents/triage-labels.md").write_text("MINE labels\n")
+                (repo / "docs/agents/domain.md").write_text("MINE domain\n")
+                (repo / "CLAUDE.md").write_text("# x\n\n## Agent skills\n\nMINE block\n")
+                r = self.sh(str(repo), *args)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual((repo / "docs/agents/triage-labels.md").read_text(), "MINE labels\n")
+                self.assertEqual((repo / "docs/agents/domain.md").read_text(), "MINE domain\n")
+                self.assertEqual((repo / "CLAUDE.md").read_text(), "# x\n\n## Agent skills\n\nMINE block\n")
+
+    def test_rerun_restores_gating_rule_after_matts_setup(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d) / "proj"
+            self.sh(str(repo), *self.ARGS["github"])
+            (repo / "docs/agents/issue-tracker.md").write_text("plain Matt doc\n")
+            self.sh(str(repo), *self.ARGS["github"])
+            self.assertIn("Never put both labels", (repo / "docs/agents/issue-tracker.md").read_text())
 
     def test_linear_mode_unchanged(self):
         with tempfile.TemporaryDirectory() as d:
