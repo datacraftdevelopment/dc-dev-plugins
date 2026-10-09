@@ -42,7 +42,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
-                "waiting_on", "packet", "harness", "claimed_by"}]}
+                "waiting_on", "packet", "harness", "claimed_by", "errored"}]}
 
   machine     This Mac's name (`scutil --get LocalHostName`, else the hostname), what `runway whoami`
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
@@ -65,6 +65,16 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   packet   Latest decision packet text for waiting tickets (Linear: Runway's latest comment;
            markdown: the last "## Decision packet" section), else null.
   harness  The ticket's effective harness name (its override, else the project default).
+  errored  The kind of the ticket's latest attempt that didn't merge, from _pm/runway-runs.jsonl
+           (agent-failed, no-commits, check-failed, merge-conflict, signed-out), or null. A merge clears it.
+
+`runway discuss <ticket>` writes _pm/discuss/<id>.md (ticket text, packet, Runway's park comment, blockers,
+attempts with kind, check exit and transcript path, the ticket's log lines) and replaces the process with an
+interactive `claude` in the repo root, told to follow the runway skill's "Talk a ticket through" section. It
+takes a waiting ticket or an errored one (a ticket still being retried counts); anything else exits non-zero
+and starts nothing. `runway discuss --loop` is for the loop itself and always runs: _pm/discuss/loop.md holds
+the heartbeat, `launchctl print` for the job, the pause, the last sign-in check, log tails and the last runs.
+Always the claude harness. A GitHub brief carries trusted authors' comments only.
 
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
@@ -1221,6 +1231,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             break
         beat(root, "check", t.id, attempt)
         c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
+        record(root, {"kind": "check", "ticket": t.id, "attempt": attempt, "exit": c.returncode})
         if c.returncode == 0:
             ok = True
             break
@@ -1887,6 +1898,187 @@ def cmd_retro(root: Path, last: int) -> None:
     print("\n".join(out))
 
 
+# ---------- discuss: talk a ticket (or the loop) through with Joe ----------
+
+ERROR_KINDS = ("agent-failed", "no-commits", "check-failed", "merge-conflict", "signed-out")
+
+
+def read_runs(root: Path) -> list:
+    try:
+        lines = (root / "_pm" / "runway-runs.jsonl").read_text().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
+
+
+def attempt_kind(rec: dict) -> str | None:
+    """The kind of a row that did not merge, or None. A row names its kind (the attempt-outcome refactor) or,
+    before that lands, it is read from the legacy outcome result and detail, or from a non-zero agent/check exit."""
+    if rec.get("outcome") in ERROR_KINDS:
+        return rec["outcome"]
+    if rec.get("kind") == "run" and rec.get("exit") not in (0, None):
+        return "agent-failed"
+    if rec.get("kind") == "check" and rec.get("exit") not in (0, None):
+        return "check-failed"
+    if rec.get("kind") != "outcome" or rec.get("result") in ("done", "stopped"):
+        return None
+    if rec.get("result") == "signed-out":
+        return "signed-out"
+    d = rec.get("detail") or ""
+    for prefix, kind in (("Agent failed", "agent-failed"), ("The agent ran but", "no-commits"),
+                         ("Check failed", "check-failed"), ("Check passed but", "merge-conflict")):
+        if d.startswith(prefix):
+            return kind
+    return None if d.startswith("Agent stopped with a question") else "agent-failed"
+
+
+def errored_kinds(root: Path) -> dict:
+    """Per ticket id, the latest kind of attempt that did not merge, cleared when the ticket merges."""
+    out: dict = {}
+    for rec in read_runs(root):
+        tid = rec.get("ticket")
+        if not tid:
+            continue
+        if rec.get("kind") == "outcome" and rec.get("result") == "done":
+            out.pop(tid, None)
+        elif (kind := attempt_kind(rec)):
+            out[tid] = kind
+    return out
+
+
+def safe_name(ident: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", ident).strip("-") or "ticket"
+
+
+def tail_lines(path: Path) -> list:
+    try:
+        return path.read_text().splitlines()
+    except OSError:
+        return []
+
+
+def runway_comment(t) -> str | None:
+    """Runway's latest comment on the ticket (a decision packet or why it parked), else None."""
+    if hasattr(t, "comments"):  # GitHub: trusted comments only, so a stranger's text never lands here
+        return t.packet
+    found = re.findall(r"^\*\*[^\n]* · runway\*\*\n\n(.*?)(?=^\*\*\d|\Z)", t.text, re.M | re.S)
+    return found[-1].strip() if found else None
+
+
+def exec_claude(root: Path, prompt: str) -> None:
+    """Hand Terminal to an interactive claude in the repo root. Always the claude harness. Never returns."""
+    os.chdir(root)
+    os.execvp("claude", ["claude", prompt])
+
+
+def launchctl_print(label: str) -> str:
+    try:
+        r = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{label}"], capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError) as e:
+        return f"(launchctl unavailable: {e})"
+    return (r.stdout + r.stderr).strip() or "(no output)"
+
+
+def ticket_brief(root: Path, loaded: list, t) -> str:
+    runs = [r for r in read_runs(root) if r.get("ticket") == t.id]
+    out = [f"# Discuss {t.id}: {t.title}", "", f"- URL: {t.url or '(none)'}", f"- Gate: {t.gate}", f"- Status: {t.status}",
+           f"- Waiting on: {t.h('Waiting on') or '(nothing)'}", f"- Errored: {errored_kinds(root).get(t.id) or 'no'}",
+           "", "## Ticket", "", t.text.strip()]
+    packet = t.packet
+    if packet:
+        out += ["", "## Latest decision packet", "", packet]
+    comment = runway_comment(t)
+    if comment and comment != packet:
+        out += ["", "## Runway's latest comment", "", comment]
+    peers = {x.id: x for x in loaded}
+    out += ["", "## Blockers", ""]
+    for b in t.blocked_by:
+        x = peers.get(f"{t.effort}/{b}" if b.isdigit() else b)
+        out.append(f"- {x.id if x else b}: {x.status if x else 'unknown'}" + (f" ({x.title})" if x else ""))
+    if not t.blocked_by:
+        out.append("(none)")
+    out += ["", "## Attempts", ""]
+    for r in runs:
+        if r.get("kind") == "outcome":
+            kind = attempt_kind(r) or ("merged" if r.get("result") == "done" else r.get("result"))
+            out.append(f"- outcome: {kind}, result {r.get('result')}, after {r.get('attempts')} attempt(s)")
+            if r.get("detail"):
+                out += ["", "  ```", *("  " + l for l in r["detail"].splitlines()), "  ```", ""]
+        elif r.get("kind") == "check":
+            out.append(f"- attempt {r.get('attempt')} check: exit {r.get('exit')}" + (" (check-failed)" if r.get("exit") else ""))
+        elif r.get("kind") in ("run", "prep", "fix"):
+            sid = r.get("session_id")
+            path = transcript(sid, r.get("harness") or "claude") if sid else None
+            out.append(f"- {r['kind']} attempt {r.get('attempt')} ({r.get('harness') or 'claude'}): exit {r.get('exit')}"
+                       + (f", transcript {path}" if path else (", transcript not found" if sid else "")))
+    if not runs:
+        out.append("(no runs logged for this ticket)")
+    mine = [l for l in tail_lines(root / "_pm" / "runway.log") if t.id in l][-40:]
+    out += ["", "## Log lines (_pm/runway.log, last 40 that name the ticket)", "", "```", *mine, "```"]
+    return "\n".join(out) + "\n"
+
+
+def write_brief(root: Path, name: str, text: str) -> str:
+    d = root / "_pm" / "discuss"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / name).write_text(text)
+    return f"_pm/discuss/{name}"
+
+
+def cmd_discuss(cfg: dict, root: Path, tracker, num: str) -> None:
+    loaded = tracker.load()
+    t = find(type("Loaded", (), {"load": lambda self: loaded})(), num)
+    if t.id not in {x.id for x in group_tickets(loaded)["waiting"]} and t.id not in errored_kinds(root):
+        sys.exit(f"{t.id} is not waiting on Joe and has no attempt that failed to merge; nothing to discuss.")
+    rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
+    exec_claude(root, f"Read {rel}, the brief for ticket {t.id}, and follow the runway skill's "
+                      f"\"Talk a ticket through\" section. Wait for Joe before posting anything.")
+
+
+def loop_label(root: Path) -> str:
+    return "com.joe.runway." + re.sub(r"[^A-Za-z0-9]", "-", root.name)  # as schedule.sh names it
+
+
+def loop_brief(root: Path) -> str:
+    hb = read_heartbeat(root)
+    pid = hb.get("pid")
+    alive = process_alive(pid)
+    label = loop_label(root)
+    signin = read_signin(root)
+    pz = active_pause(clean=False)
+    runs = [json.dumps(r) for r in read_runs(root)[-8:]]
+    stale = not alive and hb.get("phase") not in (None, "idle", "stopped", "paused", "waiting")
+    return "\n".join([
+        "# Discuss the loop", "",
+        f"Repo: {root}", f"Job label: {label}", "",
+        "## Heartbeat (_pm/runway-state.json)", "",
+        "```json", json.dumps(hb, indent=2) if hb else "(no heartbeat file)", "```",
+        f"pid {pid}: {'running' if alive else 'not running'}"
+        + (" (stale: the loop died mid-phase)" if stale else ""), "",
+        f"## launchctl print gui/{os.getuid()}/{label}", "", "```", launchctl_print(label), "```", "",
+        "## Pause", "", json.dumps(pz) if pz else "(none)", "",
+        "## Last sign-in check (_pm/runway-signin.json)", "", "```json",
+        json.dumps(signin, indent=2) if signin else "(none yet)", "```", "",
+        "## Last 80 lines of _pm/runway.log", "", "```", *tail_lines(root / "_pm" / "runway.log")[-80:], "```", "",
+        "## Last 80 lines of the job's stdout/stderr (_pm/launchd.log)", "", "```",
+        *tail_lines(root / "_pm" / "launchd.log")[-80:], "```", "",
+        "## Last run rows (_pm/runway-runs.jsonl)", "", "```", *(runs or ["(none)"]), "```", ""])
+
+
+def cmd_discuss_loop(root: Path) -> None:
+    rel = write_brief(root, "loop.md", loop_brief(root))
+    exec_claude(root, f"Read {rel}, the brief for the Runway loop in this repo, and follow the runway skill's "
+                      f"\"Talk a ticket through\" section, the Loop in error part. Wait for Joe before doing anything.")
+
+
 # ---------- commands ----------
 
 def park_bad_harness(cfg: dict, root: Path, t) -> bool:
@@ -2092,12 +2284,15 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
     def full_id(t, b: str) -> str:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
+    errored = errored_kinds(root)
+
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
         return {"id": t.id, "title": t.title, "url": t.url or None, "status": t.status, "gate": t.gate,
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
-                "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by}
+                "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by,
+                "errored": errored.get(t.id)}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
@@ -2173,6 +2368,9 @@ def main() -> None:
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
     sub.add_parser("setup", help="Linear or GitHub: check the sign-in and project/repo, and create Runway's labels")
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
+    ds = sub.add_parser("discuss", help="open a claude session to talk a waiting or errored ticket (or --loop) through")
+    ds.add_argument("ticket", nargs="?")
+    ds.add_argument("--loop", action="store_true", help="the loop itself (stale heartbeat, failed tick, sign-in), not a ticket")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
     a = ap.parse_args()
@@ -2190,6 +2388,11 @@ def main() -> None:
     if a.cmd == "machine":
         print(describe_machine(root))
         return
+    if a.cmd == "discuss":
+        if a.loop == bool(a.ticket):
+            sys.exit("Give a ticket to discuss, or --loop for the loop itself (not both).")
+        if a.loop:
+            cmd_discuss_loop(root)
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():
@@ -2207,6 +2410,8 @@ def main() -> None:
         tracker.setup()
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
+    elif a.cmd == "discuss":
+        cmd_discuss(cfg, root, tracker, a.ticket)
     elif a.cmd in ("tick", "loop", "finish"):
         ensure_app()
         lock = locked(root)

@@ -78,7 +78,10 @@ run side by side. Give them a blocks relation in landing order.
 
 - `RUNWAY status --json`: the queue as one JSON object (`groups`: waiting,
   running, ready_auto, ready_prep, blocked, done; `tickets` with `packet`,
-  `blocked_by`, `claimed_by`; `paused`; `machine`). Prefer it over plain
+  `blocked_by`, `claimed_by`, `errored`; `paused`; `machine`). `errored` is the
+  kind of the ticket's latest attempt that didn't merge (`agent-failed`,
+  `no-commits`, `check-failed`, `merge-conflict`, `signed-out`) or null; flag
+  those tickets and offer `RUNWAY discuss <ticket>`. Prefer it over plain
   `RUNWAY status`, and summarize it for Joe as running, next, blocked and
   waiting on him (read each waiting ticket's `packet`).
 - "What is it doing right now" comes from the heartbeat, `<repo>/_pm/runway-state.json`:
@@ -233,6 +236,43 @@ A `ready-for-human` ticket gets a decision packet as a comment (it starts
 after Joe has said go on that specific ticket, with his choice.** A connector
 writes as Joe, so Runway can't tell the difference. `RUNWAY go <ticket> "<note>"`
 and `RUNWAY no <ticket> "<note>"` do the same from the command line.
+
+`RUNWAY discuss <ticket>` opens an interactive `claude` in the repo root to talk
+a ticket through. It takes a waiting ticket (packet or parked) or an errored one
+(`errored` in `status --json`, including a ticket still being retried), writes
+its brief to `_pm/discuss/<id>.md`, and starts claude on that file. Anything
+else exits non-zero and starts nothing. `RUNWAY discuss --loop` is for the loop
+itself and always runs: `_pm/discuss/loop.md`. It is always the claude harness,
+whatever the ticket's harness. The brief carries trusted authors' comments only.
+
+## Talk a ticket through
+
+You were started by `RUNWAY discuss` with a brief in `_pm/discuss/`. Read it
+first, then talk it through with Joe in plain words. Casual and short.
+
+**Decision packet.** Explain the choice and read the code the options touch.
+Sort the open questions with pm's fast-grill buckets: technical questions go to
+Astra through Ringer's grill-review kit as one task; one-way doors, taste, and
+anything contradicting what Joe already said come to Joe. With a single
+question, skip the seat and walk it.
+
+**Parked or errored ticket.** Say what went wrong and why, from the log, the
+check output and the transcript. Then lay out the ways out: do the blocked step
+with Joe now, change the ticket, fix the cause (a flaky check, a missing tool in
+the worker env), or drop it.
+
+**Loop in error.** Say what state the loop is in and why (stale heartbeat, a
+failed tick, a failed sign-in check, a failed finish), and the way out: restart
+the job, sign in again, clear a stale lock. Installing or removing LaunchAgents
+is Joe's step: give him the command, don't run it.
+
+Rules for all three:
+
+- Post `RUNWAY go|no <ticket> "<note>"` only after Joe says go or no on this
+  ticket in this session, with his own words as the note. Never on a
+  recommendation alone.
+- Read-only on the repo unless Joe asks for a change. A change made with him
+  goes on a branch, never straight onto main.
 
 On GitHub only a trusted author's comment counts as Joe's: the repo's OWNER,
 MEMBER or COLLABORATOR. A `go` or `drop` from anyone else is ignored (and logged
