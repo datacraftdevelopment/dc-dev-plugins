@@ -127,6 +127,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -163,6 +164,9 @@ DEFAULT_CONFIG = {
     # What the round's pass/fail verdict is for. "off": only record it. "shadow": record it and say what
     # would have merged. "on_pass": reserved for auto-merge (not wired yet). Nothing here ever merges.
     "merge": "off",
+    # With merge shadow or on_pass, a failed review files a fix ticket instead of running the fix pass.
+    # This is the most reviews per batch: the first plus (review_rounds - 1) re-reviews after a fix ticket.
+    "review_rounds": 2,
     # Which harness runs tickets by default: "claude" (the top-level commands above) or a key of
     # "harnesses". A ticket overrides it: Linear label `harness:<name>` or header `Harness: <name>`.
     "harness": "claude",
@@ -1579,7 +1583,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if not force and not ticket_work_since(cfg, root, state.get("head")):
         # Only base syncs moved the head: nothing new to review. Record it so the next check is cheap.
         (root / "_pm").mkdir(exist_ok=True)
-        state_p.write_text(json.dumps({"head": head, "at": now()}))
+        state_p.write_text(json.dumps({**state, "head": head, "at": now()}))
         return False
 
     if signin_waiting(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True):
@@ -1613,10 +1617,14 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
 
-    # 2. One fix pass. Kept only if the check still passes.
+    # 2. One fix pass. Kept only if the check still passes. With merge shadow/on_pass there is none:
+    # a failed review files a fix ticket, so every fix is reviewed before it can merge.
+    files_tickets = cfg.get("merge", "off") in ("shadow", "on_pass")
     fix_note = "No fix pass needed."
     triage = ""
-    if has_findings:
+    if has_findings and files_tickets:
+        fix_note = "No fix pass (merge is on): a failed review files a fix ticket instead."
+    elif has_findings:
         before = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
         fix_prompt = PANEL_FIX_PROMPT if panel else FIX_PROMPT
         fr, fix_text = run_agent(cfg, root, hp["fix_cmd"] or hp["agent_cmd"], wt,
@@ -1695,15 +1703,85 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if cfg["pr"] == "draft":
         where = open_draft_pr(cfg, root, pr_file, len(done)) or where
     head = sh(["git", "rev-parse", integ], root).stdout.strip()
-    state_p.write_text(json.dumps({"head": head, "at": now()}))
+    new_state = {"head": head, "at": now()}
+    fix_msg = None
+    if files_tickets:
+        new_state, fix_msg = fix_ticket_step(cfg, root, tracker, state, new_state, verdict, done, tickets,
+                                             c, check_out, findings, sha)
+    state_p.write_text(json.dumps(new_state))
     record(root, {"kind": "finish", "ticket": "finish", "findings": has_findings, "fix": fix_note,
                   "check_exit": c.returncode, "pr": where})
     record(root, {"kind": "verdict", "ticket": "finish", "sha": sha, "verdict": verdict["verdict"],
                   "blocking": verdict["blocking"], "non_blocking": verdict["non_blocking"],
                   "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off")})
     check_note = "check passes" if c.returncode == 0 else "CHECK FAILS"
-    notify(cfg, root, f"Ready for review: {len(done)} tickets on {integ}, {check_note}. {vline}. PR: {where}")
+    if fix_msg:
+        notify(cfg, root, fix_msg)
+    else:
+        notify(cfg, root, f"Ready for review: {len(done)} tickets on {integ}, {check_note}. {vline}. PR: {where}")
     return True
+
+
+FIX_TITLE = "Fix review findings on {integ} (round {n})"
+
+
+def is_fix_ticket(t, cfg: dict) -> bool:
+    return t.title.startswith(FIX_TITLE.split(" (round")[0].format(integ=cfg["integration_branch"]))
+
+
+def ticket_comment(t, body: str) -> None:
+    (getattr(t, "comment", None) or t._comment)(body)
+    if hasattr(t, "save"):
+        t.save()
+
+
+def fix_ticket_step(cfg, root, tracker, state, new_state, verdict, done, tickets, c, check_out, findings, sha):
+    """Round bookkeeping for a failed review under merge shadow/on_pass. Returns (state to write, notify text
+    or None). A pass clears the round. A fail files one fix ticket (or comments on the open one for the same
+    failure); a fail after the last allowed round parks the open fix ticket instead of filing another."""
+    batch = sorted(t.id for t in done if not is_fix_ticket(t, cfg))
+    keep = dict(state) if state.get("batch") == batch else {}  # a new non-fix ticket merged: new batch
+    rnd = int(keep.get("round", 0))
+    if sha != keep.get("sha"):
+        rnd += 1
+    reviews = list(keep.get("reviews", []))
+    out = {**new_state, "batch": batch, "sha": sha, "round": rnd}
+    if verdict["verdict"] == "pass":
+        return {"head": new_state["head"], "at": new_state["at"], "batch": batch, "sha": sha, "round": 0}, None
+    blocking = verdict["blocking"]
+    review_text = "\n".join(f"- {b}" for b in blocking) + (f"\n\n{findings}" if findings else "")
+    if sha != keep.get("sha"):
+        reviews.append(review_text)
+    out["reviews"] = reviews
+    fix_id = keep.get("fix_ticket")
+    sig = hashlib.sha1("\n".join(sorted(b.strip() for b in blocking)).encode()).hexdigest()[:12]
+    key = hashlib.sha1(f"{sha}|{cfg['check_cmd']}|{sig}".encode()).hexdigest()[:12]
+    open_fix = next((t for t in tickets if fix_id and t.id == fix_id), None)
+    if fix_id:
+        out["fix_ticket"] = fix_id
+    if rnd >= int(cfg.get("review_rounds", 2)):
+        if open_fix is None:
+            return out, f"Review failed twice, no fix ticket to park ({len(blocking)} blocking)"
+        both = "\n\n---\n\n".join(f"Review {i + 1}:\n\n{r}" for i, r in enumerate(reviews))
+        open_fix.mark_needs_human("the re-review failed too", both)
+        return out, f"Review failed twice, {fix_id} parked for Joe"
+    if open_fix is not None and open_fix.status not in DONE and key == keep.get("fix_key"):
+        ticket_comment(open_fix, f"Review failed again on `{sha[:8]}` with the same findings.\n\n{review_text}")
+        return out, f"Review failed again, fix ticket {fix_id} already open"
+    refs = refs_block([t for t in done if not is_fix_ticket(t, cfg)])
+    body = "The review of the integration branch failed. Fix these, then Runway reviews the new head.\n\n"
+    body += "## Blocking findings\n\n" + "\n".join(f"- {b}" for b in blocking)
+    if c.returncode != 0:
+        body += f"\n\n## Failing check (`{cfg['check_cmd']}`, exit {c.returncode})\n\n```\n{check_out}\n```"
+    if refs:
+        body += f"\n\n{refs}"
+    try:
+        new_id = tracker.create(FIX_TITLE.format(integ=cfg["integration_branch"], n=rnd), body, ["ready-for-agent"])
+    except Exception as e:  # a tracker hiccup must not lose the finish
+        log(root, f"fix ticket not filed: {e}")
+        return out, f"Review failed, could not file a fix ticket ({str(e)[:100]})"
+    out.update({"fix_ticket": new_id, "fix_key": key})
+    return out, f"Review failed, fix ticket {new_id} filed"
 
 
 def open_draft_pr(cfg: dict, root: Path, body_file: Path, n: int) -> str | None:
