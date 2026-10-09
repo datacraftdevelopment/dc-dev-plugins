@@ -18,12 +18,12 @@ LABELS = {"agent_label": "ready-for-agent", "human_label": "ready-for-human", "a
 
 def issue(id, title="A ticket", body="", url=None, labels=(), comments=(), closed=False, held=False,
           children=False, blocked_by=()):
-    """`comments` are (body, trusted) pairs, or (body, trusted, who, assoc). Oldest first."""
+    """`comments` are (body, trusted) pairs, or (body, trusted, who, assoc[, createdAt]). Oldest first."""
     out = []
     for i, c in enumerate(comments):
         body_, trusted, *rest = c
-        who, assoc = (rest + ["unknown", "NONE"])[:2]
-        out.append({"body": body_, "createdAt": f"2026-10-{i + 1:02d}T10:00:00Z", "trusted": trusted,
+        who, assoc, at = (rest + ["unknown", "NONE", f"2026-10-{i + 1:02d}T10:00:00Z"][len(rest):])[:3]
+        out.append({"body": body_, "createdAt": at, "trusted": trusted,
                     "who": who, "assoc": assoc})
     return {"id": id, "title": title, "body": body, "url": url, "labels": list(labels), "comments": out,
             "closed": closed, "held": held, "children": children, "blocked_by": list(blocked_by)}
@@ -50,7 +50,8 @@ class MemoryTicket(ticket_protocol.Ticket):
 
     def _comment_in(self, full: str) -> None:
         n = len(self.data["comments"]) + 1
-        self.data["comments"].append({"body": full, "createdAt": f"2026-10-{n:02d}T10:00:00Z", "trusted": True,
+        at = self.tr.now or f"2026-10-{n:02d}T10:00:00Z"  # tests set `tr.now` to put writes minutes apart
+        self.data["comments"].append({"body": full, "createdAt": at, "trusted": True,
                                       "who": "runway", "assoc": "OWNER"})
 
     def _change(self, add, remove) -> None:
@@ -62,6 +63,8 @@ class MemoryTicket(ticket_protocol.Ticket):
         self._comment_in(full)
 
     def _claim(self) -> None:
+        if self.tr.claim_fails:
+            raise RuntimeError("claim transition failed")
         self.tr.ops.append(("claim",))
         self.data["held"] = True
 
@@ -86,6 +89,8 @@ class MemoryTracker(ticket_protocol.Tracker):
         self.root, self.rules, self.c = root, rules, dict(LABELS)
         self.issues = list(issues)
         self.ops: list[tuple] = []
+        self.now: str | None = None      # createdAt for the next comment a write posts
+        self.claim_fails = False         # the claim transition raises, after the stamp has landed
 
     def load(self) -> list[MemoryTicket]:
         tickets = [MemoryTicket(d, self) for d in self.issues]
