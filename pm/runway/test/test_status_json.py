@@ -58,7 +58,7 @@ class StatusJson(unittest.TestCase):
         self.assertEqual(set(by), {"eff/0%d" % i for i in range(1, 8)})  # 08 is not Runway's
         w = by["eff/03"]
         self.assertEqual(set(w), {"id", "title", "url", "status", "gate", "blocked_by",
-                                  "waiting_on", "packet", "harness", "claimed_by"})
+                                  "waiting_on", "packet", "harness", "claimed_by", "errored"})
         self.assertEqual(w["status"], "needs-human")
         self.assertEqual(w["gate"], "human")
         self.assertEqual(w["waiting_on"], "Joe, go/no-go")
