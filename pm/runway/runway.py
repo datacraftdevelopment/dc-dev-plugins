@@ -148,6 +148,7 @@ import socket
 import subprocess
 import sys
 import time
+from dataclasses import field, make_dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1192,80 +1193,92 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         return
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
+    out = attempt(cfg, root, t)
+    t = tracker.reload(t)  # agent may not touch it, but reload to be safe
+    if out.kind == "stopped":  # pause --stop-now: back to ready, worktree and branch kept
+        t.mark_ready("stopped by pause")
+        log(root, f"stopped by pause  {t.id}")
+        record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts, "result": "stopped", "detail": ""})
+        return
+    if out.kind == "signed-out":  # the ticket goes back to ready; the queue behind it is untouched
+        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
+        record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts, "result": "signed-out",
+                      "detail": ""})
+        sh(["git", "worktree", "remove", "--force", str(wt)], root)
+        return
+    ok = out.kind == "merged"
+    if ok:
+        t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
+        log(root, f"done  {t.id}")
+    else:
+        t.mark_needs_human("run failed or asked a question", out.detail or "Agent run failed with no detail.")
+        notify(cfg, root, f"Blocked: {t.id} {t.title}")
+    beat_update(root, last_result="pass" if ok else "park")
+    record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts,
+                  "result": "done" if ok else "needs-human", "detail": out.detail[:500]})
+    sh(["git", "worktree", "remove", "--force", str(wt)], root)
+
+
+# How one build attempt ended. `kind` is one of: stopped, signed-out, question, agent-failed, no-commits,
+# check-failed, merge-conflict, merged. `detail` is the text a human needs, or ''.
+# make_dataclass, not @dataclass: this file uses `from __future__ import annotations`, and @dataclass on string
+# annotations looks the module up in sys.modules, which fails when a test loads runway.py by file path.
+Outcome = make_dataclass("Outcome", [("kind", str), ("attempts", int), ("detail", str, field(default=""))],
+                         namespace={"__module__": __name__})
+
+
+def attempt(cfg: dict, root: Path, t) -> Outcome:
+    """Build the ticket in a fresh worktree: agent, check, retry, then merge into integration.
+    Never touches the tracker, `notify` or the outcome `record`; the caller decides what the outcome means.
+    Live effects (run_agent records, auth pause, fail beats, phases) stay here. Exceptions stay exceptions."""
+    branch = f"runway/{t.effort}-{t.slug}"
+    wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
     if wt.exists():
         sh(["git", "worktree", "remove", "--force", str(wt)], root)
     sh(["git", "branch", "-D", branch], root)
     sh(["git", "worktree", "add", "-b", branch, str(wt), cfg["integration_branch"]], root, check=True)
 
-    extra, ok, detail, attempt = "", False, "", 0
+    extra, detail, n, kind = "", "", 0, "agent-failed"
     hp = resolve_harness(cfg, t)
-    stopped = signed_out = False
-    for attempt in range(1, cfg["max_attempts"] + 1):
+    for n in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
-            stopped = True
-            break
-        beat(root, "agent", t.id, attempt)
+            return Outcome("stopped", n)
+        beat(root, "agent", t.id, n)
         prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
-        r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
+        r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", n, harness=hp)
         if stop_requested():
-            stopped = True
-            break
+            return Outcome("stopped", n)
         if r.auth:  # not the ticket's fault: back in the queue, loop paused machine-wide
-            signed_out = True
-            break
+            return Outcome("signed-out", n)
         if r.failure:
-            detail = f"Agent failed on attempt {attempt}: {r.failure}"
-            log(root, f"fail  {t.id} attempt {attempt}: agent did not run")
+            log(root, f"fail  {t.id} attempt {n}: agent did not run")
             beat_update(root, last_result="fail")
-            break
+            return Outcome("agent-failed", n, f"Agent failed on attempt {n}: {r.failure}")
         q = wt / "RUNWAY_QUESTION.md"
         if q.exists():
-            detail = "Agent stopped with a question:\n\n" + q.read_text()
-            break
+            return Outcome("question", n, "Agent stopped with a question:\n\n" + q.read_text())
         sh(["git", "add", "-A"], wt)
         sh(["git", "commit", "-m", auto_commit_msg(t)], wt)
         made = sh(["git", "rev-list", "--count", f"{cfg['integration_branch']}..HEAD"], wt).stdout.strip()
         if made in ("", "0"):  # a ticket always changes something; one that doesn't needs Joe to say so
-            detail = f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something."
-            log(root, f"fail  {t.id} attempt {attempt}: no commits")
-            break
-        beat(root, "check", t.id, attempt)
+            log(root, f"fail  {t.id} attempt {n}: no commits")
+            return Outcome("no-commits", n,
+                           f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something.")
+        beat(root, "check", t.id, n)
         c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
-        record(root, {"kind": "check", "ticket": t.id, "attempt": attempt, "exit": c.returncode})
+        record(root, {"kind": "check", "ticket": t.id, "attempt": n, "exit": c.returncode})
         if c.returncode == 0:
-            ok = True
-            break
-        detail = f"Check failed on attempt {attempt}:\n\n```\n{(c.stdout + c.stderr)[-3000:]}\n```"
+            beat(root, "merge", t.id)
+            if merge_into_integration(cfg, root, branch, commit_ref(t)):
+                return Outcome("merged", n, detail)  # detail may still carry an earlier attempt's check failure
+            return Outcome("merge-conflict", n,
+                           f"Check passed but `{branch}` did not merge cleanly into `{cfg['integration_branch']}`.")
+        kind = "check-failed"
+        detail = f"Check failed on attempt {n}:\n\n```\n{(c.stdout + c.stderr)[-3000:]}\n```"
         extra = f"\nThe previous attempt failed the check. Fix it:\n\n{detail}\n"
-        log(root, f"fail  {t.id} attempt {attempt}")
+        log(root, f"fail  {t.id} attempt {n}")
         beat_update(root, last_result="fail")
-
-    t = tracker.reload(t)  # agent may not touch it, but reload to be safe
-    if stopped:  # pause --stop-now: back to ready, worktree and branch kept
-        t.mark_ready("stopped by pause")
-        log(root, f"stopped by pause  {t.id}")
-        record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "stopped", "detail": ""})
-        return
-    if signed_out:  # the ticket goes back to ready; the queue behind it is untouched
-        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
-        record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt, "result": "signed-out", "detail": ""})
-        sh(["git", "worktree", "remove", "--force", str(wt)], root)
-        return
-    if ok:
-        beat(root, "merge", t.id)
-        if merge_into_integration(cfg, root, branch, commit_ref(t)):
-            t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
-            log(root, f"done  {t.id}")
-        else:
-            ok = False
-            detail = f"Check passed but `{branch}` did not merge cleanly into `{cfg['integration_branch']}`."
-    if not ok:
-        t.mark_needs_human("run failed or asked a question", detail or "Agent run failed with no detail.")
-        notify(cfg, root, f"Blocked: {t.id} {t.title}")
-    beat_update(root, last_result="pass" if ok else "park")
-    record(root, {"kind": "outcome", "ticket": t.id, "attempts": attempt,
-                  "result": "done" if ok else "needs-human", "detail": detail[:500]})
-    sh(["git", "worktree", "remove", "--force", str(wt)], root)
+    return Outcome(kind, n, detail or "Agent run failed with no detail.")
 
 
 def integration_worktree(cfg: dict, root: Path) -> Path:
