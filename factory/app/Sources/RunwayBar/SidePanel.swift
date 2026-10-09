@@ -128,7 +128,7 @@ private struct ProjectNow: View {
                 .buttonStyle(.borderless).padding(.horizontal, 4)
             }
             ForEach(Array(shown.enumerated().reversed()), id: \.element.id) { index, ticket in
-                QueueRow(ticket: ticket, isNext: index == 0, url: snapshot?.urls[ticket.id])
+                QueueRow(ticket: ticket, isNext: index == 0, url: snapshot?.urls[ticket.id], tracker: entry.project.tracker)
             }
         }
     }
@@ -164,7 +164,7 @@ private struct ProjectNow: View {
                     .font(.system(size: 10, design: .monospaced))
                 }
                 if let ticket = live.ticket, let url = snapshot?.urls[ticket] {
-                    Link(destination: url) { Label("Linear", systemImage: "arrow.up.right.square") }.font(.caption)
+                    Link(destination: url) { Label(TicketLink.name(tracker: entry.project.tracker), systemImage: "arrow.up.right.square") }.font(.caption)
                 }
             }
             .padding(10)
@@ -196,6 +196,7 @@ private struct QueueRow: View {
     let ticket: StatusSnapshot.UpNext
     let isNext: Bool
     let url: URL?
+    let tracker: String?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -216,7 +217,7 @@ private struct QueueRow: View {
         var lines = ["\(ticket.id) \(ticket.title)"]
         if ticket.kind == .prep { lines.append("Needs prep by a person before the loop takes it.") }
         if !ticket.blockedBy.isEmpty { lines.append("After " + ticket.blockedBy.joined(separator: ", ")) }
-        if url != nil { lines.append("Double-click to open in Linear.") }
+        if url != nil { lines.append(TicketLink.doubleClickHint(tracker: tracker)) }
         return lines.joined(separator: "\n")
     }
 }
@@ -308,6 +309,7 @@ private struct FinishedList: View {
                     .padding(.top, 4)
                 ForEach(day.rows) { tagged in
                     FinishedRowView(tagged: tagged, snapshot: store.snapshot(for: tagged.projectLabel),
+                                    tracker: store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project.tracker,
                                     showProject: multiProject, isExpanded: expanded.contains(tagged.id)) {
                         if expanded.contains(tagged.id) { expanded.remove(tagged.id) } else { expanded.insert(tagged.id) }
                     }
@@ -320,6 +322,7 @@ private struct FinishedList: View {
 private struct FinishedRowView: View {
     let tagged: TaggedRow
     let snapshot: StatusSnapshot?
+    let tracker: String?
     let showProject: Bool
     let isExpanded: Bool
     let toggle: () -> Void
@@ -424,7 +427,7 @@ private struct FinishedRowView: View {
             }
             if let message { Text(message).font(.caption2).foregroundStyle(.red) }
             if let url = snapshot?.urls[t.ticket] {
-                Link(destination: url) { Label("Linear", systemImage: "arrow.up.right.square") }.font(.caption)
+                Link(destination: url) { Label(TicketLink.name(tracker: tracker), systemImage: "arrow.up.right.square") }.font(.caption)
             }
         }
     }
