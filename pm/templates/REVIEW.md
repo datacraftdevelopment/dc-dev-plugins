@@ -1,7 +1,7 @@
 # Review instructions
 
 How to review changes in this repo. Claude Code's managed Code Review reads this
-file, and so does the `sdlc:policy-reviewer` agent. It says how to review, not
+file, and so does the `pm:policy-reviewer` agent. It says how to review, not
 when. Keep it under a page.
 
 ## Passes

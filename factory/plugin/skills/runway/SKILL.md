@@ -1,6 +1,6 @@
 ---
 name: runway
-description: Set up and run Runway, the factory loop that works a Linear project's ready tickets unattended. Use when the user wants to start a new factory project, point a repo at Linear for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
+description: Set up and run Runway, the factory loop that works a repo's ready tickets unattended, from either Linear or GitHub Issues (one tracker per repo, chosen in runway.json). Use when the user wants to start a new factory project, point a repo at Linear or GitHub for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
 ---
 
 # Runway
@@ -18,28 +18,34 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
 
 1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he
    named). GitHub: confirm the repo (`owner/name`) and that Joe's `gh` is signed in.
-2. **Point the repo at it.**
+2. **Point the repo at it.** If Joe wants Matt's interactive setup
+   (`/setup-matt-pocock-skills`, which only he can type), run it first, then
+   `setup.sh`: it keeps Matt's `triage-labels.md`, `domain.md` and Agent skills
+   block and rewrites `issue-tracker.md` with Runway's gating rule. Re-running
+   `setup.sh` after Matt's setup restores that rule. Without Matt's setup,
+   `setup.sh` seeds all three docs itself.
    Linear: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> <TEAM-KEY> "<project name>"`.
    GitHub: `bash "${CLAUDE_PLUGIN_ROOT}/runway/setup.sh" <repo> --github [owner/name]`
    (the repo defaults to the clone's github.com origin).
    Either writes `docs/agents/issue-tracker.md` (the labels and gating rule below),
-   a `runway.json` and an "Agent skills" section in `CLAUDE.md`, then commits.
+   `triage-labels.md` and `domain.md` when missing, a `runway.json` and an "Agent
+   skills" section in `CLAUDE.md` (Matt's three sub-blocks), then commits.
    The GitHub doc keeps Matt's GitHub conventions as they are and adds Runway's
    labels and gating rule. Edit `runway.json` before the first run: `check_cmd`
    must be the repo's real test command, and `agent_cmd`'s `--allowedTools`
    must allow it.
 3. **Labels.** `RUNWAY setup` for Linear checks the key (Mac keychain service
    `runway-linear`), the team and the project. For GitHub it checks `gh` auth,
-   the repo and that Issues is on. Both create Runway's four labels when they're
-   missing and never recolor existing ones. On GitHub it also warns when the
+   the repo and that Issues is on. Both create Runway's labels when they're
+   missing and never recolor existing ones; GitHub also creates Matt's five triage labels. On GitHub it also warns when the
    repo is public: issues and Runway's comments are public then, so no client
    names, credentials or NDA material.
 4. **Worker environment.** Copy `${CLAUDE_PLUGIN_ROOT}/runway/worker-env.md`
    to `docs/agents/worker-env.md` and fill it in from the repo: what a fresh
    worktree lacks, the verify command, paths to leave alone. Every ticket run
    reads it first. Commit it.
-5. **Plan.** `/to-spec`, then `/to-tickets`, published to the Linear project
-   (or the GitHub repo).
+5. **Plan.** `/to-spec`, then `/to-tickets`, published to the repo's tracker
+   (the Linear project or the GitHub repo).
    Label each ticket with the gating rule below and add blocks relations for
    the conflict screen.
 6. **Schedule.** `bash "${CLAUDE_PLUGIN_ROOT}/runway/schedule.sh" install <repo> [minutes]`
@@ -170,6 +176,17 @@ A harness is the agent CLI that does a ticket's work. The default is Claude
   `Harness: <name>` header in a markdown ticket. An unknown name is logged
   (`park ... unknown harness`) and the ticket is parked as needs-human, not run.
 - `RUNWAY status --json` shows each ticket's effective `harness`.
+- **Default model.** The templates pin `claude-sonnet-5-5` (the exact ID, not an
+  alias) on `agent_cmd`, `prep_cmd` and `review_cmd`; the fix pass and PR body
+  inherit it. Opus is opt-in per ticket through the `opus` profile: label a
+  ticket `harness:opus` (or `Harness: opus`) when it needs architecture
+  judgment. It costs about twice as much per token, so don't make it the
+  default.
+- **Which model answered.** Every agent record in `_pm/runway-runs.jsonl` has a
+  `model` field, read from the JSON result's `modelUsage` (null when the harness
+  doesn't report it), so `runway retro` can compare models.
+- **Revisit the default** if `runway retro` shows Sonnet tickets retrying or
+  parking more than about 1 in 5.
 - `RUNWAY whoami` prints this Mac's name, the one stamped on claims
   (`claimed_by`). A ticket claimed by another Mac is skipped here; the claim
   clears when the ticket is parked, paused or retried.
@@ -204,4 +221,5 @@ kept for 0.2 and 0.3. 0.4.1 fixes claim release on Linear, `pause --stop-now`
 across repos, and the app's script paths after the engine move. 0.4.2 ignores `_` notes in `"harnesses"` and parks a
 ticket with an unknown harness label instead of crashing the tick. 0.5.0 sets a repo up for GitHub Issues:
 `setup.sh --github`, a GitHub tracker doc, and `RUNWAY setup` for GitHub (auth, repo,
-Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9.
+Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9. 0.5.10 updates the docs and
+descriptions to say Runway works either Linear or GitHub, one tracker per repo, chosen in `runway.json`.

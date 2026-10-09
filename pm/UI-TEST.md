@@ -1,4 +1,4 @@
-# ui-test
+# ui-test (a skill of pm since 0.25.0)
 
 Agent-run UI tests for any macOS app with a window — native Swift/SwiftUI apps,
 FileMaker Pro, Electron — with evidence instead of claims.
@@ -41,8 +41,12 @@ What ships:
 
 ```
 /plugin marketplace add datacraftdevelopment/dc-dev-plugins
-/plugin install ui-test
+/plugin install pm
 ```
+
+`ui-test` was its own plugin until pm 0.25.0. In the text below,
+`<ui-test-plugin-root>` is the pm plugin root (the folder holding
+`skills/ui-test/scripts` and `requirements.txt`).
 
 ## Evidence validation and dispatch
 

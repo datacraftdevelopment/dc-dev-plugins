@@ -9,7 +9,9 @@ The loop never waits on Joe. Each tick it:
      then the check command. Pass -> merged into the integration branch, resolved.
      Fail -> one retry with the failure output, then parked as needs-human.
 
-When the queue is finished, `loop` runs a finish step once per integration head:
+When the queue is finished, `loop` runs a finish step once per integration head
+that carries new ticket work (heads moved only by `runway: merge <base> into <integration>` syncs
+are skipped and recorded; `runway finish` always runs):
 a review of the whole branch against the tickets, one fix pass, the check, and a
 PR body (written to _pm/runway-pr.md, or opened as a draft PR with "pr": "draft").
 
@@ -935,11 +937,23 @@ def resolve_harness(cfg: dict, t=None) -> dict:
     return prof
 
 
+def answering_model(model_usage) -> str | None:
+    """The model that did most of the work in a Claude result's `modelUsage` (the costliest entry)."""
+    if not isinstance(model_usage, dict) or not model_usage:
+        return None
+
+    def cost(m):
+        u = model_usage[m]
+        return (u.get("costUSD") or 0) if isinstance(u, dict) else 0
+    return max(model_usage, key=cost)
+
+
 def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
-    """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns and usage,
-    each None when the harness doesn't report it. Unparseable output comes back as text unchanged."""
+    """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns, usage and model
+    (which model answered, from Claude's modelUsage), each None when the harness doesn't report it.
+    Unparseable output comes back as text unchanged."""
     meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None, "is_error": False,
-            "subtype": None}
+            "subtype": None, "model": None}
     if parser == "claude":
         try:
             d = json.loads(stdout)
@@ -948,7 +962,8 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
         if isinstance(d, dict) and "result" in d:
             meta.update(session_id=d.get("session_id"), cost_usd=d.get("total_cost_usd"),
                         num_turns=d.get("num_turns"), usage=d.get("usage"),
-                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"))
+                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"),
+                        model=answering_model(d.get("modelUsage")))
             return d.get("result") or "", meta
     elif parser == "codex":
         # `codex exec --json` prints one event per line: thread.started, item.completed, turn.completed.
@@ -1020,7 +1035,7 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     record(root, {"kind": kind, "ticket": ticket, "attempt": attempt, "cwd": str(cwd), "harness": harness["name"],
                   "exit": r.returncode, "secs": round(time.time() - t0),
                   "session_id": meta["session_id"], "cost_usd": meta["cost_usd"],
-                  "num_turns": meta["num_turns"], "usage": meta["usage"]})
+                  "num_turns": meta["num_turns"], "usage": meta["usage"], "model": meta["model"]})
     r.failure = agent_failure(r, text, meta)
     r.auth = bool(r.failure and (meta.get("subtype") == "authentication_failed" or AUTH_RE.search(
         "\n".join((text, r.stdout or "", r.stderr or "")))))
@@ -1164,7 +1179,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
             detail = "Agent stopped with a question:\n\n" + q.read_text()
             break
         sh(["git", "add", "-A"], wt)
-        sh(["git", "commit", "-m", f"runway: {t.title} (auto-commit)"], wt)
+        sh(["git", "commit", "-m", auto_commit_msg(t)], wt)
         made = sh(["git", "rev-list", "--count", f"{cfg['integration_branch']}..HEAD"], wt).stdout.strip()
         if made in ("", "0"):  # a ticket always changes something; one that doesn't needs Joe to say so
             detail = f"The agent ran but `{branch}` has no commits. Runway assumes a ticket changes something."
@@ -1193,7 +1208,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         return
     if ok:
         beat(root, "merge", t.id)
-        if merge_into_integration(cfg, root, branch):
+        if merge_into_integration(cfg, root, branch, commit_ref(t)):
             t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
             log(root, f"done  {t.id}")
         else:
@@ -1216,9 +1231,33 @@ def integration_worktree(cfg: dict, root: Path) -> Path:
     return tmp
 
 
-def merge_into_integration(cfg: dict, root: Path, branch: str) -> bool:
+def commit_ref(t) -> str:
+    """The ticket's reference for a commit subject: `(#12)` on GitHub, `(DAT-41)` on Linear (which links it),
+    nothing for pm's local tickets. Matt's /code-review reads these to find the tickets behind a change."""
+    return f"({t.id})" if getattr(t, "effort", "") in ("github", "linear") else ""
+
+
+def auto_commit_msg(t) -> str:
+    return " ".join(p for p in ("runway:", t.title, commit_ref(t), "(auto-commit)") if p)
+
+
+def refs_block(done: list) -> str:
+    """The PR body's ticket list. `Refs`, never `Closes`: Runway closes an issue when its branch merges into
+    integration, so merging the PR must not try to close it again."""
+    lines = []
+    for t in done:
+        eff = getattr(t, "effort", "")
+        if eff == "github":
+            lines.append(f"Refs {t.id}")
+        elif eff == "linear":
+            lines.append(f"Refs {t.ref}")
+    return "\n".join(lines)
+
+
+def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") -> bool:
     tmp = integration_worktree(cfg, root)
-    r = sh(["git", "merge", "--no-ff", "-m", f"runway: merge {branch}", branch], tmp)
+    msg = f"runway: merge {branch}" + (f" {ref}" if ref else "")
+    r = sh(["git", "merge", "--no-ff", "-m", msg, branch], tmp)
     if r.returncode != 0:
         sh(["git", "merge", "--abort"], tmp)
         return False
@@ -1277,7 +1316,8 @@ Proof that it works, taken from the check output below. Claim nothing the output
 Two-way door (easy to walk back) or one-way door (migrations, removed APIs, data changes),
 and the blast radius: what breaks if it's wrong.
 
-Start directly with the Summary heading. No preamble.
+Start directly with the Summary heading. No preamble. Do not write `Closes`, `Fixes` or `Resolves`
+for a ticket: Runway closes tickets itself and adds the `Refs` lines.
 
 Tickets:
 {tickets}
@@ -1353,9 +1393,26 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     return findings, has_findings
 
 
+def ticket_work_since(cfg: dict, root: Path, reviewed) -> bool:
+    """True if anything but Runway's own base syncs landed on the integration branch since `reviewed`.
+    A missing, unreadable or non-ancestor reviewed head counts as work (finish re-runs, as it always did)."""
+    integ = cfg["integration_branch"]
+    if not isinstance(reviewed, str) or not reviewed:
+        return True
+    if sh(["git", "merge-base", "--is-ancestor", reviewed, integ], root).returncode != 0:
+        return True
+    r = sh(["git", "rev-list", "--first-parent", "--format=%s", f"{reviewed}..{integ}"], root)
+    if r.returncode != 0:
+        return True
+    sync = f"runway: merge {cfg['base_branch']} into {integ}"
+    subjects = [l for l in r.stdout.splitlines() if l and not l.startswith("commit ")]
+    return any(sub != sync for sub in subjects)
+
+
 def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     """Review the integration branch as a whole, fix once, check, and write the PR body.
-    Runs once per integration head unless forced. Returns True if it ran."""
+    Runs once per integration head that carries new ticket work (base syncs alone don't), unless forced.
+    Returns True if it ran."""
     base, integ = cfg["base_branch"], cfg["integration_branch"]
     if sh(["git", "rev-parse", "--verify", integ], root).returncode != 0:
         return False
@@ -1368,9 +1425,19 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
         if mode == "all_done" and not all(t.status in DONE for t in tickets):
             return False
     state_p = root / "_pm" / "runway-finish.json"
-    state = json.loads(state_p.read_text()) if state_p.exists() else {}
+    try:
+        state = json.loads(state_p.read_text()) if state_p.exists() else {}
+    except (OSError, ValueError):
+        state = {}  # unreadable: no reviewed head, so finish runs as it always did
+    if not isinstance(state, dict):
+        state = {}
     head = sh(["git", "rev-parse", integ], root).stdout.strip()
     if not force and state.get("head") == head:
+        return False
+    if not force and not ticket_work_since(cfg, root, state.get("head")):
+        # Only base syncs moved the head: nothing new to review. Record it so the next check is cheap.
+        (root / "_pm").mkdir(exist_ok=True)
+        state_p.write_text(json.dumps({"head": head, "at": now()}))
         return False
 
     if signin_waiting(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True):
@@ -1455,6 +1522,9 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
+    refs = refs_block(done)
+    if refs:
+        body += f"\n\n## Tickets\n\n{refs}"
     body += (f"\n\n<details><summary>Runway review</summary>\n\n{review_line}\n\n"
              f"Tickets:\n{tlist}\n</details>\n")
     (root / "_pm").mkdir(exist_ok=True)

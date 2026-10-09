@@ -15,10 +15,10 @@ subagent.
 ## How it reaches the editions
 
 ```
-portable-overlay/ + sdlc/ + pm/scripts/session.py              (here, private)
+portable-overlay/ + pm/ (gate kit, guard) + pm/scripts/session.py  (here, private)
         │  hand pass, like the rest of the RCC pm cut
         ▼
-rcc-plugins/pm, rcc-plugins/sdlc        (RCC credit, public once pushed)
+rcc-plugins/pm                          (RCC credit, public once pushed)
         │  make-dc-plugins.sh
         ▼
 dc-plugins                               (local only)
@@ -27,19 +27,21 @@ dc-plugins                               (local only)
 tc-plugins                               (plain copy, Joe's credit)
 ```
 
-From 2026-10-04 RCC and TC carry the same pm and sdlc. The hand pass into
+From 2026-10-04 RCC and TC carry the same pm. From pm 0.25.0 that pm also carries
+what sdlc and ui-test used to be (they were folded into pm, so there is no separate
+`sdlc` to pass). The hand pass into
 `rcc-plugins`:
 
 - copy the files in this folder over `rcc-plugins/pm/`, and the private
   `pm/scripts/session.py`; set the pm version to the private one. The
-  credential guard moved from pm to sdlc on 2026-10-07 (pm 0.24.0, sdlc 0.2.0),
-  so the next pass deletes `rcc-plugins/pm/hooks/` and the guard arrives with
-  `sdlc/`;
-- copy `sdlc/` to `rcc-plugins/sdlc/`, then in that copy: the author becomes
-  "Joe DaSilva and Richard Carlton", the install lines name
-  `FMTrainingTV-AI/rcc-fm`, the README keeps only the intro, What is in it,
-  Install, the Not proven list, Limits and Layout, and the three sentences that
-  name Ringer or Codex are rewritten;
+  credential guard, the gate kit and the review policy (`hooks/`, `kit/`,
+  `agents/`, `templates/`, `GATES.md`, the `credential-guard`, `gate-hooks` and
+  `review-policy` skills, the credential and `install_gates` scripts) now live
+  in `pm/` itself, so the next pass copies them with the rest of pm and deletes
+  `rcc-plugins/sdlc/`. In `GATES.md` the three sentences that name Ringer or
+  Codex are rewritten, and the install lines name `FMTrainingTV-AI/rcc-fm`;
+- `ui-test` stays out of the shared editions: it needs Ringer and Codex, so the
+  pass leaves `skills/ui-test/`, `requirements.txt` and `UI-TEST.md` behind;
 - no `granola-transcript` skill and no mention of it.
 
 `make-tc-plugins.sh` fails the build on any Ringer, private-path or Granola

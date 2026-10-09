@@ -37,12 +37,12 @@ else:
 '''
 
 
-def issue(number, labels=("ready-for-agent",), state="OPEN", assignees=0, body="", comments=(), blocked=(), title=None):
+def issue(number, labels=("ready-for-agent",), state="OPEN", assignees=0, body="", comments=(), blocked=(), title=None, subs=0):
     return {"number": number, "title": title or f"Issue {number}", "body": body,
             "url": f"https://github.com/o/r/issues/{number}", "state": state,
             "stateReason": "COMPLETED" if state == "CLOSED" else None,
             "labels": {"nodes": [{"name": n} for n in labels]},
-            "assignees": {"totalCount": assignees},
+            "assignees": {"totalCount": assignees}, "subIssues": {"totalCount": subs},
             "comments": {"nodes": [{"body": b, "createdAt": f"2026-10-0{i + 1}T10:00:00Z", "authorAssociation": a}
                                    for i, (b, a) in enumerate(comments)]},
             "blockedBy": {"nodes": [{"number": n, "title": f"Blocker {n}", "state": s,
@@ -68,6 +68,30 @@ class GitHubTracker(unittest.TestCase):
 
     def load(self):
         return {t.id: t for t in runway.make_tracker(self.cfg, self.dir).load()}
+
+    def test_spec_with_sub_issues_is_not_run_but_its_sub_issues_are(self):
+        self.data([[issue(1, subs=2), issue(2), issue(3, blocked=[(1, "OPEN", "o/r")])]])
+        by = self.load()
+        self.assertEqual(by["#1"].gate, "none")
+        self.assertEqual(by["#2"].gate, "auto")
+        self.assertEqual(by["#3"].gate, "auto")
+        self.assertFalse(runway.unblocked(by["#3"], list(by.values())))  # an open spec still gates
+
+    def test_spec_label_is_not_run_even_with_a_runway_label(self):
+        self.data([[issue(1, labels=("spec", "ready-for-agent")), issue(2, labels=("spec", "ready-for-human", "go")),
+                    issue(3)]])
+        by = self.load()
+        self.assertEqual([by[f"#{i}"].gate for i in (1, 2, 3)], ["none", "none", "auto"])
+        log = (self.dir / "_pm" / "runway.log").read_text()
+        self.assertEqual(log.count("#1 is labelled spec"), 1)
+        self.load()  # a second tick logs nothing new
+        self.assertEqual((self.dir / "_pm" / "runway.log").read_text(), log)
+
+    def test_closed_spec_unblocks_its_dependents(self):
+        self.data([[issue(1, labels=("spec", "ready-for-agent"), state="CLOSED"),
+                    issue(2, blocked=[(1, "CLOSED", "o/r")])]])
+        by = self.load()
+        self.assertTrue(runway.unblocked(by["#2"], list(by.values())))
 
     def test_status_each(self):
         self.data([[issue(1, state="CLOSED"), issue(2, labels=("ready-for-agent", "needs-human")),
@@ -142,6 +166,15 @@ class GitHubTracker(unittest.TestCase):
         self.assertEqual(by["#1"].claimed_by, "Mini-One")
         self.assertEqual(by["#2"].packet, "Parked: why")
         self.assertIsNone(by["#2"].claimed_by)
+
+    def test_first_claim_of_the_cycle_wins(self):
+        c = "\U0001f6eb runway · Claimed-by: {} · Started on `b`."
+        self.data([[issue(1, assignees=1, comments=[(c.format("Mini-One"), "OWNER"), (c.format("Mini-Two"), "OWNER")]),
+                    issue(2, assignees=1, comments=[(c.format("Mini-One"), "OWNER"), ("\U0001f6eb runway · Parked: x", "OWNER"),
+                                                    (c.format("Mini-Two"), "OWNER")])]])
+        by = self.load()
+        self.assertEqual(by["#1"].claimed_by, "Mini-One")
+        self.assertEqual(by["#2"].claimed_by, "Mini-Two")
 
     def test_paging_counts_calls(self):
         self.data([[issue(1)], [issue(2)], [issue(3)]])

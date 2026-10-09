@@ -24,7 +24,7 @@ struct QueueTab: View {
                     .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        // Fetches on open and every minute; it calls Linear, so no faster. The fetch itself runs off the main actor.
+        // Fetches on open and every minute; it calls the tracker, so no faster. The fetch itself runs off the main actor.
         .task(id: entry.project.label) {
             while !Task.isCancelled {
                 await reload()

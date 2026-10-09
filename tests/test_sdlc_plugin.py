@@ -1,4 +1,4 @@
-"""sdlc plugin: the gate-hook kit (installer + gate script) and the review-policy pieces.
+"""pm plugin, enforcement half (folded in from sdlc): the gate-hook kit (installer + gate script) and the review-policy pieces.
 
 Hook cases run the command string the installer writes into .claude/settings.json,
 through a shell with the event JSON on stdin, the way the host runs it.
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = ROOT / 'sdlc'
+PLUGIN = ROOT / 'pm'
 INSTALLER = PLUGIN / 'scripts/install_gates.py'
 KIT_GATE = PLUGIN / 'kit/sdlc_gate.py'
 MARKER = '.claude/hooks/sdlc_gate.py'
@@ -899,7 +899,8 @@ class NonGitFolderTests(unittest.TestCase):
 
 
 class PluginShapeTests(unittest.TestCase):
-    SHIPPED = ('kit', 'scripts', 'skills', 'agents', 'templates', 'README.md', '.claude-plugin')
+    SHIPPED = ('kit', 'scripts/install_gates.py', 'skills/gate-hooks', 'skills/review-policy', 'agents',
+               'templates', 'GATES.md')
 
     def shipped_files(self):
         for name in self.SHIPPED:
@@ -919,11 +920,33 @@ class PluginShapeTests(unittest.TestCase):
 
     def test_manifest_and_marketplace_entry(self):
         manifest = json.loads((PLUGIN / '.claude-plugin/plugin.json').read_text())
-        self.assertEqual(manifest['name'], 'sdlc')
+        self.assertEqual(manifest['name'], 'pm')
         self.assertRegex(manifest['version'], r'^\d+\.\d+\.\d+$')
         market = json.loads((ROOT / '.claude-plugin/marketplace.json').read_text())
-        entries = [p for p in market['plugins'] if p['name'] == 'sdlc']
-        self.assertEqual([p['source'] for p in entries], ['./sdlc'])
+        entries = [p for p in market['plugins'] if p['name'] == 'pm']
+        self.assertEqual([p['source'] for p in entries], ['./pm'])
+        # sdlc and ui-test were folded into pm: no marketplace entry and no folder left.
+        self.assertFalse({'sdlc', 'ui-test'} & {p['name'] for p in market['plugins']})
+        for gone in ('sdlc', 'ui-test'):
+            self.assertFalse((ROOT / gone).exists(), gone)
+
+    def test_pm_hooks_merge_the_credential_guard_with_nothing_lost(self):
+        hooks = json.loads((PLUGIN / 'hooks/hooks.json').read_text())['hooks']
+        commands = [h['command'] for g in hooks['PreToolUse'] for h in g['hooks']]
+        self.assertEqual(commands, ['"${CLAUDE_PLUGIN_ROOT}/hooks/credential-guard.sh"'])
+        for rel in ('hooks/credential-guard.sh', 'scripts/credential_guard.py',
+                    'scripts/credential-policy.json', 'skills/ui-test/SKILL.md', 'requirements.txt'):
+            self.assertTrue((PLUGIN / rel).is_file(), rel)
+
+    def test_no_skill_or_agent_reference_still_names_sdlc_or_ui_test_as_a_plugin(self):
+        pattern = re.compile(r'\b(?:sdlc|ui-test):[a-z][\w-]*')
+        for path in ROOT.rglob('*'):
+            if (not path.is_file() or path.suffix not in {'.md', '.json', '.py', '.sh'}
+                    or {'.git', 'changes', 'reviews', 'intent', 'dist', 'node_modules'} & set(path.parts)
+                    or path == Path(__file__).resolve()):
+                continue
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                self.assertEqual(pattern.findall(path.read_text(errors='ignore')), [])
 
     def test_skills_have_trigger_only_descriptions(self):
         for name in ('gate-hooks', 'review-policy'):
@@ -939,7 +962,7 @@ class PluginShapeTests(unittest.TestCase):
         self.assertEqual(fields['tools'], 'Read, Grep, Glob')
 
     def test_every_plugin_path_a_skill_names_exists(self):
-        for doc in list((PLUGIN / 'skills').rglob('*.md')) + [PLUGIN / 'README.md']:
+        for doc in list((PLUGIN / 'skills/gate-hooks').rglob('*.md')) + list((PLUGIN / 'skills/review-policy').rglob('*.md')) + [PLUGIN / 'GATES.md']:
             for rel in re.findall(r'\$\{CLAUDE_PLUGIN_ROOT\}/([\w./-]+)', doc.read_text()):
                 with self.subTest(doc=doc.name, path=rel):
                     self.assertTrue((PLUGIN / rel).exists())

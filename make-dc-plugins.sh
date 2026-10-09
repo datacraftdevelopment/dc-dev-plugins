@@ -72,11 +72,6 @@ EDITS = [
     ("pm/template/CLAUDE.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
     ("pm/template/README.md", "`FMTrainingTV-AI/rcc-fm`", "`datacraftdevelopment/dc-plugins`"),
 
-    ("sdlc/.claude-plugin/plugin.json", '"name": "Joe DaSilva and Richard Carlton"',
-                                        '"name": "Joe DaSilva / DataCraft Development"'),
-    ("sdlc/README.md", "/plugin marketplace add FMTrainingTV-AI/rcc-fm",
-                       "/plugin marketplace add datacraftdevelopment/dc-plugins"),
-
     ("fm-dc/.claude-plugin/plugin.json", '"name": "Joe DaSilva and Richard Carlton"',
                                          '"name": "Joe DaSilva / DataCraft Development"'),
     ("fm-dc/CLAUDE.md",
@@ -102,7 +97,7 @@ if failures:
     sys.exit(1)
 print(f"phrase map: {len(EDITS)} edits applied")
 
-for rel in ("pm/.claude-plugin/plugin.json", "fm-dc/.claude-plugin/plugin.json", "sdlc/.claude-plugin/plugin.json"):
+for rel in ("pm/.claude-plugin/plugin.json", "fm-dc/.claude-plugin/plugin.json"):
     p = root / rel
     p.write_text(p.read_text().replace('"email": "digitaljoed@gmail.com"', '"email": "joe@datacraftdev.com"'))
 
