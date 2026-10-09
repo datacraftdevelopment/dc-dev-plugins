@@ -1,6 +1,6 @@
 {
   "name": "pm",
-  "version": "0.26.6",
+  "version": "0.26.7",
   "description": "DataCraft PM, the hands-on way of working: outcome-sized tickets, a one-session default loop (whats-next, the work, stepping-away), sibling sessions for independent tickets, opt-in orchestration, proportionate verification, delivery acceptance and concise handoffs. Also the credential guard, gate-hooks, review-policy (with the policy-reviewer agent) and ui-test, folded in from the sdlc and ui-test plugins at 0.25.0. Also Runway, the unattended ticket loop (engine in runway/ and the runway skill), folded in from the factory plugin at 0.26.0.",
   "author": {
     "name": "Joe",

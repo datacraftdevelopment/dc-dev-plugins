@@ -132,7 +132,7 @@ class FinishVerdict(unittest.TestCase):
         self.assertEqual(rows[0]["verdict"], "pass")
         self.assertEqual(rows[0]["sha"], subprocess.run(["git", "rev-parse", "runway/integration"], cwd=self.root,
                                                         capture_output=True, text=True).stdout.strip())
-        self.assertTrue(body.startswith("Review: PASS (would merge)"))
+        self.assertTrue(body.startswith(f"Review: PASS (would merge {rows[0]['sha']})"))
         review = (self.root / "_pm" / "runway-review.md").read_text()
         self.assertIn("Review: PASS", review)
         self.assertIn("test_x passes", review)
