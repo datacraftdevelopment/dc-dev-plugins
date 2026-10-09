@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-def manifest(root, interval=30):
+def manifest(root, interval=300):
     output = root / '_pm/observer'
     return {'Label': 'com.joe.runway.observer.dc-dev-plugins',
             'ProgramArguments': [sys.executable,
@@ -20,9 +20,9 @@ def manifest(root, interval=30):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('install', 'status', 'uninstall', 'preview'))
+    parser.add_argument('action', choices=('install', 'status', 'uninstall', 'preview', 'set-interval'))
     parser.add_argument('--root', required=True, type=Path)
-    parser.add_argument('--interval', default=30, type=int, choices=range(30, 61))
+    parser.add_argument('--interval', default=300, type=int, choices=range(30, 3601), metavar='SECONDS')
     args = parser.parse_args()
     root = args.root.resolve()
     data = manifest(root, args.interval)
@@ -33,6 +33,16 @@ def main():
         print(plistlib.dumps(data).decode())
     elif args.action == 'status':
         subprocess.run(['launchctl', 'print', target], check=True)
+    elif args.action == 'set-interval':
+        existing = plistlib.loads(path.read_bytes())
+        argv = existing['ProgramArguments']
+        if existing.get('Label') != label or argv[argv.index('--root') + 1] != str(root):
+            raise SystemExit('Existing observer scope differs; inspect configuration first')
+        argv[argv.index('--interval') + 1] = str(args.interval)
+        subprocess.run(['launchctl', 'bootout', target], check=True)
+        path.write_bytes(plistlib.dumps(existing))
+        subprocess.run(['launchctl', 'bootstrap', f'gui/{os.getuid()}', str(path)], check=True)
+        print(f'Observer interval set to {args.interval} seconds; Runway unchanged.')
     elif args.action == 'install':
         if path.exists():
             raise SystemExit(f'Already configured: {path}. Inspect before replacing.')

@@ -14,6 +14,7 @@ service_spec.loader.exec_module(service)
 
 class ObserverTests(unittest.TestCase):
     def test_service_is_scoped_and_does_not_start_runner(self):
+        self.assertEqual(service.manifest(Path('/tmp/example'))['ProgramArguments'][-1], '300')
         data = service.manifest(Path('/tmp/example'), 45)
         self.assertEqual(data['Label'], 'com.joe.runway.observer.dc-dev-plugins')
         self.assertIn('observe.py', data['ProgramArguments'][1])
