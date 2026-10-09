@@ -147,11 +147,11 @@ class LinearClaims(unittest.TestCase):
         self.assertEqual(FakeLinear([again]).load()[0].claimed_by, "Mini-Two")
 
     def test_claim_comment_names_machine(self):
-        import linear_tracker as L
-        t = L.LinearTicket(node(1, [], "unstarted"), mock.MagicMock())
-        t._update, t._comment = mock.MagicMock(), mock.MagicMock()
-        t.mark_claimed("runway/x", "Mini-One")
-        self.assertIn("Claimed-by: Mini-One", t._comment.call_args.args[0])
+        import ticket_protocol
+        from memory_adapter import MemoryTracker, issue
+        tr = MemoryTracker(Path(tempfile.mkdtemp()), ticket_protocol.LINEAR, [issue("DAT-1")])
+        tr.load()[0].mark_claimed("runway/x", "Mini-One")
+        self.assertIn("Claimed-by: Mini-One", tr.ops[0][1])
 
 
 if __name__ == "__main__":

@@ -60,7 +60,6 @@ else is one clear error naming both, not a traceback.
 """
 from __future__ import annotations
 
-import datetime as dt
 import json
 import re
 import shlex
@@ -69,13 +68,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ticket_protocol  # noqa: E402
 import transient  # noqa: E402
 
-MARK = "🛫 runway"  # every comment Runway writes starts with this, so Joe's are told apart
 TRUSTED = ("OWNER", "MEMBER", "COLLABORATOR")
 PAGE = 50
-ANSWER_RE = re.compile(r"(go|drop)\b", re.I)
-GO_RE = re.compile(r"go\b[\s:,.-]*", re.I)
 DEFAULTS = {
     "repo": "",
     "gh": "gh",
@@ -193,82 +190,35 @@ def _blockers_from_body(body: str) -> list[int]:
     return []
 
 
-class GitHubTicket:
+class GitHubTicket(ticket_protocol.Ticket):
+    """An issue as GitHub tells it. Facts and writes only: the rules are in ticket_protocol."""
+    rules = ticket_protocol.GITHUB
+    effort = "github"
+
     def __init__(self, node: dict, tracker: "GitHubTracker"):
         self.node = node
-        self.tr = tracker
-        self.effort = "github"
-        self.id = self.num = f"#{node['number']}"  # the engine matches blockers to tickets by num
-        self.ref = node.get("url") or self.id
-        slug = re.sub(r"[^a-z0-9]+", "-", node["title"].lower()).strip("-")[:40].rstrip("-")
-        self.slug = f"gh-{node['number']}-{slug}"
-        self.labels = {l["name"] for l in node["labels"]["nodes"]}
-        every = sorted(node["comments"]["nodes"], key=lambda c: c["createdAt"])
-        self.comments = [c for c in every if c.get("authorAssociation") in TRUSTED]
-        self.untrusted = len(every) - len(self.comments)
-        self.strangers = [c for c in every if c.get("authorAssociation") not in TRUSTED]
+        number = node["number"]
+        comments = [{"body": c["body"], "createdAt": c["createdAt"],
+                     "trusted": c.get("authorAssociation") in TRUSTED,
+                     "who": (c.get("author") or {}).get("login") or "unknown",
+                     "assoc": c.get("authorAssociation", "NONE")} for c in node["comments"]["nodes"]]
+        super().__init__(tracker, id=f"#{number}", num=f"#{number}", title=node["title"], url=node.get("url"),
+                         body=node.get("body"), labels={l["name"] for l in node["labels"]["nodes"]},
+                         comments=comments, slug_head=f"gh-{number}")  # the engine matches blockers by num
 
-    # -- read side --
+    # -- facts --
 
     @property
-    def title(self) -> str:
-        return self.node["title"]
+    def closed(self) -> bool:
+        return self.node["state"] == "CLOSED"  # completed or not planned
 
     @property
-    def text(self) -> str:
-        out = [f"# {self.title}", "", f"GitHub: {self.ref}", "", (self.node.get("body") or "").strip()]
-        if self.comments or self.untrusted:
-            out += ["", "## Comments"]
-        for cm in self.comments:
-            who = "runway" if cm["body"].startswith(MARK) else "Joe"
-            out += ["", f"**{cm['createdAt'][:16]} · {who}**", "", cm["body"].strip()]
-        if self.untrusted:
-            out += ["", f"_{self.untrusted} comment(s) from other authors left out (not owner, member or collaborator)._"]
-        return "\n".join(out) + "\n"
+    def held(self) -> bool:
+        return self.node["assignees"]["totalCount"] > 0
 
     @property
-    def url(self) -> str:
-        return self.node.get("url") or ""
-
-    @property
-    def packet(self) -> str | None:
-        """Runway's latest comment (the decision packet, or why it parked), without the marker."""
-        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)]
-        return mine[-1][len(MARK):].lstrip(" ·\n").strip() if mine else None
-
-    @property
-    def status(self) -> str:
-        if self.node["state"] == "CLOSED":
-            return "resolved"  # completed or not planned
-        if self.tr.c["needs_human_label"] in self.labels:
-            return "needs-human"
-        if self.node["assignees"]["totalCount"] > 0:
-            return "claimed"
-        return "ready"
-
-    @property
-    def is_spec(self) -> bool:
-        """A spec is labelled `spec` or has sub-issues. Runway never runs one."""
-        return self.tr.c["spec_label"] in self.labels or (self.node.get("subIssues") or {}).get("totalCount", 0) > 0
-
-    @property
-    def gate(self) -> str:
-        c = self.tr.c
-        if self.is_spec:
-            return "none"
-        if c["human_label"] in self.labels:
-            return "approved" if c["approve_label"] in self.labels else "human"
-        if c["agent_label"] in self.labels:
-            return "auto"
-        return "none"
-
-    @property
-    def harness(self) -> str | None:
-        """Per-issue harness override from a `harness:<name>` label, or None."""
-        for name in self.labels:
-            if name.lower().startswith("harness:"):
-                return name.split(":", 1)[1].strip().lower() or None
-        return None
+    def has_children(self) -> bool:
+        return (self.node.get("subIssues") or {}).get("totalCount", 0) > 0
 
     @property
     def blocked_by(self) -> list[str]:
@@ -278,38 +228,7 @@ class GitHubTicket:
             return native
         return [self.tr.ref(self.tr.repo, n) for n in _blockers_from_body(self.node.get("body") or "")]
 
-    @property
-    def claimed_by(self) -> str | None:
-        """The machine named in the first claim comment of the current claim cycle, else None. First stamp wins, so
-        two Macs that both stamped agree on the owner whichever order they read back in."""
-        if self.status != "claimed":
-            return None
-        owner = None
-        for cm in reversed(self.comments):
-            if not cm["body"].startswith(MARK):
-                continue
-            m = re.search(r"Claimed-by: (.+?)(?: · |$)", cm["body"], re.M)
-            if not m:
-                break  # a park, release or note: earlier claims belong to an earlier cycle
-            owner = m.group(1).strip()
-        return owner
-
-    def h(self, key: str, default: str = "") -> str:
-        if key == "Waiting on" and self.status == "needs-human":
-            return "Joe (see the latest runway comment)"
-        return default
-
-    def joe_replies(self) -> list[str]:
-        """Trusted comments since Runway last wrote, oldest first."""
-        out = []
-        for cm in self.comments:
-            if cm["body"].startswith(MARK):
-                out = []
-            else:
-                out.append(cm["body"].strip())
-        return out
-
-    # -- write side --
+    # -- writes --
 
     def _issue(self, verb: str, *args: str, landed=None) -> None:
         self.tr.api.run(["issue", verb, self.num[1:], "--repo", self.tr.repo, *args], landed=landed)
@@ -323,8 +242,7 @@ class GitHubTicket:
             return transient.posted_since(node["comments"]["nodes"], full, since)
         return check
 
-    def _comment(self, body: str) -> None:
-        full = f"{MARK} · {body.strip()}"
+    def _post(self, full: str) -> None:
         self._issue("comment", "--body", full, landed=self._landed(full))
 
     def _unassign(self) -> list[str]:
@@ -332,61 +250,33 @@ class GitHubTicket:
         who = [a["login"] for a in self.node["assignees"].get("nodes", [])] or ["@me"]
         return ["--remove-assignee", ",".join(who)]
 
-    def mark_claimed(self, branch: str, machine: str) -> None:
-        # Stamp first: a failure between the two writes then leaves the issue ready (retried next tick), never
-        # claimed with no owner on it.
-        self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+    def _claim(self) -> None:
         self._issue("edit", "--add-assignee", "@me")
 
-    def mark_resolved(self, note: str) -> None:
-        full = f"{MARK} · {note.strip()}"
-        self._issue("close", "--reason", "completed", "--comment", full, landed=self._landed(full))
+    def _close(self, reason: str, full: str | None) -> None:
+        self._issue("close", "--reason", reason, "--comment", full, landed=self._landed(full))
 
-    def mark_needs_human(self, why: str, detail: str) -> None:
-        label = self.tr.c["needs_human_label"]
-        approve = self.tr.c["approve_label"]
-        gated = self.gate == "approved"
-        gone = ["--remove-label", approve] if approve in self.labels else []
-        self._issue("edit", "--add-label", label, *gone, *self._unassign())  # a spent approval needs a fresh go
-        retry = f"Comment `go` (or re-add the `{approve}` label) to retry." if gated else f"Remove `{label}` to retry."
-        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
-
-    def mark_ready(self, note: str) -> None:
-        self._issue("edit", *self._unassign())
-        self._comment(note)
-
-    def post_packet(self, packet: str) -> None:
-        a = self.tr.c["approve_label"]
-        self._comment(
-            f"**Decision packet**\n\n_Reply with a comment starting `go` (add any choice or note after it) "
-            f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
-        self._issue("edit", "--add-label", self.tr.c["needs_human_label"])
-
-    def approve(self, note: str) -> None:
-        c = self.tr.c
+    def _label_args(self, add, remove) -> list[str]:
         args = []
-        if self.gate == "human":
-            args += ["--add-label", c["approve_label"]]
-        if c["needs_human_label"] in self.labels:
-            args += ["--remove-label", c["needs_human_label"]]
+        for name in add:
+            args += ["--add-label", name]
+        for name in remove:
+            if name in self.labels:
+                args += ["--remove-label", name]
+        return args
+
+    def _release(self, add=(), remove=()) -> None:
+        self._issue("edit", *self._label_args(add, remove), *self._unassign())
+
+    def _relabel(self, add=(), remove=()) -> None:
+        args = self._label_args(add, remove)
         if args:
             self._issue("edit", *args)
-        self._comment(f"Approved. {note}".strip())
-
-    def decline(self, note: str) -> None:
-        if note.lower().startswith("drop"):
-            full = f"{MARK} · Dropped. {note}".strip()
-            self._issue("close", "--reason", "not planned", "--comment", full, landed=self._landed(full))
-        else:
-            self._comment(f"Joe said no: {note}")
-
-    def stranger_calls(self) -> list[dict]:
-        """Untrusted comments since Runway last wrote that try to say go or drop."""
-        mark = max((cm["createdAt"] for cm in self.comments if cm["body"].startswith(MARK)), default="")
-        return [c for c in self.strangers if c["createdAt"] > mark and ANSWER_RE.match(c["body"].strip())]
 
 
-class GitHubTracker:
+class GitHubTracker(ticket_protocol.Tracker):
+    rules = ticket_protocol.GITHUB
+
     def __init__(self, root: Path, cfg: dict):
         self.root = root
         self.c = dict(DEFAULTS, **cfg.get("github", {}))
@@ -428,10 +318,9 @@ class GitHubTracker:
     def ref(self, repo: str, number: int) -> str:
         return f"#{number}" if repo.lower() == self.repo.lower() else f"{repo}#{number}"
 
-    def create(self, title: str, body: str, labels: list[str]) -> str:
-        """Open a new issue in the repo and return its ref ("#12"). The body starts with the 🛫 marker so a
-        later read never takes it for Joe's. A create that timed out is looked up before it is repeated."""
-        full = f"{MARK} · {body.strip()}"
+    def _create(self, title: str, full: str, labels: list[str]) -> str:
+        """Open a new issue in the repo and return its ref ("#12"). `full` is the marked body. A create that
+        timed out is looked up before it is repeated."""
         since = transient.since_mark()
         found: list[int] = []
 
@@ -466,10 +355,7 @@ class GitHubTracker:
                 break
             after = d["pageInfo"]["endCursor"]
         tickets = [GitHubTicket(n, self) for n in sorted(nodes, key=lambda n: n["number"])]
-        for t in tickets:
-            if self.c["spec_label"] in t.labels and t.node["state"] != "CLOSED":
-                self._log_once(f"skip  {t.id} is labelled {self.c['spec_label']}: a spec, never run "
-                               "(its sub-issues are the tickets)")
+        self._log_spec_skips(tickets)
         known = {t.id for t in tickets}
         stubs: dict[str, dict] = {}
         for t in tickets:
@@ -503,31 +389,3 @@ class GitHubTracker:
 
     def reload(self, t: GitHubTicket) -> GitHubTicket:
         return GitHubTicket(self.fetch(t), self)
-
-    def _log_once(self, line: str) -> None:
-        p = self.root / "_pm" / "runway.log"
-        if p.exists() and line in p.read_text():
-            return
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with p.open("a") as f:
-            f.write(f"{dt.datetime.now().strftime('%Y-%m-%d %H:%M')}  {line}\n")
-        print(line)
-
-    def sync(self) -> None:
-        """Turn Joe's answers on GitHub into ticket state before the tick decides anything."""
-        for t in self.load():
-            if t.status != "needs-human":
-                continue
-            for c in t.stranger_calls():
-                who = (c.get("author") or {}).get("login") or "unknown"
-                self._log_once(f"sync  {t.id} ignored '{c['body'].strip().split()[0]}' from {who} "
-                               f"({c.get('authorAssociation', 'NONE')}) at {c['createdAt']}: not owner, member or collaborator")
-            replies = t.joe_replies()
-            last = replies[-1] if replies else ""
-            said_go = bool(GO_RE.match(last))
-            if t.gate == "approved" or said_go:
-                t.approve(GO_RE.sub("", last, count=1) if said_go else "")
-                print(f"sync  {t.id} approved on GitHub")
-            elif re.match(r"drop\b", last, re.I):
-                t.decline("drop (from GitHub)")
-                print(f"sync  {t.id} dropped on GitHub")
