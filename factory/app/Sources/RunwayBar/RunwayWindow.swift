@@ -209,7 +209,8 @@ struct NowTab: View {
         let snapshot = store.snapshot(for: project.label)
         let banners = NowMath.banners(loopOn: project.loaded, readyCount: snapshot?.readyCount ?? 0,
                                       waiting: entry.status.waiting, paused: store.pause != nil)
-        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
+        let live = store.live(heartbeat)
+        let stopped = store.stoppedLine(heartbeat)
         let next = NowMath.nextTick(lastRun: heartbeat?.tickStarted ?? heartbeat?.since, interval: project.interval,
                                     loopOn: project.loaded, now: now)
 
@@ -224,12 +225,17 @@ struct NowTab: View {
                     let title = snapshot?.titles[id] ?? ""
                     return title.isEmpty ? id : "\(id) \(title)"
                 } ?? "Nothing right now")
-                cell("Elapsed · attempt", "stopwatch", NowMath.elapsed(heartbeat: heartbeat, now: now).map {
+                cell("Elapsed · attempt", "stopwatch", NowMath.elapsed(heartbeat: live, now: now).map {
                     NowMath.clock($0) + (live?.attempt.map { " · #\($0)" } ?? "")
                 } ?? "—")
                 cell("Next tick", "clock", NowMath.text(next, now: now))
             }
-            PhaseStrip(steps: NowMath.phaseStrip(heartbeat: heartbeat))
+            if let stopped {
+                Label([heartbeat?.ticket, stopped].compactMap { $0 }.joined(separator: " · "), systemImage: "exclamationmark.octagon.fill").foregroundStyle(.red)
+                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+            }
+            PhaseStrip(steps: NowMath.phaseStrip(heartbeat: live))
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Activity").font(.headline)

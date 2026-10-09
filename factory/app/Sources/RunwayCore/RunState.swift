@@ -27,6 +27,26 @@ public struct Heartbeat: Equatable, Sendable {
 
     public var isActive: Bool { Self.activePhases.contains(phase) }
 
+    /// In an active phase and its process still exists. A missing `pid` can't be checked, so it counts as live.
+    public func isLive(pidAlive: (Int) -> Bool) -> Bool {
+        guard isActive else { return false }
+        guard let pid else { return true }
+        return pidAlive(pid)
+    }
+
+    /// An active phase whose process is gone: the loop died mid-ticket.
+    public func isStopped(pidAlive: (Int) -> Bool) -> Bool { isActive && !isLive(pidAlive: pidAlive) }
+
+    /// "Loop stopped during check · 17:18" for a dead tick, else nil. The time is when the phase began.
+    public func stoppedDescription(timeZone: TimeZone = .current, pidAlive: (Int) -> Bool) -> String? {
+        guard isStopped(pidAlive: pidAlive) else { return nil }
+        guard let since else { return "Loop stopped during \(phase)" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.timeZone = timeZone
+        return "Loop stopped during \(phase) · \(formatter.string(from: since))"
+    }
+
     public static func parse(_ data: Data) -> Heartbeat? {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let phase = json["phase"] as? String else { return nil }
@@ -108,11 +128,11 @@ public enum StatusResolver {
         if let message = project.error { return status(.error(message), message) }
         guard project.loaded else { return status(.off, "loop off") }
 
-        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
-        if let live, let pid = live.pid, !pidAlive(pid) {
+        if let heartbeat, heartbeat.isStopped(pidAlive: pidAlive), let pid = heartbeat.pid {
             let message = "stale heartbeat (pid \(pid) not running)"
             return status(.error(message), message)
         }
+        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
         if !project.running, let exit = project.lastExit, exit != 0 {
             return status(.error("exit \(exit)"), "last tick exit \(exit)")
         }
