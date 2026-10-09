@@ -336,9 +336,11 @@ class GitHubTicket:
     def mark_needs_human(self, why: str, detail: str) -> None:
         label = self.tr.c["needs_human_label"]
         approve = self.tr.c["approve_label"]
+        gated = self.gate == "approved"
         gone = ["--remove-label", approve] if approve in self.labels else []
         self._issue("edit", "--add-label", label, *gone, *self._unassign())  # a spent approval needs a fresh go
-        self._comment(f"Parked: {why}. Remove `{label}` to retry.\n\n{detail}")
+        retry = f"Comment `go` (or re-add the `{approve}` label) to retry." if gated else f"Remove `{label}` to retry."
+        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:
         self._issue("edit", *self._unassign())

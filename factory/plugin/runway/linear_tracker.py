@@ -288,8 +288,13 @@ class LinearTicket:
     def mark_needs_human(self, why: str, detail: str) -> None:
         # Back to an unstarted state, so clearing the label makes it ready again.
         self._update(stateId=self.tr.state_id(None, "unstarted"))
-        self._labels(add=[self.tr.c["needs_human_label"]])
-        self._comment(f"Parked: {why}. Remove `{self.tr.c['needs_human_label']}` or comment `go` to retry.\n\n{detail}")
+        # An approval is spent by the run it let through: dropping `go` here keeps sync from re-approving every tick.
+        c = self.tr.c
+        gated = self.gate == "approved"
+        self._labels(add=[c["needs_human_label"]], remove=[c["approve_label"]])
+        retry = (f"Comment `go` (or re-add the `{c['approve_label']}` label) to retry." if gated
+                 else f"Remove `{c['needs_human_label']}` or comment `go` to retry.")
+        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:
         self._update(stateId=self.tr.state_id(None, "unstarted"))
