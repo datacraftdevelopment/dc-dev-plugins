@@ -61,6 +61,13 @@ decision packet (the comment starting `🛫 runway`). Then:
 
 Create a Linear issue in team {{TEAM}}, project {{PROJECT}}.
 
+## When a skill says "publish a spec"
+
+`/to-spec` publishes the spec as an issue. Label it `spec`, and never `ready-for-agent` or `ready-for-human`,
+whatever the skill says about triage. Runway skips any issue labelled `spec`, and any issue that has child issues,
+so the spec doesn't run as a ticket alongside its own tickets. `/to-tickets` then publishes the build tickets as
+child issues of the spec, and those carry the triage labels.
+
 ## When a skill says "fetch the relevant ticket"
 
 Fetch the Linear issue by its identifier (e.g. `{{TEAM}}-12`) or URL, with comments.
