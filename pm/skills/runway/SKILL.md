@@ -134,8 +134,18 @@ body (`Review: FAIL, 2 blocking findings`, `Review: PASS (would merge)`).
 - `off` (default): the verdict is only recorded.
 - `shadow`: recorded, and a pass reads "would merge" so Joe can compare it with
   his own call before trusting it.
-- `on_pass`: reserved for auto-merge. Nothing merges yet; filing fix tickets and
-  merging are separate tickets.
+- `on_pass`: reserved for auto-merge. Nothing merges yet.
+
+With `shadow` or `on_pass` there is no in-finish fix pass. A `fail` verdict files a
+ticket through the tracker (`Fix review findings on runway/integration (round N)`,
+label `ready-for-agent`) with the blocking findings, the failing check output and
+`Refs` lines. The queue builds it, it merges into integration, and the next finish
+reviews the new head. `"review_rounds": 2` (default) allows the first review plus
+one re-review; if the re-review fails, the fix ticket is parked `needs-human` with
+both reviews and nothing new is filed. A repeat fail on the same head, check and
+findings comments on the open fix ticket instead. Round count and fix-ticket id live
+in `_pm/runway-finish.json`; a new non-fix ticket merging starts a new batch. `off`
+keeps the fix pass.
 
 Ringer is optional. Without it, or if neither seat writes a report, Runway logs
 the fallback and runs the single Claude review (`"review": "single"`, the engine
