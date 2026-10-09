@@ -298,6 +298,11 @@ class GitHubBase(Base):
         os.environ["FAKE_GH_DATA"] = str(self.dir / "data.json")
         os.environ["FAKE_GH_LOG"] = str(self.dir / "log")
         os.environ["FAKE_GH_MODES"] = str(self.dir / "modes")
+        # The first run of a freshly written script can take over the 0.5s timeout below (macOS scans it),
+        # which would kill attempt 1 before it logs. Run it once now, then forget that run.
+        subprocess.run([str(gh), "--version"], capture_output=True, timeout=30)
+        for leftover in ("log.modes", "modes"):
+            (self.dir / leftover).unlink(missing_ok=True)
         self.cfg = {"tracker": "github", "github": {"repo": "o/r", "gh": str(gh), "timeout_s": 0.5}}
 
     def data(self, *issues):
