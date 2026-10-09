@@ -84,13 +84,17 @@ private struct ProjectNow: View {
         let project = entry.project
         let snapshot = store.snapshot(for: project.label)
         let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
-        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
+        let live = store.live(heartbeat)
         let queued = (snapshot?.upNext ?? []).filter { $0.id != live?.ticket }
 
         VStack(alignment: .leading, spacing: 6) {
             header(snapshot: snapshot)
             if !queued.isEmpty { upNext(queued, snapshot: snapshot) }
-            nowCard(heartbeat: heartbeat, live: live, snapshot: snapshot)
+            if let heartbeat, let stopped = store.stoppedLine(heartbeat) {
+                stoppedCard(heartbeat, line: stopped, snapshot: snapshot)
+            } else {
+                nowCard(heartbeat: heartbeat, live: live, snapshot: snapshot)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { open(NotificationRoute(projectLabel: project.label, ticketID: nil, tab: .projects)) }
@@ -184,6 +188,23 @@ private struct ProjectNow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
         }
+    }
+
+    /// A dead tick: greyed, no timer, no phase highlight.
+    private func stoppedCard(_ heartbeat: Heartbeat, line: String, snapshot: StatusSnapshot?) -> some View {
+        let id = heartbeat.ticket ?? heartbeat.phase
+        let title = heartbeat.ticket.flatMap { snapshot?.titles[$0] } ?? ""
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(id).font(.caption.monospaced()).foregroundStyle(.secondary)
+            if !title.isEmpty {
+                Text(title).font(.callout.weight(.medium)).foregroundStyle(.secondary).lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(line).font(.caption.weight(.medium)).foregroundStyle(.red)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func nowMeta(_ live: Heartbeat) -> String {

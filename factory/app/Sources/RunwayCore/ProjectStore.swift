@@ -52,6 +52,16 @@ public final class ProjectStore {
     @ObservationIgnored private var waitingFetchedAt: Date = .distantPast
     @ObservationIgnored private var fetchingWaiting = false
 
+    /// The heartbeat if its tick is really running (active phase, pid alive), else nil.
+    public func live(_ heartbeat: Heartbeat?) -> Heartbeat? {
+        heartbeat.flatMap { $0.isLive(pidAlive: pidAlive) ? $0 : nil }
+    }
+
+    /// "Loop stopped during check · 17:18" when the heartbeat is a dead tick.
+    public func stoppedLine(_ heartbeat: Heartbeat?) -> String? {
+        heartbeat?.stoppedDescription(pidAlive: pidAlive)
+    }
+
     public init(discovery: ProjectDiscovery = ProjectDiscovery(), interval: TimeInterval = 5,
                 defaults: UserDefaults = .standard, pauseURL: URL = PauseInfo.defaultURL,
                 run: @escaping (Command) async -> CommandResult = { await CommandRunner.run($0) },

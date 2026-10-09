@@ -25,6 +25,36 @@ final class RunStateTests: XCTestCase {
                                now: now, pidAlive: { _ in alive })
     }
 
+    // MARK: is the heartbeat live (pid check)
+
+    func testIsLiveNeedsLivePidInActivePhase() {
+        XCTAssertTrue(beat().isLive(pidAlive: { _ in true }))
+        XCTAssertFalse(beat().isLive(pidAlive: { _ in false }))
+        XCTAssertFalse(beat(phase: "idle").isLive(pidAlive: { _ in true }))
+    }
+
+    func testIsLiveWithoutPidCountsAsLive() {
+        let hb = Heartbeat.parse(#"{"phase":"check","ticket":"DAT-14"}"#.data(using: .utf8)!)!
+        XCTAssertNil(hb.pid)
+        XCTAssertTrue(hb.isLive(pidAlive: { _ in false }))
+        XCTAssertNil(hb.stoppedDescription(timeZone: TimeZone(identifier: "UTC")!, pidAlive: { _ in false }))
+    }
+
+    func testStoppedDescriptionNamesPhaseAndTime() {
+        let utc = TimeZone(identifier: "UTC")!
+        XCTAssertEqual(beat().stoppedDescription(timeZone: utc, pidAlive: { _ in false }),
+                       "Loop stopped during check · 11:54")
+        XCTAssertNil(beat().stoppedDescription(timeZone: utc, pidAlive: { _ in true }))
+        XCTAssertNil(beat(phase: "idle").stoppedDescription(timeZone: utc, pidAlive: { _ in false }))
+    }
+
+    func testStatusAndLivenessAgree() {
+        let hb = beat()
+        XCTAssertEqual(resolve(project(), heartbeat: hb, alive: false).state,
+                       .error("stale heartbeat (pid 111 not running)"))
+        XCTAssertFalse(hb.isLive(pidAlive: { _ in false }))
+    }
+
     // MARK: heartbeat + pause parsing
 
     func testHeartbeatParse() {
