@@ -9,6 +9,7 @@ import datetime
 import hashlib
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -26,10 +27,16 @@ def inspect(root, saved):
     events = []
     heartbeat = read_json(pm / 'runway-state.json')
     if heartbeat.get('phase') in ('waiting', 'stopped', 'paused'):
-        events.append({'kind': 'attention', 'phase': heartbeat['phase'],
+        event = {'kind': 'attention', 'phase': heartbeat['phase'],
                        'ticket': heartbeat.get('ticket'),
                        'reason': str(heartbeat.get('reason', ''))[:500],
-                       'since': heartbeat.get('since')})
+                       'since': heartbeat.get('since')}
+        signature = {k: v for k, v in event.items() if k != 'since'}
+        if signature != saved.get('attention'):
+            events.append(event)
+        saved['attention'] = signature
+    else:
+        saved['attention'] = None
     # Consume only appended complete records. Retain a partial line for the next pass.
     path = pm / 'runway-runs.jsonl'
     offset = saved.get('offset', 0)
@@ -88,15 +95,34 @@ def tick(root, out):
     baseline = 'offset' not in saved
     events, heartbeat = inspect(root, saved)
     emitted = []
+    context = None
     for event in events:
         key = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
         if key in seen:
             continue
         seen.add(key)
         history.append(key)
+        if context is None:
+            config = read_json(root / 'runway.json')
+            branch = config.get('integration_branch', 'runway/integration')
+            try:
+                result = subprocess.run(['git', '-C', str(root), 'rev-parse', '--verify',
+                                         'refs/heads/' + str(branch)], capture_output=True,
+                                        text=True, timeout=5)
+                head = result.stdout.strip() if result.returncode == 0 else None
+            except (OSError, subprocess.SubprocessError):
+                head = None
+            context = {'observed_integration_head': head,
+                       'check_command': str(config.get('check_cmd', ''))[:500]}
         packet = {'id': key, 'observed_at': time.time(), 'repo': str(root),
                   'event': {k: v[:500] if isinstance(v, str) else v for k, v in event.items()},
-                  'baseline': baseline, 'liveness': 'unverified'}
+                  'baseline': baseline, 'liveness': 'unverified', **context}
+        # Local publication draft only: no logs, credentials or tracker calls.
+        packet['issue_draft'] = {'related_ticket': event.get('ticket'),
+                                'candidate_head': context['observed_integration_head'],
+                                'command': context['check_command'],
+                                'error_excerpt': None, 'publishing_enabled': False,
+                                'note': 'Observed head may differ from the historical event head; verify before publishing.'}
         with (out / 'events.jsonl').open('a') as stream:
             stream.write(json.dumps(packet) + '\n')
         emitted.append(packet)

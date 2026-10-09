@@ -57,6 +57,8 @@ class ObserverTests(unittest.TestCase):
             path.write_text(json.dumps({'phase': 'waiting', 'reason': 'auth'}))
             self.assertEqual(len(observer.tick(root, pm / 'observer')), 1)
             self.assertEqual(observer.tick(root, pm / 'observer'), [])
+            path.write_text(json.dumps({'phase': 'waiting', 'reason': 'auth', 'since': 'new tick'}))
+            self.assertEqual(observer.tick(root, pm / 'observer'), [])
             path.write_text(json.dumps({'phase': 'waiting', 'reason': 'tracker'}))
             self.assertEqual(len(observer.tick(root, pm / 'observer')), 1)
 

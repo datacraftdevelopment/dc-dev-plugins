@@ -14,6 +14,12 @@ Events cover completed prep calls, parked/failed work, finish results, pause or
 waiting transitions, and phases exceeding their configured time budget. An
 overdue phase is a request to verify liveness, not proof of a dead process.
 Normal successful ticket runs do not emit events. No model runs per poll.
+Repeated waiting reasons are suppressed across ticks until the condition changes
+or clears. The cursor handles partial records, truncation and inode rotation;
+the latest 2,000 event identities are retained. Each event includes a local issue
+draft with publishing disabled, the check command and an observed integration
+head. For historical records that head is not proof of the failed commit: verify
+it before publishing. No raw error/log excerpt is copied automatically.
 
 The scoped LaunchAgent `com.joe.runway.observer.dc-dev-plugins` runs only this
 observer; it does not replace or restart Runway. Check it with
@@ -127,3 +133,8 @@ did not perform that merge or establish replacement green-check evidence.
 Runway subsequently synced main into integration and started approved #6;
 #7 also carries an approval. Preserve its repair queue rather than dispatching
 competing implementations. This supersedes PR #20 as a pending pilot candidate.
+
+At the next observation, #6 completed, #7 parked because the worker's allowed
+tools did not permit `git mv`/backup, and #18 started. The observer does not change
+that permission gate. #21–#23 remain behind #7 until a scoped authorization
+or other approved resolution unblocks it.
