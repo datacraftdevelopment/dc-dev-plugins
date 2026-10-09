@@ -243,6 +243,23 @@ class LinearRetry(Base):
         self.tracker(api).load()[0].mark_resolved("all done")
         self.assertEqual(api.bodies(), [MARK + " · all done"])
 
+    def test_close_that_landed_before_the_timeout_is_not_repeated(self):
+        import linear_tracker as lt
+        api = FakeLinearAPI(lnode(1, state="started"))
+        api.faults[lt.M_UPDATE] = ["timeout-after"]
+        self.tracker(api).load()[0].mark_resolved("all done")
+        self.assertEqual(api.calls.count(lt.M_UPDATE), 1)
+        self.assertEqual(api.issues["uuid-1"]["state"]["type"], "completed")
+        self.assertEqual(api.bodies(), [MARK + " · all done"])
+
+    def test_close_that_never_landed_is_retried(self):
+        import linear_tracker as lt
+        api = FakeLinearAPI(lnode(1, state="started"))
+        api.faults[lt.M_UPDATE] = ["timeout"]
+        self.tracker(api).load()[0].mark_resolved("all done")
+        self.assertEqual(api.calls.count(lt.M_UPDATE), 2)
+        self.assertEqual(api.issues["uuid-1"]["state"]["type"], "completed")
+
 
 # ---------- GitHub ----------
 
@@ -364,6 +381,25 @@ class GitHubRetry(GitHubBase):
         self.modes("ok", "502")
         self.tracker().load()[0].mark_ready("back in the queue")
         self.assertEqual(self.comments(), [MARK + " · back in the queue"])
+
+    def test_close_that_never_landed_is_retried(self):
+        self.data(issue(1))
+        self.modes("ok", "502")
+        self.tracker().load()[0].mark_resolved("all done")
+        self.assertEqual(self.stored()["state"], "CLOSED")
+        self.assertEqual(self.comments(), [MARK + " · all done"])
+
+    def test_close_whose_comment_landed_but_not_the_close_closes_without_a_second_comment(self):
+        # gh posts the comment, then closes: a timeout between the two leaves a comment and an open issue.
+        s = issue(1)
+        s["comments"]["nodes"].append({"body": MARK + " · all done", "authorAssociation": "OWNER",
+                                       "createdAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+        self.data(s)
+        self.modes("ok", "502")
+        t = self.tracker().load()[0]
+        t._close("completed", MARK + " · all done")
+        self.assertEqual(self.stored()["state"], "CLOSED")
+        self.assertEqual(self.comments(), [MARK + " · all done"])
 
 
 # ---------- the tick ----------

@@ -27,7 +27,8 @@ Writes (through `gh issue edit / comment / close`; every comment starts with the
 Decisions (ready-for-human issues):
 
   post_packet  comment the decision packet (🛫 marker) and add `needs-human`
-  approve      add `go` (if not there), remove `needs-human`, comment `Approved. <note>`
+  approve      comment `Approved. <note>` first (the durable record), then add `go` (if not there) and remove
+               `needs-human`. A label write that fails is finished by the next sync, from that comment
   decline      `drop` closes as not planned; anything else is a comment, the issue stays parked
   sync         for each parked issue: the `go` label, or Joe's latest comment since Runway last wrote
                starting `go` (the rest of that comment is the note) approves; starting `drop` declines.
@@ -53,7 +54,8 @@ that isn't already loaded. Nothing else is fetched. `reload()` is one call.
 
 Every `gh` call is cut off after `github.timeout_s` (default 60). A timeout, a connection reset or a 5xx is
 retried twice, then the tick ends cleanly (see transient.py). A comment or close that timed out is looked up
-before it is repeated, so it is never posted twice.
+before it is repeated, so it is never posted twice; a close is looked up for the close itself, and when only
+its comment landed the repeat closes without it.
 
 Auth: `gh` must be installed and signed in (`gh auth login`, or GH_TOKEN in the environment). Anything
 else is one clear error naming both, not a traceback.
@@ -147,12 +149,15 @@ class GitHub:
         self.cmd = shlex.split(cfg["gh"])
         self.timeout = float(cfg.get("timeout_s") or 60)
 
-    def run(self, args: list[str], landed=None) -> str:
+    def run(self, args, landed=None) -> str:
         """One gh call, cut off after `timeout_s`. A timeout, a reset or a 5xx is retried (transient.py),
-        then raises TrackerDown. landed: for a write that isn't safe to repeat, a check that it is there."""
+        then raises TrackerDown. landed: for a write that isn't safe to repeat, a check that it is there.
+        args may be a function, called for each attempt, when what to repeat depends on what `landed` found."""
+        build = args if callable(args) else (lambda: args)
+
         def once() -> str:
             try:
-                r = subprocess.run(self.cmd + args, capture_output=True, text=True, timeout=self.timeout)
+                r = subprocess.run(self.cmd + build(), capture_output=True, text=True, timeout=self.timeout)
             except FileNotFoundError:
                 sys.exit(AUTH_HELP)
             if r.returncode != 0:
@@ -163,7 +168,7 @@ class GitHub:
                     raise transient.TransientError(f"gh failed: {out.strip()[:200]}")
                 raise RuntimeError(f"gh failed: {out.strip()[:500]}")
             return r.stdout
-        out = transient.retry(once, "gh " + " ".join(args[:2]), landed)
+        out = transient.retry(once, "gh " + " ".join(build()[:2]), landed)
         return out or ""
 
     def graphql(self, query: str, **variables) -> dict:
@@ -276,7 +281,22 @@ class GitHubTicket(ticket_protocol.Ticket):
         self._issue("edit", "--add-assignee", "@me")
 
     def _close(self, reason: str, full: str | None) -> None:
-        self._issue("close", "--reason", reason, "--comment", full, landed=self._landed(full))
+        """gh posts the comment, then closes, so a timeout can leave the comment on an open issue. A repeat then
+        closes without the comment; a close that did happen is not repeated."""
+        since = transient.since_mark()
+        commented = [False]
+
+        def landed() -> bool:
+            node = self.tr.fetch(self)
+            if node["state"] == "CLOSED":
+                return True
+            commented[0] = transient.posted_since(node["comments"]["nodes"], full, since)
+            return False
+
+        def args() -> list[str]:
+            tail = [] if commented[0] else ["--comment", full]
+            return ["issue", "close", self.num[1:], "--repo", self.tr.repo, "--reason", reason, *tail]
+        self.tr.api.run(args, landed=landed)
 
     def _label_args(self, add, remove) -> list[str]:
         args = []

@@ -1,6 +1,7 @@
 """Offline tests: an approved Linear ticket that parks waits for a fresh go (gh-13).
 Run: python3 -m pytest -q test_linear_park.py"""
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -42,7 +43,7 @@ def make(labels):
             "labels": {"nodes": [{"id": LABELS[n], "name": n} for n in labels]},
             "comments": {"nodes": []}, "inverseRelations": {"nodes": []}}
     tr = L.LinearTracker.__new__(L.LinearTracker)
-    tr.root, tr.c, tr.api = Path("/tmp"), dict(L.DEFAULTS, team="DAT"), StatefulApi(node)
+    tr.root, tr.c, tr.api = Path(tempfile.mkdtemp()), dict(L.DEFAULTS, team="DAT"), StatefulApi(node)
     tr._team = {"all_labels": dict(LABELS),
                 "states": {"nodes": [{"id": "s-un", "name": "Todo", "type": "unstarted", "position": 0}]}}
     return tr, node
@@ -67,6 +68,22 @@ class LinearPark(unittest.TestCase):
         self.assertEqual(labelled[0].args[1]["input"]["removedLabelIds"], [LABELS["go"]])
         self.assertEqual(sorted(names(node)), ["needs-human", "ready-for-human"])
         self.assertIn("Comment `go` (or re-add the `go` label) to retry.", node["comments"]["nodes"][-1]["body"])
+
+    def test_park_is_one_issue_update_for_state_and_labels(self):
+        tr, node = make(["ready-for-human", "go"])
+        with mock.patch.object(tr.api, "gql", wraps=tr.api.gql) as g:
+            tr.load()[0].mark_needs_human("checks failed", "boom")
+        updates = [c.args[1]["input"] for c in g.call_args_list if c.args[0] is L.M_UPDATE]
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0], {"stateId": "s-un", "addedLabelIds": [LABELS["needs-human"]],
+                                      "removedLabelIds": [LABELS["go"]]})
+
+    def test_release_is_one_issue_update_and_keeps_go(self):
+        tr, node = make(["ready-for-human", "go"])
+        with mock.patch.object(tr.api, "gql", wraps=tr.api.gql) as g:
+            tr.load()[0].mark_ready("stopped by pause")
+        updates = [c.args[1]["input"] for c in g.call_args_list if c.args[0] is L.M_UPDATE]
+        self.assertEqual(updates, [{"stateId": "s-un"}])
 
     def test_park_then_sync_stays_parked(self):
         tr, node = self.park_approved()

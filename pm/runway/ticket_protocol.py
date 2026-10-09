@@ -31,6 +31,7 @@ Trackers differ only in wording (`Rules`) and in write order; the trust, go and 
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -234,13 +235,18 @@ class Ticket:
         c = self.tr.c
         label, approve = c["needs_human_label"], c["approve_label"]
         gated = self.gate == "approved"
-        # An approval is spent by the run it let through: dropping `go` here keeps sync from re-approving every tick.
-        self._release(add=[label], remove=[approve])
         if gated:
             retry = f"Comment `go` (or re-add the `{approve}` label) to retry."
         else:
             retry = f"Remove `{label}` or comment `go` to retry."
-        self._comment(f"Parked: {why}. {retry}\n\n{detail}")
+        full = marked(f"Parked: {why}. {retry}\n\n{detail}")
+        # The park is written down before the first tracker write, so a write that fails halfway is finished by the
+        # next sync (Tracker.finish_parks) instead of leaving a go Joe posted since Runway last wrote to be replayed.
+        self.tr.park_begin(self.id, full)
+        # One write: an approval is spent by the run it let through, so `go` goes in the same write that parks it.
+        self._release(add=[label], remove=[approve])
+        self._post(full)
+        self.tr.park_done(self.id)
 
     def mark_ready(self, note: str) -> None:
         self._release()
@@ -254,10 +260,24 @@ class Ticket:
         self._relabel(add=[self.tr.c["needs_human_label"]])
 
     def approve(self, note: str) -> None:
+        # The note first: it is the durable record of the approval, and `approval_half_done` finishes the label
+        # write from it if that write fails. Labels first would enable the ticket and could lose the note.
+        self._comment(f"Approved. {note}".strip())
+        self.enable()
+
+    def enable(self) -> None:
+        """The label write of an approval: `go` on a ready-for-human ticket, and off `needs-human`."""
         c = self.tr.c
         add = [c["approve_label"]] if self.gate == "human" else []
         self._relabel(add=add, remove=[c["needs_human_label"]])
-        self._comment(f"Approved. {note}".strip())
+
+    @property
+    def approval_half_done(self) -> bool:
+        """Parked, with Runway's own latest comment an approval and nothing from Joe after it: the note landed and
+        the label write didn't."""
+        if self.status != "needs-human" or not self.comments:
+            return False
+        return self.comments[-1]["body"].startswith(f"{MARK} · Approved.")
 
     def decline(self, note: str) -> None:
         if note.lower().startswith("drop"):
@@ -280,6 +300,53 @@ class Tracker:
             f.write(f"{dt.datetime.now().strftime('%Y-%m-%d %H:%M')}  {line}\n")
         print(line)
 
+    # -- parks that are half done: `_pm/runway-pending.json` maps a ticket id to the park comment it still owes.
+    # A file rather than a tracker record: the tracker is what just failed, and a record there would need another
+    # write that can fail the same way. The Mac that was parking finishes it on its next sync.
+
+    def _pending_path(self) -> Path:
+        return self.root / "_pm" / "runway-pending.json"
+
+    def _pending(self) -> dict:
+        try:
+            data = json.loads(self._pending_path().read_text())
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _pending_save(self, data: dict) -> None:
+        p = self._pending_path()
+        if data:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(data, indent=1) + "\n")
+        elif p.exists():
+            p.unlink()
+
+    def park_begin(self, ticket_id: str, comment: str) -> None:
+        self._pending_save({**self._pending(), ticket_id: {"comment": comment}})
+
+    def park_done(self, ticket_id: str) -> None:
+        data = self._pending()
+        if data.pop(ticket_id, None) is not None:
+            self._pending_save(data)
+
+    def finish_parks(self) -> None:
+        """Finish every park a failed write left half done: the state change when it never landed, then the comment."""
+        pending = self._pending()
+        if not pending:
+            return
+        c = self.c
+        by_id = {t.id: t for t in self.load()}
+        for ticket_id, rec in pending.items():
+            t = by_id.get(ticket_id)
+            if t is not None and not t.closed:
+                if t.status != "needs-human":
+                    t._release(add=[c["needs_human_label"]], remove=[c["approve_label"]])
+                if not any(cm["body"] == rec["comment"] for cm in t.comments):
+                    t._post(rec["comment"])
+                print(f"sync  {ticket_id} finished a park that failed halfway")
+            self.park_done(ticket_id)
+
     def create(self, title: str, body: str, labels: list[str]) -> str:
         """Open a new ticket and return its ref. The body starts with the 🛫 marker so a later read never takes
         it for Joe's. The adapter's `_create(title, full, labels)` does the write."""
@@ -294,8 +361,13 @@ class Tracker:
     def sync(self) -> None:
         """Turn Joe's answers in the tracker into ticket state before the tick decides anything."""
         r = self.rules
+        self.finish_parks()
         for t in self.load():
             if t.status != "needs-human":
+                continue
+            if t.approval_half_done:
+                t.enable()  # the note landed, the labels didn't: finish the approval, don't post the note again
+                print(f"sync  {t.id} finished an approval that failed halfway")
                 continue
             for c in t.stranger_calls():
                 self._log_once(f"sync  {t.id} ignored '{c['body'].strip().split()[0]}' from {c['who']} "
