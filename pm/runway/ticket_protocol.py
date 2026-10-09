@@ -20,7 +20,7 @@ Writes (each an adapter method; the protocol decides which, in what order, with 
   _release(add, remove)        give the ticket back (unassign, or move to unstarted) and change labels
   _relabel(add, remove)        change labels only
 
-Differences between trackers today are named switches in `Rules`, not two copies of the code.
+Trackers differ only in wording (`Rules`) and in write order; the trust, go and park rules are the same for both.
 """
 from __future__ import annotations
 
@@ -39,19 +39,14 @@ class Rules:
     name: str                   # "GitHub": the word in ticket text, the sync note and the log lines
     children: str               # what a spec's children are called: "sub-issues", "child issues"
     where: str                  # how sync says where Joe answered: "on GitHub", "in Linear"
-    trusted_only: bool          # only trusted authors' comments are read; the rest are counted and left out
     trust_label: str            # who counts as trusted, for the one-line note and the log
-    go_note: str | None         # the note an approval carries; None = whatever follows `go` in Joe's comment
-    retry_by_go: bool           # the park line for an ungated ticket also offers "or comment `go`"
     close_with_comment: bool    # write order: close and comment in one write, else close then comment
 
 
-GITHUB = Rules(name="GitHub", children="sub-issues", where="on GitHub", trusted_only=True,
-               trust_label="owner, member or collaborator", go_note=None, retry_by_go=False,
-               close_with_comment=True)
-LINEAR = Rules(name="Linear", children="child issues", where="in Linear", trusted_only=False,
-               trust_label="", go_note="Picked up Joe's go from Linear.", retry_by_go=True,
-               close_with_comment=False)
+GITHUB = Rules(name="GitHub", children="sub-issues", where="on GitHub",
+               trust_label="owner, member or collaborator", close_with_comment=True)
+LINEAR = Rules(name="Linear", children="child issues", where="in Linear",
+               trust_label="the workspace's members", close_with_comment=False)
 
 
 # How long a Mac has to finish a claim (the stamp, then the assignment or state change) before a later stamp
@@ -86,9 +81,9 @@ class Ticket:
         self.slug = f"{slug_head}-{slugify(title)}"
         self.labels = labels
         every = sorted(comments, key=lambda c: c["createdAt"])
-        self.comments = [c for c in every if c["trusted"]] if self.rules.trusted_only else every
+        self.comments = [c for c in every if c["trusted"]]
         self.untrusted = len(every) - len(self.comments)
-        self.strangers = [c for c in every if not c["trusted"]] if self.rules.trusted_only else []
+        self.strangers = [c for c in every if not c["trusted"]]
 
     # -- read side --
 
@@ -216,10 +211,8 @@ class Ticket:
         self._release(add=[label], remove=[approve])
         if gated:
             retry = f"Comment `go` (or re-add the `{approve}` label) to retry."
-        elif self.rules.retry_by_go:
-            retry = f"Remove `{label}` or comment `go` to retry."
         else:
-            retry = f"Remove `{label}` to retry."
+            retry = f"Remove `{label}` or comment `go` to retry."
         self._comment(f"Parked: {why}. {retry}\n\n{detail}")
 
     def mark_ready(self, note: str) -> None:
@@ -284,7 +277,7 @@ class Tracker:
             last = replies[-1] if replies else ""
             said_go = bool(GO_RE.match(last))
             if t.gate == "approved" or said_go:
-                t.approve(r.go_note or (GO_RE.sub("", last, count=1) if said_go else ""))
+                t.approve(GO_RE.sub("", last, count=1) if said_go else "")
                 print(f"sync  {t.id} approved {r.where}")
             elif re.match(r"drop\b", last, re.I):
                 t.decline(f"drop (from {r.name})")
