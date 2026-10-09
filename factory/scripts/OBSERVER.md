@@ -7,9 +7,11 @@ exit or confident agent summary is not proof of completion.
 
 `observe.py` reads this repository's Runway state and appended run records every
 600 seconds (ten minutes), matching the verified Runway scheduler interval.
-It writes only `_pm/observer/`: an atomic deduplication cursor,
-bounded event packets, a lock, and its own check duration. The first scan marks
-historical records as `baseline: true`; they are not new incidents.
+It writes only `_pm/observer/`: an atomic cursor plus retained packets,
+a bounded JSONL projection, a lock, rotating logs, and its own check duration.
+The initial source inode and byte boundary are persisted until its backlog is
+drained across 500-record batches. Historical records remain `baseline: true`
+across those batches; records appended after the initial boundary are new.
 
 Events cover completed prep calls, parked/failed work, finish results, pause or
 waiting transitions, and phases exceeding their configured time budget. An
@@ -17,7 +19,10 @@ overdue phase is a request to verify liveness, not proof of a dead process.
 Normal successful ticket runs do not emit events. No model runs per poll.
 Repeated waiting reasons are suppressed across ticks until the condition changes
 or clears. The cursor handles partial records, truncation and inode rotation;
-the latest 2,000 event identities are retained. Each event includes a local issue
+the latest 2,000 event identities are retained. The packet queue retains at most
+the latest 1,000 packets and 2 MiB of serialized packet data, whichever fills
+first. Older observer packets are evicted; Runway's original records and tracker
+issues are untouched. Each event includes a local issue
 draft with publishing disabled, the check command and an observed integration
 head. For historical records that head is not proof of the failed commit: verify
 it before publishing. No raw error/log excerpt is copied automatically.
@@ -56,6 +61,7 @@ python3 factory/scripts/observer_service.py preview --root /path/to/approved/rep
 python3 factory/scripts/observer_service.py install --root /path/to/approved/repo
 python3 factory/scripts/observer_service.py status --root /path/to/approved/repo
 python3 factory/scripts/observer_service.py set-interval --root /path/to/approved/repo --interval 600
+python3 factory/scripts/observer_service.py refresh --root /path/to/approved/repo
 python3 -m unittest discover -s tests -p test_runway_observer.py -v
 ```
 
@@ -68,13 +74,36 @@ the observer if needed; do not restart Runway. Uninstall uses
 remain for audit. The source is outside `factory/plugin` and is not distributed
 by marketplace installation yet.
 
-`set-interval` updates only the matching observer's cadence and reloads that
-observer. It preserves other plist fields and the queue/cursor. The installed
+`set-interval` updates the matching observer's cadence and applies its bounded-log
+routing, then reloads that observer. `refresh` applies log routing while retaining
+the existing cadence. Both preserve scope, other plist fields and queue/cursor. The installed
 `--interval` argument controls the polling sleep; `ThrottleInterval` is restart
 throttling, not polling frequency. Runway's scheduler remains separate and was
 verified configured at 600 seconds; this command never changes it. This matches
 frequency, not exact clock phase, and does not automatically follow future
 scheduler changes. Reverify the runner plist before choosing a new value.
+
+## Persistence and retention
+
+`state.json` is the authoritative atomic commit containing both the source
+cursor and retained packets. `events.jsonl` is a replaceable projection, not an
+append-only journal; consumers must use event IDs rather than byte offsets.
+If projection writing fails after the state commit, the next check rebuilds it
+without generating duplicate events. If the state write fails, neither cursor
+nor queue advances. Files are flushed and fsynced before atomic replacement.
+Legacy queues are imported and reconciled against existing event IDs on upgrade.
+
+The daemon writes INFO/ERROR diagnostics through rotating handlers: each of
+`service.log` and `service-error.log` is limited to 256 KiB plus two backups.
+Messages are bounded; raw source records are never logged. launchd stdout/stderr
+go to `/dev/null`, preventing a second unrotated log stream. `--once` still prints
+new packets for interactive inspection. Startup/import errors before the logger
+initializes must be diagnosed through launchctl status/exit information.
+
+Uninstall tolerates a verified absent service (`launchctl print` reports error
+113 and "Could not find service") and removes its plist. Other access/domain
+errors are surfaced without removing the plist. This also permits recovery from
+a failed bootstrap. No Runway plist, logs or user data is removed.
 
 ## Independent completion and merge gate
 

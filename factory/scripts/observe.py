@@ -8,10 +8,48 @@ import argparse
 import datetime
 import hashlib
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 import os
 import subprocess
 import time
 from pathlib import Path
+
+MAX_PACKETS = 1000
+MAX_QUEUE_BYTES = 2 * 1024 * 1024
+LOG_BYTES = 256 * 1024
+LOG_BACKUPS = 2
+
+
+def atomic_write(path, text):
+    temp = path.with_suffix('.tmp')
+    with temp.open('w') as stream:
+        stream.write(text)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temp.replace(path)
+
+
+def retained(packets):
+    result, size = [], 0
+    for packet in reversed(packets[-MAX_PACKETS:]):
+        length = len((json.dumps(packet) + '\n').encode())
+        if size + length > MAX_QUEUE_BYTES:
+            break
+        result.append(packet)
+        size += length
+    return list(reversed(result))
+
+
+def service_logger(out, max_bytes=LOG_BYTES):
+    logger = logging.Logger('runway-observer', level=logging.INFO)
+    for name, level in [('service.log', logging.INFO), ('service-error.log', logging.ERROR)]:
+        handler = RotatingFileHandler(out / name, maxBytes=max_bytes,
+                                      backupCount=LOG_BACKUPS, encoding='utf-8')
+        handler.setLevel(level)
+        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+        logger.addHandler(handler)
+    return logger
 
 
 def read_json(path):
@@ -44,10 +82,14 @@ def inspect(root, saved):
     try:
         with path.open('rb') as stream:
             st = os.fstat(stream.fileno())
+            if 'baseline_end' not in saved:
+                saved['baseline_identity'] = st.st_ino
+                saved['baseline_end'] = st.st_size if 'offset' not in saved else 0
             if identity != st.st_ino or st.st_size < offset:
                 offset = 0
             stream.seek(offset)
             for _ in range(500):
+                start = stream.tell()
                 line = stream.readline(65537)
                 if len(line) > 65536:
                     offset = stream.tell()  # discard oversized fragments without blocking the queue
@@ -63,7 +105,9 @@ def inspect(root, saved):
                     continue
                 kind = row.get('kind')
                 if kind in ('finish', 'prep') or (kind == 'outcome' and row.get('result') not in ('done', 'stopped')) or row.get('exit', 0) != 0:
-                    events.append({k: row[k] for k in ('at', 'kind', 'ticket', 'result', 'exit', 'check_exit', 'pr') if k in row})
+                    event = {k: row[k] for k in ('at', 'kind', 'ticket', 'result', 'exit', 'check_exit', 'pr') if k in row}
+                    event['_baseline'] = st.st_ino == saved['baseline_identity'] and start < saved['baseline_end']
+                    events.append(event)
             saved['identity'] = st.st_ino
             saved['offset'] = offset
     except OSError:
@@ -90,13 +134,29 @@ def tick(root, out):
     out.mkdir(parents=True, exist_ok=True)
     state_path = out / 'state.json'
     saved = read_json(state_path)
-    history = saved.get('seen', [])
+    # State and packets are one atomic commit. JSONL is a bounded projection,
+    # rebuilt even when the previous export failed after the state committed.
+    packets = saved.get('packets')
+    if packets is None:
+        packets = []
+        legacy = out / 'events.jsonl'
+        if legacy.exists():
+            with legacy.open() as stream:
+                for line in stream:
+                    try:
+                        packet = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(packet, dict):
+                        packets = retained(packets + [packet])
+    history = list(dict.fromkeys(saved.get('seen', []) + [p['id'] for p in packets if isinstance(p.get('id'), str)]))
     seen = set(history)
     baseline = 'offset' not in saved
     events, heartbeat = inspect(root, saved)
     emitted = []
     context = None
     for event in events:
+        historical = event.pop('_baseline', baseline)
         key = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
         if key in seen:
             continue
@@ -116,23 +176,22 @@ def tick(root, out):
                        'check_command': str(config.get('check_cmd', ''))[:500]}
         packet = {'id': key, 'observed_at': time.time(), 'repo': str(root),
                   'event': {k: v[:500] if isinstance(v, str) else v for k, v in event.items()},
-                  'baseline': baseline, 'liveness': 'unverified', **context}
+                  'baseline': historical, 'liveness': 'unverified', **context}
         # Local publication draft only: no logs, credentials or tracker calls.
         packet['issue_draft'] = {'related_ticket': event.get('ticket'),
                                 'candidate_head': context['observed_integration_head'],
                                 'command': context['check_command'],
                                 'error_excerpt': None, 'publishing_enabled': False,
                                 'note': 'Observed head may differ from the historical event head; verify before publishing.'}
-        with (out / 'events.jsonl').open('a') as stream:
-            stream.write(json.dumps(packet) + '\n')
+        packets.append(packet)
         emitted.append(packet)
     saved['seen'] = history[-2000:]
     saved['snapshot'] = {k: heartbeat.get(k) for k in ('phase', 'ticket', 'attempt', 'since', 'pid', 'agent_pid')}
     saved['checked_at'] = time.time()
     saved['last_check_seconds'] = time.perf_counter() - started
-    temp = state_path.with_suffix('.tmp')
-    temp.write_text(json.dumps(saved, indent=2) + '\n')
-    temp.replace(state_path)
+    saved['packets'] = retained(packets)
+    atomic_write(state_path, json.dumps(saved, indent=2) + '\n')
+    atomic_write(out / 'events.jsonl', ''.join(json.dumps(p) + '\n' for p in saved['packets']))
     return emitted
 
 
@@ -148,14 +207,23 @@ def main():
     # One observer per output directory; never acquire the runner's lock.
     import fcntl
     out.mkdir(parents=True, exist_ok=True)
+    logger = service_logger(out)
     with (out / 'observer.lock').open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
         while True:
-            for packet in tick(root, out):
-                print(json.dumps(packet), flush=True)
+            try:
+                packets = tick(root, out)
+                logger.info('Check complete; %d new events', len(packets))
+                if args.once:
+                    for packet in packets:
+                        print(json.dumps(packet), flush=True)
+            except Exception as error:
+                logger.error('%s: %s', type(error).__name__, str(error)[:1000])
+                if args.once:
+                    raise
             if args.once:
                 return
             time.sleep(args.interval)
