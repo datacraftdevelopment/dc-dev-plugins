@@ -7,7 +7,12 @@ Linear adapter reads:
   ready-for-human   Needs Joe. Runway preps a packet first.         (Gate: human)
   go                Joe's approval on a ready-for-human issue.      (Gate: approved)
   needs-human       Parked: waiting on Joe. Runway never picks it.  (Status: needs-human)
+  spec              A spec (what /to-spec publishes). Never run, even with a Runway label.
   harness:<name>    Per-issue harness override.
+
+An issue with sub-issues is a spec too, label or not: its sub-issues are the tickets. A spec has gate
+`none`, so Runway never runs it, but it still gates a ticket that names it as a blocker. The first
+time a labelled spec is skipped, one line goes to `_pm/runway.log`.
 
 Config: `"tracker": "github"`, and the repo from `"github": {"repo": "owner/name"}`, else from the
 clone's `origin` remote. Optional `"github": {"gh": "<gh command>"}` (default `gh`).
@@ -79,6 +84,7 @@ DEFAULTS = {
     "human_label": "ready-for-human",
     "approve_label": "go",
     "needs_human_label": "needs-human",
+    "spec_label": "spec",
 }
 AUTH_HELP = "GitHub CLI isn't ready. Install gh and run `gh auth login`, or set GH_TOKEN."
 AUTH_RE = re.compile(r"gh auth login|GH_TOKEN|GITHUB_TOKEN|not logged in|authentication|bad credentials|HTTP 401",
@@ -95,6 +101,7 @@ ISSUE_FIELDS = """
   labels(first: 30) { nodes { name } }
   assignees(first: 10) { totalCount nodes { login } }
   comments(last: 50) { nodes { body createdAt authorAssociation author { login } } }
+  subIssues { totalCount }
   blockedBy(first: 25) { nodes { number title state repository { nameWithOwner } } }
 """
 
@@ -231,8 +238,15 @@ class GitHubTicket:
         return "ready"
 
     @property
+    def is_spec(self) -> bool:
+        """A spec is labelled `spec` or has sub-issues. Runway never runs one."""
+        return self.tr.c["spec_label"] in self.labels or (self.node.get("subIssues") or {}).get("totalCount", 0) > 0
+
+    @property
     def gate(self) -> str:
         c = self.tr.c
+        if self.is_spec:
+            return "none"
         if c["human_label"] in self.labels:
             return "approved" if c["approve_label"] in self.labels else "human"
         if c["agent_label"] in self.labels:
@@ -386,7 +400,8 @@ class GitHubTracker:
         wanted = {"agent_label": ("4EA7FC", "Runway: AFK build work"),
                   "human_label": ("F2994A", "Runway: needs Joe's call first"),
                   "approve_label": ("4CB782", "Runway: Joe approved a ready-for-human issue"),
-                  "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe")}
+                  "needs_human_label": ("EB5757", "Runway: parked, waiting on Joe"),
+                  "spec_label": ("8B8FA3", "A spec: its sub-issues are the tickets. Runway never runs it")}
         for key, (color, desc) in wanted.items():
             name = self.c[key]
             if name.lower() in have:
@@ -414,6 +429,10 @@ class GitHubTracker:
                 break
             after = d["pageInfo"]["endCursor"]
         tickets = [GitHubTicket(n, self) for n in sorted(nodes, key=lambda n: n["number"])]
+        for t in tickets:
+            if self.c["spec_label"] in t.labels and t.node["state"] != "CLOSED":
+                self._log_once(f"skip  {t.id} is labelled {self.c['spec_label']}: a spec, never run "
+                               "(its sub-issues are the tickets)")
         known = {t.id for t in tickets}
         stubs: dict[str, dict] = {}
         for t in tickets:

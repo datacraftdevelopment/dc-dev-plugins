@@ -79,12 +79,12 @@ class TrackerSetup(unittest.TestCase):
         fake = self.fake(labels=["ready-for-agent", "go"], private=True)
         tracker(fake).setup()
         made = [c[2] for c in fake.creates()]
-        self.assertEqual(sorted(made), ["needs-human", "ready-for-human"])
+        self.assertEqual(sorted(made), ["needs-human", "ready-for-human", "spec"])
         self.assertFalse([c for c in fake.calls() if "--force" in c or c[:2] == ["label", "edit"]])
         self.assertTrue(all("--repo" in c and "o/r" in c for c in fake.creates()))
 
     def test_all_labels_present_creates_nothing(self):
-        fake = self.fake(labels=["ready-for-agent", "ready-for-human", "go", "needs-human"])
+        fake = self.fake(labels=["ready-for-agent", "ready-for-human", "go", "needs-human", "spec"])
         tracker(fake).setup()
         self.assertEqual(fake.creates(), [])
 
@@ -129,7 +129,7 @@ class TrackerSetup(unittest.TestCase):
         r = subprocess.run([sys.executable, str(RUNWAY_DIR / "runway.py"), "--root", str(root), "setup"],
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(len(fake.creates()), 4)
+        self.assertEqual(len(fake.creates()), 5)
 
 
 class SetupScript(unittest.TestCase):
