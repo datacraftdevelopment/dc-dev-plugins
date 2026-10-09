@@ -84,6 +84,12 @@ struct RunwayMenu: View {
         ForEach(store.entries) { entry in
             Menu("\(symbol(entry.status.state)) \(entry.status.name)  \(entry.status.detail)") {
                 let project = entry.project
+                if case .error = entry.status.state {
+                    Button("Show error details") { show(project.label, ticket: nil, tab: .projects) }
+                    Button("Talk it through") { Task { await store.talkThroughLoop(project) } }
+                    if let failure = store.talkError(project: project, ticket: nil) { Text("⚠︎ \(String(failure.prefix(200)))") }
+                    Divider()
+                }
                 let canStart = project.repoPath != nil && !project.loaded
                 Button("Start loop") { Task { await store.startLoop(project) } }
                     .disabled(!canStart || project.error != nil)
@@ -100,11 +106,19 @@ struct RunwayMenu: View {
             Divider()
             Text("Decisions waiting")
             ForEach(waiting, id: \.1.id) { entry, ticket in
-                Button("\(ticket.id) \(ticket.title)") {
-                    store.requestedRoute = NotificationRoute(projectLabel: entry.project.label, ticketID: ticket.id, tab: .decisions)
-                    NSApplication.shared.activate(ignoringOtherApps: true)
-                    openWindow(id: "runway")
-                }
+                let kind = store.snapshot(for: entry.project.label)?.errored[ticket.id]
+                ticketMenu(entry.project, id: ticket.id, title: ticket.title, errored: kind, tab: .decisions)
+            }
+        }
+        // Errored tickets that aren't waiting come under the waiting ones.
+        let errored = store.entries.flatMap { entry in
+            (store.snapshot(for: entry.project.label)?.needsYou ?? []).filter { !$0.waiting }.map { (entry, $0) }
+        }
+        if !errored.isEmpty {
+            Divider()
+            Text("Errored tickets")
+            ForEach(errored, id: \.1.id) { entry, row in
+                ticketMenu(entry.project, id: row.id, title: row.title, errored: row.errored, tab: .queue)
             }
         }
         Divider()
@@ -133,6 +147,23 @@ struct RunwayMenu: View {
         }
         Button("Quit") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    /// One waiting or errored ticket: a submenu with where it lives and the "Talk it through" button.
+    @ViewBuilder private func ticketMenu(_ project: Project, id: String, title: String, errored: String?,
+                                         tab: NotificationTab) -> some View {
+        let flag = errored.map { "  ⚑ \(ErroredKind.words($0))" } ?? ""
+        Menu("\(id) \(title)\(flag)") {
+            Button(tab == .decisions ? "Open decision" : "Open in queue") { show(project.label, ticket: id, tab: tab) }
+            Button("Talk it through") { Task { await store.talkThrough(ticket: id, in: project) } }
+            if let failure = store.talkError(project: project, ticket: id) { Text("⚠︎ \(String(failure.prefix(200)))") }
+        }
+    }
+
+    private func show(_ label: String, ticket: String?, tab: NotificationTab) {
+        store.requestedRoute = NotificationRoute(projectLabel: label, ticketID: ticket, tab: tab)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        openWindow(id: "runway")
     }
 
     private func symbol(_ state: RunState) -> String {

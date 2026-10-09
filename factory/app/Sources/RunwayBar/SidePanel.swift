@@ -98,7 +98,9 @@ private struct ProjectNow: View {
             NeedsYouSection(store: store, entry: entry, rows: NeedsYouRow.rows(from: snapshot),
                             highlighted: highlightNeedsYou, open: open)
             if !queued.isEmpty { upNext(queued, snapshot: snapshot) }
-            if let heartbeat, let stopped = store.stoppedLine(heartbeat) {
+            if case .error = entry.status.state {
+                errorCard
+            } else if let heartbeat, let stopped = store.stoppedLine(heartbeat) {
                 stoppedCard(heartbeat, line: stopped, snapshot: snapshot)
             } else {
                 nowCard(heartbeat: heartbeat, live: live, snapshot: snapshot)
@@ -108,6 +110,25 @@ private struct ProjectNow: View {
         .background(Color.clear.contentShape(Rectangle())
             .onTapGesture(count: 2) { open(NotificationRoute(projectLabel: project.label, ticketID: nil, tab: .projects)) })
         .task(id: now) { log.poll() }
+    }
+
+    /// A project in error: the reason in full, a click to the window's Now tab where the log lines are, and the button.
+    private var errorCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                open(NotificationRoute(projectLabel: entry.project.label, ticketID: nil, tab: .projects))
+            } label: {
+                Label(entry.status.detail, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.medium)).foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).help("Show the error details")
+            TalkButton(store: store, project: entry.project).buttonStyle(.borderless).font(.caption)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.red.opacity(0.5), lineWidth: 1))
     }
 
     private func showNeedsYou() {
@@ -254,10 +275,12 @@ private struct NeedsYouSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel(text: "Needs you · \(rows.count)", trailing: nil)
                 ForEach(rows) { row in
-                    NeedsYouRowView(row: row, answer: feed.answers[row.id], error: feed.errors[row.id],
+                    NeedsYouRowView(row: row, store: store, project: entry.project,
+                                    answer: feed.answers[row.id], error: feed.errors[row.id],
                                     answering: feed.isAnswering(row.id), tracker: entry.project.tracker,
                                     canSend: canSend(row.id),
-                                    details: { open(NotificationRoute(projectLabel: entry.project.label, ticketID: row.id, tab: .decisions)) },
+                                    details: { open(NotificationRoute(projectLabel: entry.project.label, ticketID: row.id,
+                                                                      tab: row.waiting ? .decisions : .queue)) },
                                     send: { go, note in send(row, go: go, note: note) })
                 }
                 ForEach(gone) { card in
@@ -293,6 +316,8 @@ private struct NeedsYouSection: View {
 
 private struct NeedsYouRowView: View {
     let row: NeedsYouRow
+    let store: ProjectStore
+    let project: Project
     let answer: DecisionAnswer?
     let error: String?
     let answering: Bool
@@ -309,7 +334,8 @@ private struct NeedsYouRowView: View {
                 Text(row.title.isEmpty ? "—" : row.title).font(.caption.weight(.medium))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let reason = row.reason { Text(reason).font(.caption).foregroundStyle(.secondary) }
+            if let errored = row.errored { ErroredFlag(kind: errored, compact: true) }
+            if let reason = row.reason, row.waiting { Text(reason).font(.caption).foregroundStyle(.secondary) }
             if let recommended = row.recommended {
                 Text("Recommended: \(recommended)").font(.caption).foregroundStyle(.green).lineLimit(2)
             }
@@ -320,7 +346,10 @@ private struct NeedsYouRowView: View {
                 Button("Details", action: details)
             }
             .buttonStyle(.borderless).font(.caption)
-            if let answer {
+            TalkButton(store: store, project: project, ticket: row.id).buttonStyle(.borderless).font(.caption)
+            if !row.waiting {
+                EmptyView()  // errored only: nothing to go or no on
+            } else if let answer {
                 Text(answer.text).font(.caption).foregroundStyle(.green)
             } else {
                 DisclosureGroup("Answer") {

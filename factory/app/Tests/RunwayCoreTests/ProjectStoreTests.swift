@@ -131,6 +131,30 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertNotNil(store.pause)
     }
 
+    func testTalkItThroughOpensTerminalAndAFailedLaunchShowsItsOutputBesideTheButton() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        await store.talkThrough(ticket: "GH-7", in: project)
+        await store.talkThroughLoop(project)
+        XCTAssertEqual(ran[0], store.tools?.discuss(ticket: "GH-7", repo: repo.path))
+        XCTAssertEqual(ran[1], store.tools?.discussLoop(repo: repo.path))
+        XCTAssertNil(store.talkError(project: project, ticket: "GH-7"))
+
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "not authorised to control Terminal")
+        await store.talkThrough(ticket: "GH-7", in: project)
+        await store.talkThroughLoop(project)
+        XCTAssertEqual(store.talkError(project: project, ticket: "GH-7"), "not authorised to control Terminal")
+        XCTAssertEqual(store.talkError(project: project, ticket: nil), "not authorised to control Terminal")
+        XCTAssertNil(store.talkError(project: project, ticket: "GH-8"))
+        XCTAssertNil(store.lastError, "shown beside the button, not in the menu")
+
+        nextResult = CommandResult(status: 0, stdout: "", stderr: "")
+        await store.talkThrough(ticket: "GH-7", in: project)
+        XCTAssertNil(store.talkError(project: project, ticket: "GH-7"))
+    }
+
     func testFailureShowsStderr() async throws {
         try installPlist()
         let store = makeStore()

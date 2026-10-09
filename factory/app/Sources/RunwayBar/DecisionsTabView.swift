@@ -19,7 +19,7 @@ struct DecisionsTab: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(cards) { card in
-                            DecisionCardView(card: card, feed: feed, repo: entry.project.repoPath, tracker: entry.project.tracker, tools: store.tools,
+                            DecisionCardView(card: card, feed: feed, store: store, project: entry.project, repo: entry.project.repoPath, tracker: entry.project.tracker, tools: store.tools,
                                              statusCommand: statusCommand, open: open)
                         }
                     }
@@ -74,6 +74,8 @@ struct DecisionsTab: View {
 private struct DecisionCardView: View {
     let card: DecisionCard
     let feed: DecisionsFeed
+    let store: ProjectStore
+    let project: Project
     let repo: String?
     let tracker: String?
     let tools: RunwayTools?
@@ -88,6 +90,7 @@ private struct DecisionCardView: View {
                 Text(ticket.id).font(.headline.monospaced())
                 Text(ticket.title).font(.headline).lineLimit(2)
                 Spacer()
+                if let errored = ticket.errored { ErroredFlag(kind: errored) }
                 if ticket.url != nil { Button(TicketLink.buttonTitle(tracker: tracker)) { open(ticket.url) } }
             }
             if let packet = ticket.packet, !packet.isEmpty {
@@ -105,6 +108,7 @@ private struct DecisionCardView: View {
                     Button("Go") { send(go: true) }.keyboardShortcut(.defaultAction).disabled(!canSend)
                     Button("No") { send(go: false) }.disabled(!canSend)
                     if feed.isAnswering(ticket.id) { ProgressView().controlSize(.small) }
+                    TalkButton(store: store, project: project, ticket: ticket.id)
                 }
             }
             if let error = feed.errors[ticket.id] {

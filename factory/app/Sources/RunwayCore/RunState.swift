@@ -115,15 +115,17 @@ public struct ProjectStatus: Equatable, Sendable {
     public let detail: String
     /// Decisions waiting on Joe in this project.
     public let waiting: Int
+    /// Tickets with a failed attempt that are not already counted as waiting.
+    public var errored: Int = 0
 }
 
 public enum StatusResolver {
     /// Heartbeat + launchctl + pause file + decisions waiting → one state.
     /// A heartbeat in an active phase whose `pid` is gone means the tick died; that is an error, not running.
-    public static func resolve(project: Project, heartbeat: Heartbeat?, pause: PauseInfo?, waiting: Int,
+    public static func resolve(project: Project, heartbeat: Heartbeat?, pause: PauseInfo?, waiting: Int, errored: Int = 0,
                                now: Date, pidAlive: (Int) -> Bool) -> ProjectStatus {
         func status(_ state: RunState, _ detail: String) -> ProjectStatus {
-            ProjectStatus(label: project.label, name: project.name, state: state, detail: detail, waiting: waiting)
+            ProjectStatus(label: project.label, name: project.name, state: state, detail: detail, waiting: waiting, errored: errored)
         }
         if let message = project.error { return status(.error(message), message) }
         guard project.loaded else { return status(.off, "loop off") }
@@ -198,6 +200,6 @@ public enum OverallState: Equatable, Sendable {
 
     /// Decisions waiting across every project.
     public static func badge(_ statuses: [ProjectStatus]) -> Int {
-        statuses.reduce(0) { $0 + $1.waiting }
+        statuses.reduce(0) { $0 + $1.waiting + $1.errored }
     }
 }

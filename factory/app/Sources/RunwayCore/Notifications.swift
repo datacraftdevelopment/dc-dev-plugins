@@ -104,9 +104,15 @@ public struct StatusSnapshot: Equatable, Sendable {
 
     /// What the panel's "Needs you" section draws, in the order of status's `waiting` group.
     public let needsYou: [NeedsYouRow]
+    /// Every ticket whose latest attempt didn't merge, by id: the kind (`check-failed`…).
+    public let errored: [String: String]
+
+    /// Tickets in the section only because they errored (not waiting on a decision).
+    public var erroredOnlyCount: Int { needsYou.filter { !$0.waiting }.count }
 
     public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
-                upNext: [UpNext] = [], needsYou: [NeedsYouRow] = []) {
+                upNext: [UpNext] = [], needsYou: [NeedsYouRow] = [], errored: [String: String] = [:]) {
+        self.errored = errored
         self.needsYou = needsYou
         self.tickets = tickets
         self.readyCount = readyCount
@@ -141,11 +147,21 @@ public struct StatusSnapshot: Equatable, Sendable {
                        blockedBy: (byID[id]?["blocked_by"] as? [String]) ?? [])
             }
         }
-        let needsYou = ((groups["waiting"] as? [String]) ?? []).compactMap { id in
-            byID[id].map { NeedsYouRow(entry: $0, url: urls[id]) }
+        let waitingIDs = (groups["waiting"] as? [String]) ?? []
+        var errored: [String: String] = [:]
+        for entry in all {
+            if let id = entry["id"] as? String, let kind = entry["errored"] as? String, !kind.isEmpty { errored[id] = kind }
         }
+        // Errored tickets that aren't waiting follow the waiting ones, in status's ticket order. The engine clears the flag on a merge.
+        let erroredOnly = all.compactMap { entry -> NeedsYouRow? in
+            guard let id = entry["id"] as? String, errored[id] != nil, !waitingIDs.contains(id) else { return nil }
+            return NeedsYouRow(entry: entry, url: urls[id], waiting: false)
+        }
+        let needsYou = waitingIDs.compactMap { id in
+            byID[id].map { NeedsYouRow(entry: $0, url: urls[id]) }
+        } + erroredOnly
         return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
-                              urls: urls, upNext: upNext, needsYou: needsYou)
+                              urls: urls, upNext: upNext, needsYou: needsYou, errored: errored)
     }
 }
 
@@ -172,7 +188,7 @@ public struct ProjectSnapshot: Equatable, Sendable {
 }
 
 public enum NotificationTab: String, Equatable, Sendable {
-    case decisions, projects
+    case decisions, projects, queue
 }
 
 /// Where a click on a notification goes.

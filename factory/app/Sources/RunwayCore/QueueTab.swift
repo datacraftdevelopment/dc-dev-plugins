@@ -13,6 +13,8 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public let harness: String?
     /// The decision packet (Markdown) for a waiting ticket; nil for any other.
     public let packet: String?
+    /// Kind of the ticket's latest attempt that didn't merge (`check-failed`…); nil when not errored or the engine is older.
+    public var errored: String?
 }
 
 public struct QueueSections: Equatable, Sendable {
@@ -40,7 +42,8 @@ public struct QueueStatus: Equatable, Sendable {
                                status: raw["status"] as? String ?? "", gate: raw["gate"] as? String ?? "",
                                blockedBy: raw["blocked_by"] as? [String] ?? [],
                                waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String,
-                               packet: raw["packet"] as? String)
+                               packet: raw["packet"] as? String,
+                               errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 })
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }
