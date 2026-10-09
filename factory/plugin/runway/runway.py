@@ -937,11 +937,23 @@ def resolve_harness(cfg: dict, t=None) -> dict:
     return prof
 
 
+def answering_model(model_usage) -> str | None:
+    """The model that did most of the work in a Claude result's `modelUsage` (the costliest entry)."""
+    if not isinstance(model_usage, dict) or not model_usage:
+        return None
+
+    def cost(m):
+        u = model_usage[m]
+        return (u.get("costUSD") or 0) if isinstance(u, dict) else 0
+    return max(model_usage, key=cost)
+
+
 def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
-    """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns and usage,
-    each None when the harness doesn't report it. Unparseable output comes back as text unchanged."""
+    """(text, meta) from a harness's stdout. meta has session_id, cost_usd, num_turns, usage and model
+    (which model answered, from Claude's modelUsage), each None when the harness doesn't report it.
+    Unparseable output comes back as text unchanged."""
     meta = {"session_id": None, "cost_usd": None, "num_turns": None, "usage": None, "is_error": False,
-            "subtype": None}
+            "subtype": None, "model": None}
     if parser == "claude":
         try:
             d = json.loads(stdout)
@@ -950,7 +962,8 @@ def parse_output(parser: str, stdout: str) -> tuple[str, dict]:
         if isinstance(d, dict) and "result" in d:
             meta.update(session_id=d.get("session_id"), cost_usd=d.get("total_cost_usd"),
                         num_turns=d.get("num_turns"), usage=d.get("usage"),
-                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"))
+                        is_error=bool(d.get("is_error")), subtype=d.get("subtype"),
+                        model=answering_model(d.get("modelUsage")))
             return d.get("result") or "", meta
     elif parser == "codex":
         # `codex exec --json` prints one event per line: thread.started, item.completed, turn.completed.
@@ -1022,7 +1035,7 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     record(root, {"kind": kind, "ticket": ticket, "attempt": attempt, "cwd": str(cwd), "harness": harness["name"],
                   "exit": r.returncode, "secs": round(time.time() - t0),
                   "session_id": meta["session_id"], "cost_usd": meta["cost_usd"],
-                  "num_turns": meta["num_turns"], "usage": meta["usage"]})
+                  "num_turns": meta["num_turns"], "usage": meta["usage"], "model": meta["model"]})
     r.failure = agent_failure(r, text, meta)
     r.auth = bool(r.failure and (meta.get("subtype") == "authentication_failed" or AUTH_RE.search(
         "\n".join((text, r.stdout or "", r.stderr or "")))))
