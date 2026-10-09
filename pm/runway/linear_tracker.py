@@ -18,6 +18,10 @@ except as a blocker. Status comes from the workflow state: completed or canceled
 started is claimed, anything else is ready (duplicate counts as done). Blocking uses Linear's native "blocks"
 relation, which is what /to-tickets and /wayfinder create.
 
+A ticket reads its latest 50 comments (ticket text, packet, Joe's replies). `claimed_by` pages back, 50 at a
+time, only when a claimed ticket's 50 don't reach the start of the current claim cycle (the previous Runway
+comment that isn't a claim stamp, or the start of the ticket).
+
 Joe answers in Linear, from any device, and the next tick picks it up:
   - add the `go` label, or comment "go <any note>"  -> approved; the note reaches the agent
   - comment "drop"                                 -> moved to Canceled
@@ -62,7 +66,7 @@ ISSUE_FIELDS = """
   state { id name type }
   labels(first: 20) { nodes { id name } }
   children(first: 1) { nodes { id } }
-  comments(first: 25) { nodes { body createdAt } }
+  comments(last: 50) { pageInfo { hasPreviousPage startCursor } nodes { body createdAt } }
   inverseRelations(first: 10) { nodes { type issue { identifier number title state { type } } } }
 """
 
@@ -75,7 +79,10 @@ Q_ISSUES = """query($filter: IssueFilter, $after: String) {
 
 Q_ISSUE = """query($id: String!) { issue(id: $id) { %s } }""" % ISSUE_FIELDS
 
-Q_COMMENTS = """query($id: String!) { issue(id: $id) { comments(last: 25) { nodes { body createdAt } } } }"""
+Q_OLDER = """query($id: String!, $before: String!) { issue(id: $id) {
+  comments(last: 50, before: $before) { pageInfo { hasPreviousPage startCursor } nodes { body createdAt } } } }"""
+
+Q_COMMENTS = """query($id: String!) { issue(id: $id) { comments(last: 50) { nodes { body createdAt } } } }"""
 
 Q_TEAM ="""query($key: String!) {
   teams(first: 1, filter: { key: { eq: $key } }) {
@@ -146,12 +153,24 @@ class LinearTicket(ticket_protocol.Ticket):
 
     def __init__(self, node: dict, tracker: "LinearTracker"):
         self.node = node
-        comments = [{"body": c["body"], "createdAt": c["createdAt"], "trusted": True, "who": "unknown",
-                     "assoc": "NONE"} for c in node["comments"]["nodes"]]
+        comments = [self._fact(c) for c in node["comments"]["nodes"]]
+        self._back = node["comments"].get("pageInfo") or {}  # where the next older page starts
         super().__init__(tracker, id=node["identifier"], num=node["identifier"], title=node["title"],
                          url=node.get("url"), body=node.get("description"),
                          labels={l["name"]: l["id"] for l in node["labels"]["nodes"]},
                          comments=comments, slug_head=node["identifier"].lower())
+
+    @staticmethod
+    def _fact(c: dict) -> dict:
+        return {"body": c["body"], "createdAt": c["createdAt"], "trusted": True, "who": "unknown", "assoc": "NONE"}
+
+    def _older_comments(self) -> list[dict]:
+        """The next 50 comments back from what has been read (one call), oldest first; [] at the start of history."""
+        if not self._back.get("hasPreviousPage"):
+            return []
+        d = self.tr.api.gql(Q_OLDER, {"id": self.node["id"], "before": self._back["startCursor"]})["issue"]["comments"]
+        self._back = d["pageInfo"]
+        return [self._fact(c) for c in d["nodes"]]
 
     # -- facts --
 

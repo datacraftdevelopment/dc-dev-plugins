@@ -35,9 +35,20 @@ class MemoryTicket(ticket_protocol.Ticket):
     def __init__(self, data: dict, tracker: "MemoryTracker"):
         self.rules = tracker.rules
         self.data = data
+        every = data["comments"]
+        self.held_from = max(0, len(every) - tracker.window) if tracker.window else 0  # the window: latest N
         super().__init__(tracker, id=data["id"], num=data["id"], title=data["title"], url=data["url"],
-                         body=data["body"], labels=set(data["labels"]), comments=data["comments"],
+                         body=data["body"], labels=set(data["labels"]), comments=every[self.held_from:],
                          slug_head=data["id"].lower())
+
+    def _older_comments(self) -> list[dict]:
+        """The next page of comments back from the window (a page is the window size), oldest first."""
+        if not self.held_from:
+            return []
+        start = max(0, self.held_from - self.tr.window)
+        page, self.held_from = self.data["comments"][start:self.held_from], start
+        self.tr.page_backs += 1
+        return page
 
     # -- facts --
 
@@ -90,6 +101,8 @@ class MemoryTracker(ticket_protocol.Tracker):
         self.issues = list(issues)
         self.ops: list[tuple] = []
         self.now: str | None = None      # createdAt for the next comment a write posts
+        self.window: int | None = None   # a ticket reads only its latest N comments (None: all of them)
+        self.page_backs = 0              # how many times a ticket asked for an older page
         self.claim_fails = False         # the claim transition raises, after the stamp has landed
 
     def load(self) -> list[MemoryTicket]:
