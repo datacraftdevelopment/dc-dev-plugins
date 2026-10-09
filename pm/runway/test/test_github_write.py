@@ -114,8 +114,8 @@ class GitHubWrites(unittest.TestCase):
         t = self.ticket()
         self.assertEqual((t.status, t.claimed_by), ("needs-human", None))
         self.assertEqual(self.stored()["assignees"]["totalCount"], 0)
-        self.assertIn("Parked: run failed. Remove `needs-human` to retry.\n\nCheck failed.", self.comments()[-1])
-        self.assertEqual(t.packet.splitlines()[0], "Parked: run failed. Remove `needs-human` to retry.")
+        self.assertIn("Parked: run failed. Remove `needs-human` or comment `go` to retry.\n\nCheck failed.", self.comments()[-1])
+        self.assertEqual(t.packet.splitlines()[0], "Parked: run failed. Remove `needs-human` or comment `go` to retry.")
         s = self.stored()  # Joe removes the label
         s["labels"]["nodes"] = [l for l in s["labels"]["nodes"] if l["name"] != "needs-human"]
         self.data(s)
