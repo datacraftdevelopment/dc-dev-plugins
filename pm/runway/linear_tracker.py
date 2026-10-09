@@ -27,6 +27,9 @@ Joe answers in Linear, from any device, and the next tick picks it up:
   - comment "drop"                                 -> moved to Canceled
   - remove `needs-human` from a failed run          -> retried on the next tick
 
+Park and release are one `issueUpdate` each (state and labels together). Approve comments first, then relabels;
+a park or approval that fails halfway is finished by the next sync (see ticket_protocol.py).
+
 API key: LINEAR_API_KEY, or the macOS keychain item `runway-linear`
 (security add-generic-password -s runway-linear -a "$USER" -w).
 """
@@ -192,8 +195,8 @@ class LinearTicket(ticket_protocol.Ticket):
 
     # -- writes --
 
-    def _update(self, **inp) -> None:
-        self.tr.api.gql(M_UPDATE, {"id": self.node["id"], "input": inp})
+    def _update(self, landed=None, **inp) -> None:
+        self.tr.api.gql(M_UPDATE, {"id": self.node["id"], "input": inp}, landed=landed)
 
     def _post(self, full: str) -> None:
         since = transient.since_mark()
@@ -203,25 +206,33 @@ class LinearTicket(ticket_protocol.Ticket):
             return transient.posted_since(d, full, since)
         self.tr.api.gql(M_COMMENT, {"input": {"issueId": self.node["id"], "body": full}}, landed=landed)
 
-    def _labels(self, add=(), remove=()) -> None:
+    def _label_ids(self, add, remove) -> dict:
         add_ids = [self.tr.label_id(n) for n in add if n not in self.labels]
         rm_ids = [self.labels[n] for n in remove if n in self.labels]
-        if add_ids or rm_ids:
-            self._update(addedLabelIds=add_ids, removedLabelIds=rm_ids)
+        return {"addedLabelIds": add_ids, "removedLabelIds": rm_ids} if add_ids or rm_ids else {}
+
+    def _labels(self, add=(), remove=()) -> None:
+        ids = self._label_ids(add, remove)
+        if ids:
+            self._update(**ids)
 
     def _claim(self) -> None:
         self._update(stateId=self.tr.state_id(self.tr.c["claimed_state"]))
 
     def _close(self, reason: str, full: str | None) -> None:
         if reason == "completed":
-            self._update(stateId=self.tr.state_id(self.tr.c["done_state"]))
+            state = self.tr.state_id(self.tr.c["done_state"])
         else:
-            self._update(stateId=self.tr.state_id(None, "canceled"))
+            state = self.tr.state_id(None, "canceled")
+
+        def landed() -> bool:  # a close that timed out may already have happened: look before writing it again
+            return self.tr.reload(self).closed
+        self._update(landed=landed, stateId=state)
 
     def _release(self, add=(), remove=()) -> None:
-        # Back to an unstarted state, so clearing the label makes it ready again.
-        self._update(stateId=self.tr.state_id(None, "unstarted"))
-        self._labels(add=add, remove=remove)
+        # Back to an unstarted state, so clearing the label makes it ready again. State and labels are one write:
+        # two would leave an approved ticket ready, with `go` still on, when the second failed.
+        self._update(stateId=self.tr.state_id(None, "unstarted"), **self._label_ids(add, remove))
 
     def _relabel(self, add=(), remove=()) -> None:
         self._labels(add=add, remove=remove)

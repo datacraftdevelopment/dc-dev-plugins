@@ -219,9 +219,9 @@ class Writes(unittest.TestCase):
                                         "to cancel it._\n\nShall I?")
             self.assertEqual(ops[1], ("relabel", ["needs-human"], []))
             self.assertEqual(self.ops(rules, lambda t: t.approve("ok"), labels=["ready-for-human", "needs-human"]),
-                             [("relabel", ["go"], ["needs-human"]), ("comment", f"{M} · Approved. ok")])
+                             [("comment", f"{M} · Approved. ok"), ("relabel", ["go"], ["needs-human"])])
             self.assertEqual(self.ops(rules, lambda t: t.approve(""), labels=["ready-for-human", "go", "needs-human"]),
-                             [("relabel", [], ["needs-human"]), ("comment", f"{M} · Approved.")])
+                             [("comment", f"{M} · Approved."), ("relabel", [], ["needs-human"])])
 
     def test_create_marks_the_body(self):
         for rules in (P.GITHUB, P.LINEAR):
@@ -242,18 +242,18 @@ class Sync(unittest.TestCase):
     def test_the_go_note_reaches_the_approval_on_both_trackers(self):
         for rules, where in ((P.GITHUB, "on GitHub"), (P.LINEAR, "in Linear")):
             tr, out = self.run_sync(rules, ("go: ship it", True))
-            self.assertEqual(tr.ops[-1], ("comment", f"{M} · Approved. ship it"))
+            self.assertEqual(tr.ops[-2], ("comment", f"{M} · Approved. ship it"))
             self.assertEqual(out, f"sync  X-1 approved {where}\n")
 
     def test_linear_go_use_option_b_reaches_the_approval_and_the_agents_text(self):
         tr, _ = self.run_sync(P.LINEAR, ("go use option B", True))
-        self.assertEqual(tr.ops[-1], ("comment", f"{M} · Approved. use option B"))
+        self.assertEqual(tr.ops[-2], ("comment", f"{M} · Approved. use option B"))
         self.assertIn("use option B", tr.load()[0].text)
 
     def test_the_go_label_approves_with_no_note_on_both_trackers(self):
         for rules in (P.GITHUB, P.LINEAR):
             tr, _ = self.run_sync(rules, labels=("ready-for-human", "needs-human", "go"))
-            self.assertEqual(tr.ops[-1], ("comment", f"{M} · Approved."))
+            self.assertEqual(tr.ops[-2], ("comment", f"{M} · Approved."))
 
     def test_drop(self):
         tr, out = self.run_sync(P.GITHUB, ("drop", True))

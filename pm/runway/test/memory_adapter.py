@@ -70,27 +70,32 @@ class MemoryTicket(ticket_protocol.Ticket):
         labels[:] = [n for n in labels if n not in remove] + [n for n in add if n not in labels]
 
     def _post(self, full: str) -> None:
+        self.tr.write("comment")
         self.tr.ops.append(("comment", full))
         self._comment_in(full)
 
     def _claim(self) -> None:
+        self.tr.write("claim")
         if self.tr.claim_fails:
             raise RuntimeError("claim transition failed")
         self.tr.ops.append(("claim",))
         self.data["held"] = True
 
     def _close(self, reason: str, full: str | None) -> None:
+        self.tr.write("close")
         self.tr.ops.append(("close", reason, full))
         self.data["closed"], self.data["held"] = True, False
         if full is not None:
             self._comment_in(full)
 
     def _release(self, add=(), remove=()) -> None:
+        self.tr.write("release")
         self.tr.ops.append(("release", list(add), list(remove)))
         self.data["held"] = False
         self._change(add, remove)
 
     def _relabel(self, add=(), remove=()) -> None:
+        self.tr.write("relabel")
         self.tr.ops.append(("relabel", list(add), list(remove)))
         self._change(add, remove)
 
@@ -104,6 +109,15 @@ class MemoryTracker(ticket_protocol.Tracker):
         self.window: int | None = None   # a ticket reads only its latest N comments (None: all of them)
         self.page_backs = 0              # how many times a ticket asked for an older page
         self.claim_fails = False         # the claim transition raises, after the stamp has landed
+        self.writes = 0                  # tracker writes attempted so far (a failed one counts)
+        self.fail_at: int | None = None  # the write with this index (0-based) raises and changes nothing, once
+
+    def write(self, kind: str) -> None:
+        """Called first by every write: counts it, and fails it when it is the one `fail_at` names."""
+        i, self.writes = self.writes, self.writes + 1
+        if self.fail_at == i:
+            self.fail_at = None
+            raise RuntimeError(f"{kind} failed (write {i})")
 
     def load(self) -> list[MemoryTicket]:
         tickets = [MemoryTicket(d, self) for d in self.issues]
