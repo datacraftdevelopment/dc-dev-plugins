@@ -40,8 +40,8 @@ and integrates cost more than it saved when it was tried.
 | Outcome or scope is unclear | `discovery`, to shape the missing intent. |
 | A change is risky, or a doubt remains after the checks pass | `adversary-review`, with the doubt named first. |
 | An intent is being delivered | `ship-acceptance`, against the revision that is released. |
-| Reviews disagree about what matters | `sdlc:review-policy`, to write `REVIEW.md`. |
-| A command or path must never be touched without a person | `sdlc:gate-hooks`, installed once in the repo. |
+| Reviews disagree about what matters | `pm:review-policy`, to write `REVIEW.md`. |
+| A command or path must never be touched without a person | `pm:gate-hooks`, installed once in the repo. |
 | The session has drifted from its Intent and cannot be closed | `checkpoint`. |
 
 No review at every plan or every green change. State the uncertainty, say why

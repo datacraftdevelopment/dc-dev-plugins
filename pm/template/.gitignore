@@ -4,7 +4,7 @@ node_modules/
 __pycache__/
 .claude/settings.local.json
 
-# Credentials — never committed (the sdlc plugin's credential-guard hook also
+# Credentials — never committed (the pm plugin's credential-guard hook also
 # blocks staging these; the ignore is the belt to that brace).
 .env
 .env.*

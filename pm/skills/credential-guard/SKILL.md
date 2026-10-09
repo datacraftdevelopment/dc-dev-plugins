@@ -1,11 +1,11 @@
 ---
 name: credential-guard
-description: What the sdlc credential-guard hook blocks and how to work with it. Use when a git command is refused with "credential-guard: BLOCKED", when staging or committing files that might hold secrets, or when asked whether a credential file is protected.
+description: What the pm credential-guard hook blocks and how to work with it. Use when a git command is refused with "credential-guard: BLOCKED", when staging or committing files that might hold secrets, or when asked whether a credential file is protected.
 ---
 
 # Credential guard
 
-The sdlc plugin installs a `PreToolUse` hook on Bash
+The pm plugin installs a `PreToolUse` hook on Bash
 (`hooks/credential-guard.sh`, logic in `scripts/credential_guard.py`). It runs
 on every machine that has the plugin, in every repo, with no setup. Unlike
 `gate-hooks`, nothing is copied into the repo.
@@ -23,7 +23,7 @@ It blocks rather than guesses: a git command it cannot inspect safely (looped,
 wrapped in `xargs` or `sh -c`, or a pipeline or background job that stages,
 commits or changes the repository) is refused with an explanation. Read-only git
 (`status`, `log`, `diff`, `show`, `ls-files`, `branch` and the rest of its
-read-only list) may be piped or backgrounded (sdlc 0.2.1). Unrelated commands and
+read-only list) may be piped or backgrounded (sdlc 0.2.1, before it folded into pm). Unrelated commands and
 folders that aren't repos pass.
 
 ## When it blocks you
@@ -41,7 +41,7 @@ folders that aren't repos pass.
 
 It protects tool invocations, not arbitrary subprocesses or file contents. A
 secret pasted into a source file is not caught. Unattended runs (Runway) get the
-same protection, as long as the sdlc plugin is installed on that machine.
+same protection, as long as the pm plugin is installed on that machine.
 
 ## Maintaining it
 

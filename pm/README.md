@@ -97,8 +97,20 @@ Provides:
   gitignored `_pm/transcripts/`.
 - **`ship-acceptance`** — closes the delivery gap with an accepted-intent snapshot, independent checks before and after delivery, exact revisions, human deployment, and a shared `docs/shipped/` record. Missing checks and exceptions stay visible.
 - **Session helpers** — `scripts/session.py` allocates distinct session files and closes by exact path/ID with an explicit closure marker; no newest-file guessing.
-- **Credential guard** — moved to the **sdlc** plugin in 0.24.0. Install sdlc
-  alongside pm to keep the hook that blocks staging credential-shaped files.
+- **Credential guard** — a PreToolUse hook on Bash (`hooks/`, skill
+  `credential-guard`) that blocks staging or committing credential-shaped
+  files, active wherever pm is installed. It lived in pm until 0.24.0, then in
+  the sdlc plugin, and came back with sdlc's other pieces in 0.25.0.
+- **Gates and review policy** *(from sdlc, folded in at 0.25.0)* — `gate-hooks`
+  installs one gate script and `.claude/sdlc/gates.json` into a repo (production
+  gate, protected paths, a test lock for fix tasks, a commit and Stop backstop);
+  `review-policy` sets up `REVIEW.md` and runs the read-only `pm:policy-reviewer`
+  agent against it. Claude Code only. Read [`GATES.md`](./GATES.md).
+- **`ui-test`** *(from the ui-test plugin, folded in at 0.25.0)* — agent-run UI
+  tests for any macOS app: a Codex computer-use runner under Ringer, executed
+  checks on the receipt, a separate verifier. Needs Pillow
+  (`python3 -m pip install -r requirements.txt` from the pm root). Read
+  [`UI-TEST.md`](./UI-TEST.md).
 
 > Upgrading to 0.17 (tracker preset, inbox, `TASKS.md` retirement rubric,
 > repos that keep `TASKS.md` as their tracker)? See

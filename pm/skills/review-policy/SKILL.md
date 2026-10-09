@@ -27,7 +27,7 @@ The reviewer is never the session that wrote the change.
 
 1. Fix the scope: the base and head revisions, and the intent, spec or plan files the change answers to.
 2. Write the diff to a file outside the tracked tree, for example `git diff <base>...<head> > <scratch>/review.diff`. Use plain `git diff` for uncommitted work.
-3. Dispatch the `sdlc:policy-reviewer` agent with the diff path, the repo root and the artifact paths, and nothing else. Give it no summary of what the change is meant to do and no account of how it was built. It judges what is on the page. Name every path it will need: on macOS and Linux the reviewer can read files but has no tool to search or list them.
+3. Dispatch the `pm:policy-reviewer` agent with the diff path, the repo root and the artifact paths, and nothing else. Give it no summary of what the change is meant to do and no account of how it was built. It judges what is on the page. Name every path it will need: on macOS and Linux the reviewer can read files but has no tool to search or list them.
 4. Give every finding a disposition: fix, decline with a reason, or ask the user. Record the findings and dispositions where this repo keeps its review record, which is the pull request thread or the ticket.
 5. A finding that turns up for the second time goes into `CLAUDE.md` as a correction in the same pass, so the next session does not repeat it.
 
