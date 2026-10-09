@@ -83,10 +83,10 @@ def since_mark() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=SLACK_S)
 
 
-def posted_since(comments: list[dict], body: str, since: dt.datetime) -> bool:
-    """True when a comment with exactly this body was created at or after `since`."""
+def posted_since(comments: list[dict], body: str, since: dt.datetime, key: str = "body") -> bool:
+    """True when a comment (or, for `key`, any record) with exactly this text was created at or after `since`."""
     for c in comments:
-        if c.get("body") != body:
+        if c.get(key) != body:
             continue
         try:
             when = dt.datetime.fromisoformat(c["createdAt"].replace("Z", "+00:00"))

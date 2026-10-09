@@ -428,6 +428,31 @@ class GitHubTracker:
     def ref(self, repo: str, number: int) -> str:
         return f"#{number}" if repo.lower() == self.repo.lower() else f"{repo}#{number}"
 
+    def create(self, title: str, body: str, labels: list[str]) -> str:
+        """Open a new issue in the repo and return its ref ("#12"). The body starts with the 🛫 marker so a
+        later read never takes it for Joe's. A create that timed out is looked up before it is repeated."""
+        full = f"{MARK} · {body.strip()}"
+        since = transient.since_mark()
+        found: list[int] = []
+
+        def landed() -> bool:
+            rows = json.loads(self.api.run(["issue", "list", "--repo", self.repo, "--state", "all", "--limit", "30",
+                                            "--json", "number,title,body,createdAt"]))
+            for r in rows:
+                if r["title"] == title and r["body"] == full and transient.posted_since([r], full, since, key="body"):
+                    found.append(r["number"])
+                    return True
+            return False
+        args = ["issue", "create", "--repo", self.repo, "--title", title, "--body", full]
+        for name in labels:
+            args += ["--label", name]
+        out = self.api.run(args, landed=landed)
+        m = re.search(r"/issues/(\d+)", out)
+        number = int(m.group(1)) if m else (found[0] if found else None)
+        if number is None:
+            raise RuntimeError(f"gh created an issue but printed no URL: {out[:200]}")
+        return self.ref(self.repo, number)
+
     # -- the tracker interface Runway uses --
 
     def load(self) -> list[GitHubTicket]:

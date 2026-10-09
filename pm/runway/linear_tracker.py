@@ -93,6 +93,8 @@ Q_PROJECTS = """query($name: String!) { projects(filter: { name: { eq: $name } }
 
 M_UPDATE = """mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }"""
 M_COMMENT = """mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }"""
+M_CREATE = """mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url } } }"""
+Q_CREATED = """query($filter: IssueFilter) { issues(filter: $filter, first: 10, orderBy: createdAt) { nodes { identifier description createdAt } } }"""
 M_LABEL = """mutation($input: IssueLabelCreateInput!) { issueLabelCreate(input: $input) { success issueLabel { id name } } }"""
 
 
@@ -351,6 +353,31 @@ class LinearTracker:
         return lid
 
     # -- the tracker interface Runway uses --
+
+    def create(self, title: str, body: str, labels: list[str]) -> str:
+        """Open a new issue in the team (and project) and return its identifier ("DAT-12"). The description
+        starts with the 🛫 marker so a later read never takes it for Joe's. A create that timed out is looked
+        up before it is repeated."""
+        full = f"{MARK} · {body.strip()}"
+        inp = {"teamId": self.team["id"], "title": title, "description": full,
+               "labelIds": [self.label_id(n) for n in labels]}
+        if self.c["project"]:
+            p = self.api.gql(Q_PROJECTS, {"name": self.c["project"]})["projects"]["nodes"]
+            if not p:
+                sys.exit(f"No Linear project named {self.c['project']!r}.")
+            inp["projectId"] = p[0]["id"]
+        since = transient.since_mark()
+        found: list[str] = []
+
+        def landed() -> bool:
+            f = {"team": {"key": {"eq": self.c["team"]}}, "title": {"eq": title}}
+            for n in self.api.gql(Q_CREATED, {"filter": f})["issues"]["nodes"]:
+                if transient.posted_since([n], full, since, key="description"):
+                    found.append(n["identifier"])
+                    return True
+            return False
+        d = self.api.gql(M_CREATE, {"input": inp}, landed=landed)
+        return d["issueCreate"]["issue"]["identifier"] if d else found[0]
 
     def _filter(self) -> dict:
         f = {"team": {"key": {"eq": self.c["team"]}}}

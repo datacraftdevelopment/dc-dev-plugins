@@ -504,6 +504,9 @@ def describe_machine(root: Path | None = None) -> str:
     return "\n".join(lines)
 
 
+MARK = "🛫 runway"  # every body and comment Runway writes starts with this, so Joe's are told apart
+
+
 def now() -> str:
     # Timezone-aware, so the log lines up with UTC timestamps elsewhere.
     return dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
@@ -723,6 +726,26 @@ class Ticket:
 class MarkdownTracker:
     def __init__(self, root: Path, cfg: dict):
         self.root = root
+
+    def create(self, title: str, body: str, labels: list[str], effort: str | None = None) -> str:
+        """Write the next numbered issue file and return its id ("<effort>/<NN>"). The effort is the one
+        under .scratch/ unless there are several, then it must be named. The body starts with the 🛫 marker."""
+        efforts = sorted(p.parent.name for p in self.root.glob(".scratch/*/issues"))
+        if effort is None:
+            if len(efforts) != 1:
+                raise ValueError(f"name the effort to create in: {efforts or 'none under .scratch/'}")
+            effort = efforts[0]
+        folder = self.root / ".scratch" / effort / "issues"
+        folder.mkdir(parents=True, exist_ok=True)
+        nums = [int(p.name.split("-", 1)[0]) for p in folder.glob("*.md") if p.name.split("-", 1)[0].isdigit()]
+        num = f"{max(nums, default=0) + 1:02d}"
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:50].strip("-") or "ticket"
+        text = f"# {title}\n\nStatus: ready\n"
+        if labels:
+            text += f"Labels: {', '.join(labels)}\n"
+        text += f"\n{MARK} · {body.strip()}\n"
+        (folder / f"{num}-{slug}.md").write_text(text)
+        return f"{effort}/{num}"
 
     def load(self) -> list[Ticket]:
         return [Ticket(p, self.root) for p in sorted(self.root.glob(".scratch/*/issues/*.md"))]
