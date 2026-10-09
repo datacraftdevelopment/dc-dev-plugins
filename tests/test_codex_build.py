@@ -19,7 +19,7 @@ class CodexBuildTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             out = Path(tmp)
-            for name in ('pm', 'design-dc', 'fm-dc', 'ui-test', 'basecamp-dc', 'sdlc', 'factory'):
+            for name in ('pm', 'design-dc', 'fm-dc', 'basecamp-dc', 'factory'):
                 plugin = out / name
                 manifest = json.loads((plugin / '.codex-plugin/plugin.json').read_text())
                 self.assertEqual(manifest['name'], name)
@@ -66,26 +66,31 @@ class CodexBuildTests(unittest.TestCase):
                           (pm / 'WORKFLOW.md').read_text())
             sync = (out / 'design-dc/skills/design-sync/SKILL.md').read_text()
             self.assertIn('If DesignSync is unavailable', sync)
-            # The credential guard ships in sdlc's Codex edition, and only the guard.
-            sdlc = out / 'sdlc'
-            self.assertFalse((pm / 'hooks').exists())
-            self.assertEqual(sorted(p.name for p in (sdlc / 'skills').iterdir()), ['credential-guard'])
-            self.assertFalse((sdlc / 'kit').exists())
-            self.assertFalse((sdlc / 'scripts/install_gates.py').exists())
+            # pm's Codex edition carries the credential guard and ui-test, and leaves out the
+            # gate kit and the review policy.
+            self.assertFalse((out / 'sdlc').exists())
+            self.assertFalse((out / 'ui-test').exists())
+            skills = {p.name for p in (pm / 'skills').iterdir()}
+            self.assertTrue({'credential-guard', 'ui-test'} <= skills)
+            self.assertFalse({'gate-hooks', 'review-policy', 'policy-reviewer'} & skills)
+            self.assertTrue((pm / 'skills/ui-test/scripts/check_receipt.py').is_file())
+            self.assertTrue((pm / 'requirements.txt').is_file())
+            for left_out in ('kit', 'templates', 'agents', 'scripts/install_gates.py'):
+                self.assertFalse((pm / left_out).exists(), left_out)
             factory = out / 'factory'
             self.assertTrue((factory / 'skills/runway/SKILL.md').is_file())
             self.assertEqual((factory / 'runway/runway.py').read_bytes(),
                              (ROOT / 'factory/plugin/runway/runway.py').read_bytes())
-            self.assertIn('PLUGIN_ROOT', (sdlc / 'hooks/hooks.json').read_text())
+            self.assertIn('PLUGIN_ROOT', (pm / 'hooks/hooks.json').read_text())
             # Exercise the declared Codex hook command and event shape in a path with spaces.
             fixture = out / 'hook fixture'
             fixture.mkdir()
             subprocess.run(['git', 'init', '-q', str(fixture)], check=True)
             (fixture / '.env').write_text('DUMMY=value\n')
-            hook = json.loads((sdlc / 'hooks/hooks.json').read_text())
+            hook = json.loads((pm / 'hooks/hooks.json').read_text())
             command = hook['hooks']['PreToolUse'][0]['hooks'][0]['command']
             guard = subprocess.run(['bash', '-c', command], cwd=fixture,
-                                   env={**os.environ, 'PLUGIN_ROOT': str(sdlc)},
+                                   env={**os.environ, 'PLUGIN_ROOT': str(pm)},
                                    input=json.dumps({'hook_event_name': 'PreToolUse',
                                                      'tool_name': 'Bash', 'cwd': str(fixture),
                                                      'tool_input': {'command': 'git add .env'}}),
@@ -93,7 +98,7 @@ class CodexBuildTests(unittest.TestCase):
             self.assertEqual(guard.returncode, 2, guard.stderr)
             self.assertIn('credential-guard: BLOCKED', guard.stderr)
             safe = subprocess.run(['bash', '-c', command], cwd='/',
-                                  env={**os.environ, 'PLUGIN_ROOT': str(sdlc)},
+                                  env={**os.environ, 'PLUGIN_ROOT': str(pm)},
                                   input=json.dumps({'cwd': str(fixture),
                                                     'tool_input': {'command': 'git add safe.txt'}}),
                                   capture_output=True, text=True)

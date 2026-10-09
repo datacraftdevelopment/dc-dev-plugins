@@ -31,7 +31,8 @@ class OwnedPluginRefreshTests(unittest.TestCase):
         return source, output, skill
 
     def test_new_plugins_are_in_default_catalog(self):
-        self.assertTrue({'ui-test', 'basecamp-dc'} <= set(build_codex.PLUGINS))
+        self.assertTrue({'pm', 'basecamp-dc'} <= set(build_codex.PLUGINS))
+        self.assertFalse({'ui-test', 'sdlc'} & set(build_codex.PLUGINS))
         market = json.loads((build_codex.ROOT / '.claude-plugin/marketplace.json').read_text())
         # Only local ./subfolder sources can be packaged; git-subdir pointers
         # (fm-lens, agenticdev-filemaker-standards) live in another repo.
@@ -84,7 +85,7 @@ class OwnedPluginRefreshTests(unittest.TestCase):
             root = Path(tmp)
             output = root / 'output'
             output.mkdir()
-            for name in ('ui-test', 'basecamp-dc'):
+            for name in ('pm', 'basecamp-dc'):
                 package = root / 'staging' / name
                 package.mkdir(parents=True)
                 (package / build_codex.MARKER).write_text('{}')

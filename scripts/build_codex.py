@@ -16,21 +16,21 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '.dc-codex-build.json'
 PLUGINS = {
-    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, and delivery checks.'),
+    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, delivery checks, the credential guard and macOS UI tests.'),
     'design-dc': ('DataCraft Design', 'Design handoffs, HTML artifacts, Excalidraw, and design-system workflows.'),
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
-    'ui-test': ('DataCraft UI Tests', 'Run macOS UI tests with evidence receipts and independent verification.'),
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
-    'sdlc': ('DataCraft SDLC', 'The credential guard: blocks committing credential-shaped files.'),
     'factory': ('DataCraft Factory', 'Runway: run ready Linear tickets unattended and gate the rest for a human.'),
 }
 # Local plugins with no Codex edition.
 CLAUDE_ONLY = set()
 # Plugin source folders that differ from the plugin name.
 SOURCES = {'factory': 'factory/plugin'}
-# Codex packages only these paths of a plugin. sdlc's gate kit and review policy install
-# Claude Code hooks into a repo's .claude/, so its Codex edition is the credential guard alone.
-CODEX_PARTS = {'sdlc': ('hooks/', 'scripts/credential', 'skills/credential-guard/')}
+# Codex leaves these paths of a plugin out. pm's gate kit and review policy install
+# Claude Code hooks into a repo's own settings and dispatch a Claude Code agent, so pm's
+# Codex edition carries the credential guard and ui-test but not gate-hooks or review-policy.
+CODEX_LEFT_OUT = {'pm': ('agents/', 'kit/', 'scripts/install_gates.py', 'skills/gate-hooks/',
+                         'skills/review-policy/', 'templates/')}
 
 
 def source_dir(name):
@@ -250,7 +250,7 @@ def build_one(name, parent):
             relative = source.relative_to(ROOT / source_dir(name))
             if relative.parts[0] in {'.claude-plugin', '.claude'}:
                 continue
-            if name in CODEX_PARTS and not relative.as_posix().startswith(CODEX_PARTS[name]):
+            if relative.as_posix().startswith(CODEX_LEFT_OUT.get(name, ())):
                 continue
             if source.is_symlink():
                 raise ValueError(f'Cannot package symlink: {source}')

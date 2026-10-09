@@ -42,4 +42,4 @@ One round is the default. A second round needs a material change to the code sin
 - It is a same-vendor review. A subagent shares this session's blind spots more than a person or another vendor's model would. The fresh context, the read-only tools and the withheld summary are what make it worth running.
 - It does not approve. Findings inform; a person approves.
 - It does not fix. The working session applies the accepted findings and re-runs the checks.
-- It is not the policy review. Where the `sdlc` plugin is installed, `sdlc:policy-reviewer` reads a diff against `REVIEW.md` on ordinary changes. This skill is the hostile pass for the risky ones, and it reads `REVIEW.md` too when the repo has it.
+- It is not the policy review. `pm:policy-reviewer` reads a diff against `REVIEW.md` on ordinary changes. This skill is the hostile pass for the risky ones, and it reads `REVIEW.md` too when the repo has it.

@@ -32,7 +32,7 @@ Ringer, Runway falls back to the single Claude review. See the runway skill.
 
 The runway skill has the full detail.
 
-Install alongside `sdlc` (the credential guard and gates) and Matt Pocock's
+Install alongside `pm` (the credential guard and gates) and Matt Pocock's
 skills (`/to-spec`, `/to-tickets`, `/tdd`, `/code-review`, `/pr`, `/retro`).
 
 ```

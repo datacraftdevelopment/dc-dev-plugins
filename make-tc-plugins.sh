@@ -8,10 +8,10 @@
 # tc-plugins is never hand-edited. It is the public tree with the credit swapped:
 # DataCraft Development -> Joe DaSilva (personal), the marketplace named
 # tc-plugins, install lines pointing at wherever TC keeps the folder. Plugin names
-# (fm-dc, pm, sdlc) and everything under them are a plain copy. From 2026-10-04
-# the RCC edition carries the same pm and sdlc that TC gets (adversary reviewer,
+# (fm-dc, pm) and everything under them are a plain copy. From 2026-10-04
+# the RCC edition carries the same pm that TC gets (adversary reviewer,
 # ship-acceptance, WORKFLOW.md, no granola-transcript), so there is no TC-only
-# overlay any more: change pm or sdlc in the RCC cut and it arrives here.
+# overlay any more: change pm in the RCC cut and it arrives here.
 # Every phrase-map entry must hit or the build aborts.
 #
 # Usage: ./make-tc-plugins.sh [--src <public dc-plugins checkout>] [--dest <tc-plugins checkout>]
@@ -38,7 +38,6 @@ mkdir -p "$DEST"; DEST="$(cd "$DEST" && pwd)"
 SRC_COMMIT="$(git -C "$SRC" rev-parse --short HEAD)"
 FM_VER="$(python3 -c "import json;print(json.load(open('$SRC/fm-dc/.claude-plugin/plugin.json'))['version'])")"
 PM_VER="$(python3 -c "import json;print(json.load(open('$SRC/pm/.claude-plugin/plugin.json'))['version'])")"
-SDLC_VER="$(python3 -c "import json;print(json.load(open('$SRC/sdlc/.claude-plugin/plugin.json'))['version'])")"
 echo "== tc-plugins build: dc-plugins(public) @ $SRC_COMMIT (fm-dc $FM_VER, pm $PM_VER) -> $DEST"
 
 # --- 1. fresh tree from the git-tracked public set ------------------------------
@@ -70,9 +69,6 @@ EDITS = [
     ("pm/template/CLAUDE.md", "`datacraftdevelopment/dc-plugins`", f"`{repo}`"),
     ("pm/template/README.md", "`datacraftdevelopment/dc-plugins`", f"`{repo}`"),
 
-    ("sdlc/.claude-plugin/plugin.json", '"name": "Joe DaSilva / DataCraft Development"', '"name": "Joe DaSilva"'),
-    ("sdlc/README.md", "/plugin marketplace add datacraftdevelopment/dc-plugins", f"/plugin marketplace add {repo}"),
-
     ("fm-dc/.claude-plugin/plugin.json", '"name": "Joe DaSilva / DataCraft Development"', '"name": "Joe DaSilva"'),
     ("fm-dc/CLAUDE.md",
      "This plugin ships from the `datacraftdevelopment/dc-plugins` marketplace (plugin folder `fm-dc/`).",
@@ -95,7 +91,7 @@ if failures:
     print("\n".join(failures), file=sys.stderr)
     sys.exit(1)
 print(f"phrase map: {len(EDITS)} edits applied")
-for rel in ("pm/.claude-plugin/plugin.json", "fm-dc/.claude-plugin/plugin.json", "sdlc/.claude-plugin/plugin.json"):
+for rel in ("pm/.claude-plugin/plugin.json", "fm-dc/.claude-plugin/plugin.json"):
     p = root / rel
     p.write_text(p.read_text().replace('"email": "joe@datacraftdev.com"', '"email": "digitaljoed@gmail.com"'))
 PYEOF
@@ -121,7 +117,7 @@ git add -A
 if git diff --cached --quiet; then
   echo "== no changes; nothing to commit"
 else
-  git -c user.name="Joe DaSilva" -c user.email="digitaljoed@gmail.com" commit -q -m "tc-plugins: fm-dc $FM_VER, pm $PM_VER, sdlc $SDLC_VER (from dc-plugins public @ $SRC_COMMIT)
+  git -c user.name="Joe DaSilva" -c user.email="digitaljoed@gmail.com" commit -q -m "tc-plugins: fm-dc $FM_VER, pm $PM_VER (from dc-plugins public @ $SRC_COMMIT)
 
 Built by make-tc-plugins.sh — do not hand-edit this repo; change dc-dev-plugins,
 re-cut rcc-fm and dc-plugins, then re-run.
