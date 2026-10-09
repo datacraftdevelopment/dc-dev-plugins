@@ -1,6 +1,6 @@
 {
   "repository": "<approved checkout containing runway.json>",
-  "interval_seconds": 300,
+  "interval_seconds": 600,
   "output_directory": "<repository>/_pm/observer",
   "event_delivery": "local-jsonl-only",
   "tracker_publishing": false,

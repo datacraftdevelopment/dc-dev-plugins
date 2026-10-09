@@ -6,7 +6,8 @@ tickets; Python dispatch keeps routine scheduling inexpensive. A zero process
 exit or confident agent summary is not proof of completion.
 
 `observe.py` reads this repository's Runway state and appended run records every
-300 seconds (five minutes). It writes only `_pm/observer/`: an atomic deduplication cursor,
+600 seconds (ten minutes), matching the verified Runway scheduler interval.
+It writes only `_pm/observer/`: an atomic deduplication cursor,
 bounded event packets, a lock, and its own check duration. The first scan marks
 historical records as `baseline: true`; they are not new incidents.
 
@@ -45,7 +46,7 @@ merge. Human migration/product decisions remain pending.
 Source, tests and operating instructions live in this repository. The example
 `observer-config.example.json` describes the configuration; it is documentation,
 not an automatically loaded file. CLI arguments are authoritative: one explicit
-repository, integer interval 30–3600 seconds (default 300), output `_pm/observer` unless `--out`
+repository, integer interval 30–3600 seconds (default 600), output `_pm/observer` unless `--out`
 is passed directly to `observe.py`. Tracker publishing and merging are disabled.
 
 From the source checkout:
@@ -54,7 +55,7 @@ From the source checkout:
 python3 factory/scripts/observer_service.py preview --root /path/to/approved/repo
 python3 factory/scripts/observer_service.py install --root /path/to/approved/repo
 python3 factory/scripts/observer_service.py status --root /path/to/approved/repo
-python3 factory/scripts/observer_service.py set-interval --root /path/to/approved/repo --interval 300
+python3 factory/scripts/observer_service.py set-interval --root /path/to/approved/repo --interval 600
 python3 -m unittest discover -s tests -p test_runway_observer.py -v
 ```
 
@@ -71,7 +72,9 @@ by marketplace installation yet.
 observer. It preserves other plist fields and the queue/cursor. The installed
 `--interval` argument controls the polling sleep; `ThrottleInterval` is restart
 throttling, not polling frequency. Runway's scheduler remains separate and was
-verified configured at 600 seconds; this command never changes it.
+verified configured at 600 seconds; this command never changes it. This matches
+frequency, not exact clock phase, and does not automatically follow future
+scheduler changes. Reverify the runner plist before choosing a new value.
 
 ## Independent completion and merge gate
 

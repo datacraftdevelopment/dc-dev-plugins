@@ -2,7 +2,7 @@
 """Read-only Runway observer. Writes only its own dedup state and event packets.
 
 No agent calls, process inspection, tracker calls, credentials, or runner actions.
-Use --once for a snapshot, otherwise check every 300 seconds. Events do not wake AI.
+Use --once for a snapshot, otherwise check every 600 seconds. Events do not wake AI.
 """
 import argparse
 import datetime
@@ -140,7 +140,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', required=True, type=Path)
     parser.add_argument('--out', type=Path)
-    parser.add_argument('--interval', type=int, default=300, choices=range(30, 3601), metavar='SECONDS')
+    parser.add_argument('--interval', type=int, default=600, choices=range(30, 3601), metavar='SECONDS')
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
     root = args.root.resolve()

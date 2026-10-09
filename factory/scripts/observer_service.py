@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-def manifest(root, interval=300):
+def manifest(root, interval=600):
     output = root / '_pm/observer'
     return {'Label': 'com.joe.runway.observer.dc-dev-plugins',
             'ProgramArguments': [sys.executable,
@@ -22,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('install', 'status', 'uninstall', 'preview', 'set-interval'))
     parser.add_argument('--root', required=True, type=Path)
-    parser.add_argument('--interval', default=300, type=int, choices=range(30, 3601), metavar='SECONDS')
+    parser.add_argument('--interval', default=600, type=int, choices=range(30, 3601), metavar='SECONDS')
     args = parser.parse_args()
     root = args.root.resolve()
     data = manifest(root, args.interval)
