@@ -16,6 +16,7 @@
   "_harness_note": "Workers are pinned to claude-sonnet-5-5. Label a ticket harness:opus to run it on claude-opus-5-5.",
   "check_cmd": "python3 -m unittest discover -s tests",
   "review": "panel",
+  "merge": "off",
   "base_branch": "main",
   "integration_branch": "runway/integration",
   "notify_cmd": "osascript -e 'display notification \"{msg}\" with title \"Runway\"'",

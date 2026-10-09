@@ -113,6 +113,30 @@ Reports land in `_pm/runway-review-codex.md` and `_pm/runway-review-claude.md`;
 the merged findings and triage table go to `_pm/runway-review.md` and into the
 PR body (`_pm/runway-pr.md`).
 
+### The verdict and `"merge"`
+
+After the fix pass and the final check, a judge step (read-only, built from the
+triage rules above) gives the round `pass` or `fail`, with blocking and
+non-blocking findings and each done ticket's acceptance criteria mapped to
+evidence. Rules: a red check after the last edit is always `fail`; a criterion
+with no evidence is blocking; a judge that returns nothing parseable is `fail`,
+never `pass`; a finding both seats raise is blocking unless the judge shows it
+wrong. A batch is marked `hold` when the PR body's merge danger says one-way (or
+says nothing clear) or any ticket was gated `needs-human`: it can pass review but
+never auto-merges.
+
+The verdict lands in `_pm/runway-review.md`, as a `verdict` row in
+`_pm/runway-runs.jsonl` (with the reviewed SHA), and as the first line of the PR
+body (`Review: FAIL, 2 blocking findings`, `Review: PASS (would merge)`).
+
+`"merge"` in `runway.json` says what the verdict is for:
+
+- `off` (default): the verdict is only recorded.
+- `shadow`: recorded, and a pass reads "would merge" so Joe can compare it with
+  his own call before trusting it.
+- `on_pass`: reserved for auto-merge. Nothing merges yet; filing fix tickets and
+  merging are separate tickets.
+
 Ringer is optional. Without it, or if neither seat writes a report, Runway logs
 the fallback and runs the single Claude review (`"review": "single"`, the engine
 default for a `runway.json` that doesn't set it). Cloud sessions can't run the
