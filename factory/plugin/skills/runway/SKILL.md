@@ -170,6 +170,17 @@ A harness is the agent CLI that does a ticket's work. The default is Claude
   `Harness: <name>` header in a markdown ticket. An unknown name is logged
   (`park ... unknown harness`) and the ticket is parked as needs-human, not run.
 - `RUNWAY status --json` shows each ticket's effective `harness`.
+- **Default model.** The templates pin `claude-sonnet-5-5` (the exact ID, not an
+  alias) on `agent_cmd`, `prep_cmd` and `review_cmd`; the fix pass and PR body
+  inherit it. Opus is opt-in per ticket through the `opus` profile: label a
+  ticket `harness:opus` (or `Harness: opus`) when it needs architecture
+  judgment. It costs about twice as much per token, so don't make it the
+  default.
+- **Which model answered.** Every agent record in `_pm/runway-runs.jsonl` has a
+  `model` field, read from the JSON result's `modelUsage` (null when the harness
+  doesn't report it), so `runway retro` can compare models.
+- **Revisit the default** if `runway retro` shows Sonnet tickets retrying or
+  parking more than about 1 in 5.
 - `RUNWAY whoami` prints this Mac's name, the one stamped on claims
   (`claimed_by`). A ticket claimed by another Mac is skipped here; the claim
   clears when the ticket is parked, paused or retried.

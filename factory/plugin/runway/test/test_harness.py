@@ -13,7 +13,8 @@ import runway  # noqa: E402
 from test_heartbeat import make_repo  # noqa: E402
 
 CLAUDE_OUT = {"type": "result", "result": "claude says hi", "session_id": "sess-claude",
-              "total_cost_usd": 0.42, "num_turns": 3, "usage": {"input_tokens": 10, "output_tokens": 5}}
+              "total_cost_usd": 0.42, "num_turns": 3,
+              "modelUsage": {"claude-sonnet-5-5": {"costUSD": 0.42}}, "usage": {"input_tokens": 10, "output_tokens": 5}}
 CODEX_EVENTS = [
     {"type": "thread.started", "thread_id": "thread-codex"},
     {"type": "item.completed", "item": {"id": "i0", "type": "reasoning", "text": "thinking"}},
@@ -37,6 +38,13 @@ class Parsers(unittest.TestCase):
         self.assertEqual(meta["cost_usd"], 0.42)
         self.assertEqual(meta["num_turns"], 3)
         self.assertEqual(meta["usage"], {"input_tokens": 10, "output_tokens": 5})
+
+    def test_claude_model_from_model_usage(self):
+        out = dict(CLAUDE_OUT, modelUsage={"claude-haiku-5-5": {"costUSD": 0.01},
+                                           "claude-sonnet-5-5": {"costUSD": 0.41}})
+        self.assertEqual(runway.parse_output("claude", json.dumps(out))[1]["model"], "claude-sonnet-5-5")
+        bare = {k: v for k, v in CLAUDE_OUT.items() if k != "modelUsage"}
+        self.assertIsNone(runway.parse_output("claude", json.dumps(bare))[1]["model"])
 
     def test_codex(self):
         text, meta = runway.parse_output("codex", CODEX_RAW)
@@ -81,6 +89,42 @@ class Resolve(unittest.TestCase):
 
     def test_no_ticket_gives_project_default(self):
         self.assertEqual(runway.resolve_harness(self.CFG)["name"], "claude")
+
+
+class Templates(unittest.TestCase):
+    """The shipped runway.json templates pin the model and carry the opus profile."""
+    DIR = Path(__file__).resolve().parents[1]
+
+    class T:
+        def __init__(self, harness=None):
+            self.harness = harness
+
+    def cfgs(self):
+        for name in ("runway.json.template", "runway.json.github.template"):
+            yield name, dict(runway.DEFAULT_CONFIG, **json.loads((self.DIR / name).read_text()))
+
+    def test_default_commands_pin_sonnet(self):
+        for name, cfg in self.cfgs():
+            p = runway.resolve_harness(cfg, self.T())
+            for k in ("agent_cmd", "prep_cmd", "review_cmd"):
+                self.assertIn("--model claude-sonnet-5-5 ", p[k], f"{name} {k}")
+
+    def test_opus_ticket_resolves_opus_commands(self):
+        for name, cfg in self.cfgs():
+            self.assertIn("_harness_note", cfg, name)
+            p = runway.resolve_harness(cfg, self.T("opus"))
+            self.assertEqual(p["name"], "opus")
+            for k in ("agent_cmd", "prep_cmd", "review_cmd"):
+                self.assertIn("--model claude-opus-5-5 ", p[k], f"{name} {k}")
+                self.assertNotIn("sonnet", p[k])
+
+    def test_status_json_shows_opus(self):
+        root = make_repo({"01-plain": "", "02-opus": "Harness: opus"})
+        for name, cfg in self.cfgs():
+            cfg["tracker"] = "markdown"  # read the local tickets; the templates' own trackers need the network
+            doc = runway.status_json(cfg, root, runway.make_tracker(cfg, root))
+            self.assertEqual({t["id"]: t["harness"] for t in doc["tickets"]},
+                             {"eff/01": "claude", "eff/02": "opus"}, name)
 
 
 class BadConfig(unittest.TestCase):
@@ -164,6 +208,8 @@ class EndToEnd(unittest.TestCase):
         self.assertEqual(runs["eff/02"]["harness"], "codex")
         self.assertEqual(runs["eff/02"]["session_id"], "thread-codex")
         self.assertIsNone(runs["eff/02"]["cost_usd"])
+        self.assertEqual(runs["eff/01"]["model"], "claude-sonnet-5-5")
+        self.assertIsNone(runs["eff/02"]["model"])
         calls = [r for r in recs if r["kind"] in ("prep", "run", "review", "fix", "pr")]
         self.assertTrue(calls and all("harness" in r for r in calls))
 
