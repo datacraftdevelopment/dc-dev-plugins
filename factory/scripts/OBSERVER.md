@@ -96,9 +96,9 @@ head, check and failure signature; append repeated evidence to the same issue.
 Keep private logs local; scrub excerpts before publication. Human product/risk
 decisions remain pending. This observer has no tracker publishing adapter.
 
-Existing #21–#23 cover the discovered blockers; do not file duplicates. Their
-dependency on human-gated #7 must be resolved before dispatching repairs that
-assume a new engine location. Installed-plugin migration #8 is not approved
+Existing #21–#23 cover the discovered blockers; do not file duplicates. They
+depend on #7; verify its current approval and completion before dispatching
+repairs that assume a new engine location. Installed-plugin migration #8 is not approved
 by a green check or approval of routine bug repairs.
 
 ## Usage measurements and delivery limits
@@ -120,3 +120,10 @@ plugin after connection, permission checks and event-schema discovery. It is
 not installed/configured/verified by this observer. A filesystem watcher alone
 cannot invoke this conversation. Local readiness and end-to-end AI supervision
 must be reported separately.
+
+Operational update: another workflow merged PR #20 at 2026-10-09 08:31 UTC
+as `1eee58cfa7d05cd39ccf3e5b1991a172d9e78f22`. This observer/assistant pilot
+did not perform that merge or establish replacement green-check evidence.
+Runway subsequently synced main into integration and started approved #6;
+#7 also carries an approval. Preserve its repair queue rather than dispatching
+competing implementations. This supersedes PR #20 as a pending pilot candidate.
