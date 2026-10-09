@@ -632,6 +632,9 @@ class Ticket:
     def ref(self) -> str:
         return str(self.path.relative_to(self.root))
 
+    commit_ref = ""  # a local file has nothing a commit subject could link to
+    pr_ref = ""
+
     @property
     def url(self) -> str:
         return self.ref
@@ -745,6 +748,10 @@ class Ticket:
 
 
 class MarkdownTracker:
+    @staticmethod
+    def signins(cfg: dict) -> list:
+        return []  # a local folder needs no sign-in
+
     def __init__(self, root: Path, cfg: dict):
         self.root = root
 
@@ -778,19 +785,23 @@ class MarkdownTracker:
         """Pick up answers Joe left in the tracker. Markdown answers arrive via `runway go`."""
 
 
-def make_tracker(cfg: dict, root: Path):
+def tracker_class(cfg: dict):
+    """The tracker class for cfg's `tracker`, not yet built (building one reads the repo or the Linear config)."""
     kind = cfg.get("tracker", "markdown")
     if kind == "markdown":
-        return MarkdownTracker(root, cfg)
+        return MarkdownTracker
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     if kind == "linear":
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
         from linear_tracker import LinearTracker
-        return LinearTracker(root, cfg)
+        return LinearTracker
     if kind == "github":
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
         from github_tracker import GitHubTracker
-        return GitHubTracker(root, cfg)
+        return GitHubTracker
     sys.exit(f"Unknown tracker {kind!r}; use 'markdown', 'linear' or 'github'.")
+
+
+def make_tracker(cfg: dict, root: Path):
+    return tracker_class(cfg)(root, cfg)
 
 
 # ---------- frontier ----------
@@ -869,19 +880,6 @@ def tool_signin(cfg: dict, root: Path, key: str) -> dict:
     return {"name": key, "ok": True, "detail": f"{label} signed in"}
 
 
-def linear_signin(cfg: dict) -> dict:
-    """The Linear key is present (environment or keychain). Nothing goes over the network."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import linear_tracker
-    lc = dict(linear_tracker.DEFAULTS, **cfg.get("linear", {}))
-    try:
-        linear_tracker.api_key(lc)
-    except SystemExit:
-        return {"name": "linear", "ok": False,
-                "detail": f"Linear needs its key ({lc['api_key_env']} or the keychain item `{lc['keychain_service']}`)"}
-    return {"name": "linear", "ok": True, "detail": "Linear key found"}
-
-
 def harness_signin_key(cfg: dict, name: str) -> str | None:
     """Which status check covers a harness: its parser decides (claude, codex), else none."""
     parser = (harness_profiles(cfg).get(name) or {}).get("parser") or ("claude" if name == "claude" else None)
@@ -895,11 +893,12 @@ def signin_checks(cfg: dict, root: Path, harnesses, panel: bool = False, finish:
     keys = [harness_signin_key(cfg, name) for name in harnesses]
     if panel:
         keys += ["codex", "claude"]
-    if cfg.get("tracker") == "github" or (finish and cfg.get("pr") == "draft"):
-        keys.append("gh")
+    needs = tracker_class(cfg).signins(cfg)  # the tracker's own: tool keys, or callables that return a check
+    keys += [n for n in needs if isinstance(n, str)]
+    if finish and cfg.get("pr") == "draft":
+        keys.append("gh")  # the engine opens the draft PR, whatever the tracker
     results = [tool_signin(cfg, root, k) for k in dict.fromkeys(k for k in keys if k)]
-    if cfg.get("tracker") == "linear":
-        results.append(linear_signin(cfg))
+    results += [n(cfg) for n in needs if callable(n)]
     return results
 
 
@@ -1315,7 +1314,7 @@ def integration_worktree(cfg: dict, root: Path) -> Path:
 def commit_ref(t) -> str:
     """The ticket's reference for a commit subject: `(#12)` on GitHub, `(DAT-41)` on Linear (which links it),
     nothing for pm's local tickets. Matt's /code-review reads these to find the tickets behind a change."""
-    return f"({t.id})" if getattr(t, "effort", "") in ("github", "linear") else ""
+    return f"({t.commit_ref})" if t.commit_ref else ""
 
 
 def auto_commit_msg(t) -> str:
@@ -1325,14 +1324,7 @@ def auto_commit_msg(t) -> str:
 def refs_block(done: list) -> str:
     """The PR body's ticket list. `Refs`, never `Closes`: Runway closes an issue when its branch merges into
     integration, so merging the PR must not try to close it again."""
-    lines = []
-    for t in done:
-        eff = getattr(t, "effort", "")
-        if eff == "github":
-            lines.append(f"Refs {t.id}")
-        elif eff == "linear":
-            lines.append(f"Refs {t.ref}")
-    return "\n".join(lines)
+    return "\n".join(t.pr_ref for t in done if t.pr_ref)
 
 
 def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") -> bool:

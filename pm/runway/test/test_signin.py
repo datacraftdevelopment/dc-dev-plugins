@@ -152,6 +152,28 @@ class SignIn(unittest.TestCase):
         finally:
             linear_tracker.api_key = orig
 
+    def test_linear_with_draft_pr_still_checks_gh(self):
+        root = self.repo()
+        cfg = self.cfg(root)
+        cfg.update(tracker="linear", pr="draft")
+        import linear_tracker
+        orig = linear_tracker.api_key
+        try:
+            linear_tracker.api_key = lambda c: "key"
+            names = [c["name"] for c in runway.signin_checks(cfg, root, ["claude"], finish=True)]
+            self.assertEqual(names, ["claude", "gh", "linear"])
+            names = [c["name"] for c in runway.signin_checks(cfg, root, ["claude"])]
+            self.assertEqual(names, ["claude", "linear"])
+        finally:
+            linear_tracker.api_key = orig
+
+    def test_github_tracker_needs_gh_without_a_draft_pr(self):
+        root = self.repo()
+        cfg = self.cfg(root)
+        cfg["tracker"] = "github"
+        names = [c["name"] for c in runway.signin_checks(cfg, root, ["claude"])]
+        self.assertEqual(names, ["claude", "gh"])
+
     def test_panel_checks_both_seats(self):
         root = self.repo()
         cfg = self.cfg(root)

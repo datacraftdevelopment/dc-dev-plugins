@@ -44,7 +44,7 @@ class Attempt(unittest.TestCase):
         return root, cfg
 
     def run_attempt(self, root, cfg):
-        t = SimpleNamespace(id="01-thing", title="Thing", ref="01-thing.md", text="do it", effort="eff", slug="thing")
+        t = SimpleNamespace(id="01-thing", title="Thing", ref="01-thing.md", text="do it", effort="eff", slug="thing", commit_ref="", pr_ref="")
         return runway.attempt(cfg, root, t)
 
     def test_merged(self):

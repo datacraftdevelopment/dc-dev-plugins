@@ -238,8 +238,23 @@ class LinearTicket(ticket_protocol.Ticket):
         self._labels(add=add, remove=remove)
 
 
+def signin(cfg: dict) -> dict:
+    """The Linear key is present (environment or keychain). Nothing goes over the network."""
+    lc = dict(DEFAULTS, **cfg.get("linear", {}))
+    try:
+        api_key(lc)
+    except SystemExit:
+        return {"name": "linear", "ok": False,
+                "detail": f"Linear needs its key ({lc['api_key_env']} or the keychain item `{lc['keychain_service']}`)"}
+    return {"name": "linear", "ok": True, "detail": "Linear key found"}
+
+
 class LinearTracker(ticket_protocol.Tracker):
     rules = ticket_protocol.LINEAR
+
+    @staticmethod
+    def signins(cfg: dict) -> list:
+        return [signin]
 
     def __init__(self, root: Path, cfg: dict):
         self.root = root

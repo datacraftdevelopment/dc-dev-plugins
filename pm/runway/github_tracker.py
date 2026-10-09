@@ -207,6 +207,10 @@ class GitHubTicket(ticket_protocol.Ticket):
     rules = ticket_protocol.GITHUB
     effort = "github"
 
+    @property
+    def pr_ref(self) -> str:
+        return f"Refs {self.id}"  # "#12": GitHub links it itself
+
     def __init__(self, node: dict, tracker: "GitHubTracker"):
         self.node = node
         number = node["number"]
@@ -318,6 +322,10 @@ class GitHubTicket(ticket_protocol.Ticket):
 
 class GitHubTracker(ticket_protocol.Tracker):
     rules = ticket_protocol.GITHUB
+
+    @staticmethod
+    def signins(cfg: dict) -> list:
+        return ["gh"]
 
     def __init__(self, root: Path, cfg: dict):
         self.root = root

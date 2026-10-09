@@ -97,6 +97,18 @@ class Ticket:
     def _older_comments(self) -> list[dict]:
         return []
 
+    # -- refs: what commit subjects and the PR body say about this ticket --
+
+    @property
+    def commit_ref(self) -> str:
+        """Goes in a commit subject as `(<commit_ref>)`; the tracker links it. Empty means no ref."""
+        return self.id
+
+    @property
+    def pr_ref(self) -> str:
+        """The whole PR body line. `Refs`, never `Closes`: Runway closes the issue when its branch merges."""
+        return f"Refs {self.ref}"
+
     # -- read side --
 
     @property
