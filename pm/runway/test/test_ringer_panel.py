@@ -4,6 +4,7 @@ A fake `ringer` on PATH stands in for the real one: `lint` checks the manifest i
 fake seat reports. FAKE_SEATS says what each seat does: ok | bad (report whose check fails) | none."""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -127,6 +128,30 @@ class Panel(unittest.TestCase):
         self.assertEqual(seats["codex"]["status"], "FAIL")
         self.assertEqual(seats["claude"]["status"], "PASS")
         self.assertTrue((self.out / "review-codex.md").exists())
+
+    def stale(self, mtime_offset=3600):
+        """Leftovers from an earlier run: a seat report in the work folder and a copy in the out folder."""
+        d = self.out / "work" / "review-claude"
+        d.mkdir(parents=True)
+        (d / "report.md").write_text("STALE follow-up fix commit a7e2554")
+        (self.out / "review-claude.md").write_text("STALE follow-up fix commit a7e2554")
+        t = os.path.getmtime(d / "report.md") + mtime_offset
+        os.utime(d / "report.md", (t, t))
+
+    def test_stale_report_is_never_returned_as_this_runs(self):
+        self.stale()
+        r = self.run_panel("codex=ok,claude=none")
+        seats = json.loads(r.stdout)["seats"]
+        self.assertEqual(seats["claude"], {"status": "MISSING", "report": None})
+        self.assertFalse((self.out / "review-claude.md").exists())
+
+    def test_fresh_report_replaces_a_stale_one(self):
+        self.stale()
+        r = self.run_panel("codex=ok,claude=ok")
+        seats = json.loads(r.stdout)["seats"]
+        text = Path(seats["claude"]["report"]).read_text()
+        self.assertIn("a bug", text)
+        self.assertNotIn("STALE", text)
 
     def test_no_reports_exits_1(self):
         r = self.run_panel("codex=none,claude=none")
@@ -288,6 +313,39 @@ class FinishPanel(unittest.TestCase):
         review = [r for r in rows if r["kind"] == "review"]
         self.assertEqual([r["harness"] for r in review], ["claude"])
         self.assertIn("single review finding", (self.repo / "prompts.log").read_text())
+
+    def test_stale_seat_file_in_pm_is_cleared_before_the_run(self):
+        pm = self.repo / "_pm"
+        pm.mkdir(exist_ok=True)
+        (pm / "runway-review-claude.md").write_text("STALE follow-up fix commit a7e2554\n")
+        self.finish("codex=ok,claude=none")
+        self.assertFalse((pm / "runway-review-claude.md").exists())
+        self.assertNotIn("STALE", (pm / "runway-review.md").read_text())
+
+    def test_brief_names_the_current_head_range_and_tickets(self):
+        self.finish("codex=ok,claude=ok")
+        brief = (self.repo / "_pm" / "runway-panel" / "brief.md").read_text()
+        m = re.search(r"current head ([0-9a-f]{40})", brief)
+        self.assertTrue(m, brief)
+        # the seats review the integration worktree's HEAD, so that commit must be on the integration branch
+        r = subprocess.run(["git", "merge-base", "--is-ancestor", m.group(1), "runway/integration"], cwd=self.repo)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("main...runway/integration", brief)
+        self.assertIn("01-thing", brief)
+
+    def test_ignored_leftover_folder_does_not_fail_the_check(self):
+        cfg = json.loads((self.repo / "runway.json").read_text())
+        cfg["check_cmd"] = "test ! -e gone"
+        (self.repo / "runway.json").write_text(json.dumps(cfg))
+        wt = runway.integration_worktree({**runway.DEFAULT_CONFIG, **cfg}, self.repo)
+        (wt / "gone" / "__pycache__").mkdir(parents=True)
+        (wt / "gone" / "__pycache__" / "x.pyc").write_text("x")
+        (wt / ".gitignore").write_text("__pycache__/\n")  # untracked here, so tracked content is untouched
+        git(wt, "add", ".gitignore")
+        git(wt, "commit", "-qm", "ignore pycache")
+        self.finish("codex=ok,claude=ok")
+        rows = [json.loads(l) for l in (self.repo / "_pm" / "runway-runs.jsonl").read_text().splitlines()]
+        self.assertEqual([r["check_exit"] for r in rows if r["kind"] == "finish"], [0])
 
     def test_default_is_single(self):
         self.assertEqual(runway.DEFAULT_CONFIG["review"], "single")

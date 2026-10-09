@@ -1532,9 +1532,15 @@ def panel_review(cfg: dict, root: Path, wt: Path, tlist: str, spec: str):
     pm = root / "_pm"
     out = pm / "runway-panel"
     out.mkdir(parents=True, exist_ok=True)
+    # Old seat reports go first, so a seat that writes nothing this run can't be answered by last run's.
+    for seat in ("codex", "claude"):
+        (pm / f"runway-review-{seat}.md").unlink(missing_ok=True)
+    integ, base = cfg["integration_branch"], cfg["base_branch"]
+    head = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
     brief = out / "brief.md"
-    brief.write_text(f"Runway integration branch `{cfg['integration_branch']}`, reviewed against "
-                     f"`{cfg['base_branch']}`.\n{spec}\nTickets:\n{tlist}\n")
+    brief.write_text(f"Runway integration branch `{integ}`, reviewed against `{base}`.\n"
+                     f"Review the range `{base}...{integ}`, current head {head}. Ignore any other commit.\n"
+                     f"{spec}\nTickets:\n{tlist}\n")
     t0 = time.time()
     pids: list = []
 
@@ -1599,6 +1605,16 @@ def ticket_work_since(cfg: dict, root: Path, reviewed) -> bool:
     return any(sub != sync for sub in subjects)
 
 
+def reset_worktree(wt: Path, reset: bool = True) -> None:
+    """Make Runway's integration worktree match its commit: tracked files reset, untracked files and
+    ignored build caches (a deleted folder's __pycache__) removed. `-X` takes only what .gitignore names,
+    so nothing hand-made is lost beyond what the first `git clean -fd` already took in this private worktree."""
+    if reset:
+        sh(["git", "reset", "--hard", "-q"], wt)
+    sh(["git", "clean", "-fdq"], wt)
+    sh(["git", "clean", "-fdXq"], wt)
+
+
 def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     """Review the integration branch as a whole, fix once, check, and write the PR body.
     Runs once per integration head that carries new ticket work (base syncs alone don't), unless forced.
@@ -1635,8 +1651,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     beat(root, "finish")
     log(root, f"finish {integ} ({ahead} commits ahead of {base})")
     wt = integration_worktree(cfg, root)
-    sh(["git", "reset", "--hard", "-q"], wt)
-    sh(["git", "clean", "-fdq"], wt)
+    reset_worktree(wt)
     done = [t for t in tickets if t.status in DONE]
     open_ = [t for t in tickets if t.status not in DONE]
     tlist = "\n".join([f"- {t.id} {t.title} ({t.ref})" for t in done] +
@@ -1675,7 +1690,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                                  fix_prompt.format(findings=findings), "finish", "fix", harness=hp)
         if fr.failure:
             sh(["git", "reset", "--hard", "-q", before], wt)
-            sh(["git", "clean", "-fdq"], wt)
+            reset_worktree(wt, reset=False)
         if panel:
             triage = fix_text.strip() or f"(The fixer returned no triage table, exit {fr.returncode}.)"
         sh(["git", "add", "-A"], wt)
@@ -1685,7 +1700,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
             fix_note = fix_failure_note(fr.failure)
         elif after == before:
             fix_note = "The fix pass made no changes; the findings stand."
-        elif sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"]).returncode == 0:
+        elif (reset_worktree(wt, reset=False) or sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])).returncode == 0:
             fix_note = f"The fix pass committed {after[:8]} and the check still passes."
         else:
             sh(["git", "reset", "--hard", "-q", before], wt)
@@ -1698,6 +1713,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     log(root, f"review {'findings' if has_findings else 'clean'}. {fix_note}")
 
     # 3. Evidence: the check on the final branch.
+    reset_worktree(wt, reset=False)
     c = sh(cfg["check_cmd"], wt, timeout=cfg["agent_timeout_s"])
     check_out = (c.stdout + c.stderr)[-3000:]
     stat = sh(["git", "diff", "--stat", f"{base}...HEAD"], wt).stdout[-3000:]
