@@ -37,33 +37,37 @@ mkdir -p docs/agents
 if [ "$TRACKER" = github ]; then
   fill "$HERE/issue-tracker-github.md" > docs/agents/issue-tracker.md
   [ -f runway.json ] || fill "$HERE/runway.json.github.template" > runway.json
-  if ! grep -q '^## Agent skills' CLAUDE.md 2>/dev/null; then
-    cat >> CLAUDE.md <<MD
-
-## Agent skills
-
-### Issue tracker
-
-GitHub Issues, repo $GH_REPO. Runway works the \`ready-for-agent\` queue. See \`docs/agents/issue-tracker.md\`.
-MD
-  fi
-  git add docs/agents/issue-tracker.md CLAUDE.md runway.json
-  git commit -qm "Track issues in GitHub ($GH_REPO); add runway.json" || true
+  TRACKER_LINE="GitHub Issues, repo $GH_REPO."
+  MSG="Track issues in GitHub ($GH_REPO); add runway.json"
 else
   fill "$HERE/issue-tracker-linear.md" > docs/agents/issue-tracker.md
   [ -f runway.json ] || fill "$HERE/runway.json.template" > runway.json
-  if ! grep -q '^## Agent skills' CLAUDE.md 2>/dev/null; then
-    cat >> CLAUDE.md <<MD
+  TRACKER_LINE="Linear, team $TEAM, project \"$PROJECT\"."
+  MSG="Track issues in Linear ($TEAM / $PROJECT); add runway.json"
+fi
+# Matt's other two docs: seed when missing, never overwrite (his setup or Joe's edits win).
+[ -f docs/agents/triage-labels.md ] || cp "$HERE/triage-labels.md.template" docs/agents/triage-labels.md
+[ -f docs/agents/domain.md ] || cp "$HERE/domain.md.template" docs/agents/domain.md
+# The Agent skills block has Matt's three sub-blocks; an existing block is left alone.
+if ! grep -q '^## Agent skills' CLAUDE.md 2>/dev/null; then
+  cat >> CLAUDE.md <<MD
 
 ## Agent skills
 
 ### Issue tracker
 
-Linear, team $TEAM, project "$PROJECT". Runway works the \`ready-for-agent\` queue. See \`docs/agents/issue-tracker.md\`.
+$TRACKER_LINE Runway works the \`ready-for-agent\` queue. See \`docs/agents/issue-tracker.md\`.
+
+### Triage labels
+
+Matt's five defaults, plus Runway's \`go\`, \`needs-human\` and \`spec\`. See \`docs/agents/triage-labels.md\`.
+
+### Domain docs
+
+Single-context: \`GLOSSARY.md\` and \`docs/adr/\` at the repo root, created when first needed. See \`docs/agents/domain.md\`.
 MD
-  fi
-  git add docs/agents/issue-tracker.md CLAUDE.md runway.json
-  git commit -qm "Track issues in Linear ($TEAM / $PROJECT); add runway.json" || true
 fi
+git add docs/agents CLAUDE.md runway.json
+git commit -qm "$MSG" || true
 echo "Repo ready: $REPO"
 echo "Next: python3 \"$HERE/runway.py\" --root \"$REPO\" setup"
