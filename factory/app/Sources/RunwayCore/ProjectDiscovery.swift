@@ -30,6 +30,14 @@ public struct LaunchJob: Equatable, Sendable {
             runwayScript: args.lazy.compactMap(scriptArgument).first)
     }
 
+    /// True for a readable plist whose command never names `runway.py`, such as the observer
+    /// (`com.joe.runway.observer.*` runs `observe.py`). It shares the label prefix but is not a loop.
+    public static func isOtherJob(plist data: Data) -> Bool {
+        guard let dict = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any],
+              let args = dict["ProgramArguments"] as? [String], !args.isEmpty else { return false }
+        return !args.contains { $0.contains("runway.py") }
+    }
+
     /// `python3 "/path/runway.py"` inside the shell command string.
     private static func scriptArgument(_ arg: String) -> String? {
         guard let range = arg.range(of: "python3 ") else { return nil }
@@ -186,6 +194,7 @@ public struct ProjectDiscovery {
         let files = (try? FileManager.default.contentsOfDirectory(at: launchAgentsDir, includingPropertiesForKeys: nil)) ?? []
         return files
             .filter { $0.pathExtension == "plist" && $0.lastPathComponent.hasPrefix(Self.labelPrefix) }
+            .filter { !((try? Data(contentsOf: $0)).map(LaunchJob.isOtherJob) ?? false) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
             .map(project(at:))
     }
