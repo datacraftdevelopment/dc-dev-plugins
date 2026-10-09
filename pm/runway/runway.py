@@ -129,7 +129,9 @@ Trackers (config key "tracker"):
   github              A repo's GitHub Issues, through github_tracker.py (claims, closes, parks and releases ready-for-agent issues; repo from
                       "github": {"repo": "owner/name"} or the clone's origin). See its docstring.
 
-The base branch is never touched; Joe merges the integration branch himself.
+The base branch is touched only by `"merge": "on_pass"`: a passing review with no hold merges the integration
+branch into base at exactly the reviewed SHA (`gh pr merge --match-head-commit` for "pr": "draft", a local
+`git merge --no-ff` plus push for "pr": "file"). Otherwise Joe merges the integration branch himself.
 
 No dependencies beyond Python 3.9+ and git.
 """
@@ -147,6 +149,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import field, make_dataclass
 from pathlib import Path
@@ -173,7 +176,7 @@ DEFAULT_CONFIG = {
     # claude) through Ringer, see ringer_panel.py. Without Ringer or any seat report it falls back to single.
     "review": "single",
     # What the round's pass/fail verdict is for. "off": only record it. "shadow": record it and say what
-    # would have merged. "on_pass": reserved for auto-merge (not wired yet). Nothing here ever merges.
+    # would have merged. "on_pass": a pass with no hold merges the reviewed commit into base. Only on_pass ever merges.
     "merge": "off",
     # With merge shadow or on_pass, a failed review files a fix ticket instead of running the fix pass.
     # This is the most reviews per batch: the first plus (review_rounds - 1) re-reviews after a fix ticket.
@@ -1469,23 +1472,32 @@ def decide_verdict(check_exit: int, parsed, valid_reviews=None) -> dict:
             "criteria": criteria}
 
 
-def is_one_way(pr_body: str, tickets: list) -> bool:
-    """True when the batch must never auto-merge: the PR body's merge danger says one-way (or says nothing
-    clear), or any ticket was gated for a human (needs-human, or a human gate Joe later approved)."""
+def hold_reason(pr_body: str, tickets: list) -> str:
+    """Why the batch must never auto-merge, or '' when it may: the PR body's merge danger says one-way (or says
+    nothing clear), or any ticket was gated for a human (needs-human, or a human gate Joe later approved)."""
     if any(t.gate in ("human", "approved") or t.status == "needs-human" for t in tickets):
-        return True
+        return "a ticket was gated for a human"
     m = re.search(r"^#+\s*Merge danger\s*$(.*?)(?=^#+\s|\Z)", pr_body, re.M | re.S | re.I)
     door = re.search(r"\b(one|two)[- ]way\b", m.group(1), re.I) if m else None
-    return door is None or door.group(1).lower() == "one"
+    if door is None:
+        return "the merge danger is not stated"
+    return "one-way door" if door.group(1).lower() == "one" else ""
 
 
-def verdict_line(v: dict, merge: str, hold: bool) -> str:
+def is_one_way(pr_body: str, tickets: list) -> bool:
+    """True when the batch must never auto-merge (see hold_reason)."""
+    return bool(hold_reason(pr_body, tickets))
+
+
+def verdict_line(v: dict, merge: str, hold: bool, sha: str = "") -> str:
     n = len(v["blocking"])
     if v["verdict"] != "pass":
         return f"Review: FAIL, {n} blocking finding{'' if n == 1 else 's'}"
     if hold:
         return "Review: PASS (hold: one-way door, never auto-merges)"
-    return "Review: PASS (would merge)" if merge in ("shadow", "on_pass") else "Review: PASS"
+    if merge == "shadow":
+        return "Review: PASS (would merge" + (f" {sha}" if sha else "") + ")"
+    return "Review: PASS (would merge)" if merge == "on_pass" else "Review: PASS"
 
 
 def verdict_report(v: dict, line: str, hold: bool, sha: str) -> str:
@@ -1789,9 +1801,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     body = body.strip() if r.returncode == 0 and body.strip() else (
         f"## Summary\n\n```\n{stat}\n```\n\n## Evidence\n\n`{cfg['check_cmd']}` exited {c.returncode}.\n\n"
         f"```\n{check_out}\n```\n\n## Merge danger\n\nNot assessed (the PR-body agent failed).")
-    hold = is_one_way(body, tickets)
-    vline = verdict_line(verdict, cfg.get("merge", "off"), hold)
-    body = vline + "\n\n" + body
+    why_hold = hold_reason(body, tickets)
+    hold = bool(why_hold)
+    vline = verdict_line(verdict, cfg.get("merge", "off"), hold, sha)
+    held = verdict["verdict"] == "pass" and hold and cfg.get("merge", "off") in ("shadow", "on_pass")
+    body = vline + "\n\n" + (f"Held for Joe: {why_hold}\n\n" if held else "") + body
     refs = refs_block(done)
     if refs:
         body += f"\n\n## Tickets\n\n{refs}"
@@ -1821,10 +1835,58 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                   "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off"),
                   "seats": seat_rows})
     check_note = "check passes" if c.returncode == 0 else "CHECK FAILS"
-    if fix_msg:
+    merged = (cfg.get("merge", "off") == "on_pass" and verdict["verdict"] == "pass" and not hold
+              and merge_reviewed(cfg, root, sha, where if where.startswith("http") else None))
+    if merged:
+        notify(cfg, root, f"Merged {len(done)} tickets into {base}")
+    elif fix_msg:
         notify(cfg, root, fix_msg)
     else:
         notify(cfg, root, f"Ready for review: {len(done)} tickets on {integ}, {check_note}. {vline}. PR: {where}")
+    return True
+
+
+def merge_reviewed(cfg: dict, root: Path, sha: str, pr_url: str | None) -> bool:
+    """Merge the reviewed commit, and only that commit, into the base branch (merge: on_pass, no hold).
+    "draft": ready the PR, then `gh pr merge --match-head-commit <sha>`, so a head that moved merges nothing.
+    "file": `git merge --no-ff <sha>` in a throwaway worktree on base, then push; a conflict aborts.
+    Logs why when it does not merge and leaves the PR for the next finish. Returns True after a merge."""
+    base, integ = cfg["base_branch"], cfg["integration_branch"]
+    now_head = sh(["git", "rev-parse", integ], root).stdout.strip()
+    if now_head != sha:
+        log(root, f"merge skipped: {integ} is at {now_head[:12]}, the review was of {sha[:12]}")
+        return False
+    if cfg["pr"] == "draft":
+        if not pr_url:
+            log(root, "merge skipped: no draft PR to merge")
+            return False
+        r = sh(["gh", "pr", "ready", integ], root)
+        if r.returncode != 0:
+            log(root, f"merge skipped: gh pr ready failed: {r.stderr.strip()[-300:]}")
+            return False
+        r = sh(["gh", "pr", "merge", integ, "--merge", "--match-head-commit", sha], root)
+        if r.returncode != 0:
+            log(root, f"merge skipped: gh pr merge refused {sha[:12]}: {r.stderr.strip()[-300:]}")
+            return False
+    else:
+        wt = Path(tempfile.mkdtemp(prefix="runway-merge-"))
+        try:
+            if sh(["git", "worktree", "add", "-q", "--detach", str(wt), base], root).returncode != 0:
+                log(root, f"merge skipped: could not check out {base}")
+                return False
+            r = sh(["git", "merge", "--no-ff", "-m", f"runway: merge {integ} {sha[:12]}", sha], wt)
+            if r.returncode != 0:
+                sh(["git", "merge", "--abort"], wt)
+                log(root, f"merge skipped: {sha[:12]} conflicts with {base}")
+                return False
+            r = sh(["git", "push", "-q", "origin", f"HEAD:refs/heads/{base}"], wt)
+            if r.returncode != 0:
+                log(root, f"merge skipped: push to {base} failed: {r.stderr.strip()[-300:]}")
+                return False
+        finally:
+            sh(["git", "worktree", "remove", "--force", str(wt)], root)
+    log(root, f"merge {sha[:12]} into {base}")
+    record(root, {"kind": "merge", "ticket": "finish", "sha": sha, "pr": pr_url, "base": base, "mode": cfg["pr"]})
     return True
 
 
