@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""Read-only Runway observer. Writes only its own dedup state and event packets.
+
+No agent calls, process inspection, tracker calls, credentials, or runner actions.
+Use --once for a snapshot, otherwise check every 30 seconds. Events do not wake AI.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import time
+from pathlib import Path
+
+
+def read_json(path):
+    try:
+        value = json.loads(path.read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def inspect(root, saved):
+    pm = root / '_pm'
+    events = []
+    heartbeat = read_json(pm / 'runway-state.json')
+    if heartbeat.get('phase') in ('waiting', 'stopped', 'paused'):
+        events.append({'kind': 'attention', 'phase': heartbeat['phase'],
+                       'ticket': heartbeat.get('ticket'),
+                       'reason': str(heartbeat.get('reason', ''))[:500],
+                       'since': heartbeat.get('since')})
+    # Consume only appended complete records. Retain a partial line for the next pass.
+    path = pm / 'runway-runs.jsonl'
+    offset = saved.get('offset', 0)
+    identity = saved.get('identity')
+    try:
+        with path.open('rb') as stream:
+            st = os.fstat(stream.fileno())
+            if identity != st.st_ino or st.st_size < offset:
+                offset = 0
+            stream.seek(offset)
+            for _ in range(500):
+                line = stream.readline(65537)
+                if len(line) > 65536:
+                    offset = stream.tell()  # discard oversized fragments without blocking the queue
+                    continue
+                if not line or not line.endswith(b'\n'):
+                    break
+                offset = stream.tell()
+                try:
+                    row = json.loads(line)
+                except (ValueError, UnicodeError):
+                    continue
+                if not isinstance(row, dict):
+                    continue
+                kind = row.get('kind')
+                if kind in ('finish', 'prep') or (kind == 'outcome' and row.get('result') not in ('done', 'stopped')) or row.get('exit', 0) != 0:
+                    events.append({k: row[k] for k in ('at', 'kind', 'ticket', 'result', 'exit', 'check_exit', 'pr') if k in row})
+            saved['identity'] = st.st_ino
+            saved['offset'] = offset
+    except OSError:
+        pass
+    # Age can flag a review need, but cannot establish that a process is dead.
+    if heartbeat.get('phase') in ('agent', 'check', 'prep', 'merge', 'sync', 'finish'):
+        config = read_json(root / 'runway.json')
+        try:
+            since = datetime.datetime.fromisoformat(heartbeat['since']).timestamp()
+            budget = int(config.get('agent_timeout_s', 3600))
+            # Finish includes panel, fix, checks and PR generation, each with a budget.
+            multiplier = 6 if heartbeat['phase'] == 'finish' else 1
+            if time.time() - since > budget * multiplier + 120:
+                events.append({'kind': 'overdue', 'phase': heartbeat['phase'],
+                               'ticket': heartbeat.get('ticket'), 'since': heartbeat['since'],
+                               'reason': 'Phase exceeds time budget; verify liveness before acting.'})
+        except (KeyError, ValueError, TypeError):
+            pass
+    return events, heartbeat
+
+
+def tick(root, out):
+    started = time.perf_counter()
+    out.mkdir(parents=True, exist_ok=True)
+    state_path = out / 'state.json'
+    saved = read_json(state_path)
+    history = saved.get('seen', [])
+    seen = set(history)
+    baseline = 'offset' not in saved
+    events, heartbeat = inspect(root, saved)
+    emitted = []
+    for event in events:
+        key = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
+        if key in seen:
+            continue
+        seen.add(key)
+        history.append(key)
+        packet = {'id': key, 'observed_at': time.time(), 'repo': str(root),
+                  'event': {k: v[:500] if isinstance(v, str) else v for k, v in event.items()},
+                  'baseline': baseline, 'liveness': 'unverified'}
+        with (out / 'events.jsonl').open('a') as stream:
+            stream.write(json.dumps(packet) + '\n')
+        emitted.append(packet)
+    saved['seen'] = history[-2000:]
+    saved['snapshot'] = {k: heartbeat.get(k) for k in ('phase', 'ticket', 'attempt', 'since', 'pid', 'agent_pid')}
+    saved['checked_at'] = time.time()
+    saved['last_check_seconds'] = time.perf_counter() - started
+    temp = state_path.with_suffix('.tmp')
+    temp.write_text(json.dumps(saved, indent=2) + '\n')
+    temp.replace(state_path)
+    return emitted
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', required=True, type=Path)
+    parser.add_argument('--out', type=Path)
+    parser.add_argument('--interval', type=int, default=30, choices=range(30, 61))
+    parser.add_argument('--once', action='store_true')
+    args = parser.parse_args()
+    root = args.root.resolve()
+    out = args.out or root / '_pm' / 'observer'
+    # One observer per output directory; never acquire the runner's lock.
+    import fcntl
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / 'observer.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        while True:
+            for packet in tick(root, out):
+                print(json.dumps(packet), flush=True)
+            if args.once:
+                return
+            time.sleep(args.interval)
+
+
+if __name__ == '__main__':
+    main()
