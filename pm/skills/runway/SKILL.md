@@ -91,7 +91,7 @@ run side by side. Give them a blocks relation in landing order.
   it's a crash's leftovers, so say so.
 - `RUNWAY tick` runs one step; `RUNWAY loop` runs until nothing is ready.
 - `bash .../schedule.sh status|run|uninstall <repo>`: the scheduled job.
-- The log is `<repo>/_pm/runway.log`; each agent call is in `_pm/runway-runs.jsonl`.
+- The log is `<repo>/_pm/runway.log`; each agent call is in `_pm/runway-runs.jsonl`. The row with `kind: outcome` ends a ticket: `result` is `done|needs-human|stopped|signed-out`, and `outcome` is the finer kind (`merged|question|agent-failed|no-commits|check-failed|merge-conflict|stopped|signed-out`).
 - `RUNWAY finish` forces the finish step; its PR body lands in `_pm/runway-pr.md`.
 
 Closing a chat never pauses the loop, and nothing here should say it does.

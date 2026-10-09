@@ -1184,7 +1184,6 @@ def worktrees(cfg: dict, root: Path) -> Path:
 def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
     ensure_integration(cfg, root)
     branch = f"runway/{t.effort}-{t.slug}"
-    wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
     t.mark_claimed(branch, machine_name())
     # No tracker can claim atomically, so read the claim back: if another Mac stamped it after us, it keeps it.
     now_held = next((x.claimed_by for x in tracker.load() if x.id == t.id), None)
@@ -1193,30 +1192,7 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
         return
     log(root, f"run   {t.id} {t.title}  -> {branch}")
 
-    out = attempt(cfg, root, t)
-    t = tracker.reload(t)  # agent may not touch it, but reload to be safe
-    if out.kind == "stopped":  # pause --stop-now: back to ready, worktree and branch kept
-        t.mark_ready("stopped by pause")
-        log(root, f"stopped by pause  {t.id}")
-        record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts, "result": "stopped", "detail": ""})
-        return
-    if out.kind == "signed-out":  # the ticket goes back to ready; the queue behind it is untouched
-        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
-        record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts, "result": "signed-out",
-                      "detail": ""})
-        sh(["git", "worktree", "remove", "--force", str(wt)], root)
-        return
-    ok = out.kind == "merged"
-    if ok:
-        t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
-        log(root, f"done  {t.id}")
-    else:
-        t.mark_needs_human("run failed or asked a question", out.detail or "Agent run failed with no detail.")
-        notify(cfg, root, f"Blocked: {t.id} {t.title}")
-    beat_update(root, last_result="pass" if ok else "park")
-    record(root, {"kind": "outcome", "ticket": t.id, "attempts": out.attempts,
-                  "result": "done" if ok else "needs-human", "detail": out.detail[:500]})
-    sh(["git", "worktree", "remove", "--force", str(wt)], root)
+    settle(cfg, root, tracker, t, attempt(cfg, root, t))
 
 
 # How one build attempt ended. `kind` is one of: stopped, signed-out, question, agent-failed, no-commits,
@@ -1279,6 +1255,50 @@ def attempt(cfg: dict, root: Path, t) -> Outcome:
         log(root, f"fail  {t.id} attempt {n}")
         beat_update(root, last_result="fail")
     return Outcome(kind, n, detail or "Agent run failed with no detail.")
+
+
+# What Runway does next for each Outcome kind. write: the ticket's new status; notify: ping Joe; result: the
+# `result` of the outcome row in runway-runs.jsonl; last_result: heartbeat value (None leaves it as it is);
+# worktree/branch: whether settle removes them (a stopped run keeps both so it resumes where it left off).
+_PARK = dict(write="needs-human", notify=True, result="needs-human", last_result="park",
+             worktree="remove", branch="keep")
+SETTLE = {
+    "stopped": dict(write="ready", notify=False, result="stopped", last_result=None, worktree="keep", branch="keep"),
+    "signed-out": dict(write="ready", notify=False, result="signed-out", last_result=None,
+                       worktree="remove", branch="keep"),
+    "merged": dict(write="resolved", notify=False, result="done", last_result="pass",
+                   worktree="remove", branch="keep"),
+    "question": _PARK, "agent-failed": _PARK, "no-commits": _PARK, "check-failed": _PARK, "merge-conflict": _PARK,
+}
+
+
+def settle(cfg: dict, root: Path, tracker, t, outcome: Outcome) -> None:
+    """Act on an Outcome per its SETTLE row: reload the ticket, write the tracker, notify, heartbeat, record,
+    clean up. The one place a build attempt's ending turns into effects."""
+    row = SETTLE[outcome.kind]
+    branch = f"runway/{t.effort}-{t.slug}"
+    wt = (worktrees(cfg, root) / f"{t.effort}-{t.slug}").resolve()
+    t = tracker.reload(t)  # agent may not touch it, but reload to be safe
+    if row["write"] == "resolved":
+        t.mark_resolved(f"Done on `{branch}`, check passed, merged into `{cfg['integration_branch']}`.")
+        log(root, f"done  {t.id}")
+    elif row["write"] == "needs-human":
+        t.mark_needs_human("run failed or asked a question", outcome.detail or "Agent run failed with no detail.")
+    elif outcome.kind == "signed-out":  # the queue behind it is untouched
+        t.mark_ready("Claude Code is signed out; Runway paused. Sign in, then `runway resume`.")
+    else:  # stopped: pause --stop-now
+        t.mark_ready("stopped by pause")
+        log(root, f"stopped by pause  {t.id}")
+    if row["notify"]:
+        notify(cfg, root, f"Blocked: {t.id} {t.title}")
+    if row["last_result"]:
+        beat_update(root, last_result=row["last_result"])
+    record(root, {"kind": "outcome", "ticket": t.id, "attempts": outcome.attempts, "result": row["result"],
+                  "outcome": outcome.kind, "detail": outcome.detail[:500]})
+    if row["worktree"] == "remove":
+        sh(["git", "worktree", "remove", "--force", str(wt)], root)
+    if row["branch"] == "remove":
+        sh(["git", "branch", "-D", branch], root)
 
 
 def integration_worktree(cfg: dict, root: Path) -> Path:
