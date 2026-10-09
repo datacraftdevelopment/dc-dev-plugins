@@ -35,6 +35,20 @@ class ObserverTests(unittest.TestCase):
             self.assertEqual(len(queue), 1)
             self.assertEqual(len(json.loads((pm / 'observer/state.json').read_text())['packets']), 1)
 
+    def test_legacy_append_without_cursor_is_reconciled(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pm = root / '_pm'
+            out = pm / 'observer'
+            out.mkdir(parents=True)
+            event = {'kind': 'finish', 'check_exit': 1}
+            (pm / 'runway-runs.jsonl').write_text(json.dumps(event) + '\n')
+            key = observer.hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
+            packet = {'id': key, 'event': event}
+            (out / 'events.jsonl').write_text((json.dumps(packet) + '\n') * 2)
+            self.assertEqual(observer.tick(root, out), [])
+            self.assertEqual(len((out / 'events.jsonl').read_text().splitlines()), 1)
+
     def test_state_write_failure_does_not_publish_or_duplicate(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -81,7 +95,10 @@ class ObserverTests(unittest.TestCase):
                 observer.tick(root, pm / 'observer')
                 self.assertLessEqual((pm / 'observer/events.jsonl').stat().st_size, 1000)
                 self.assertLess(len(json.loads((pm / 'observer/state.json').read_text())['packets']), 3)
+            # Existing logs are bounded even when no new ERROR occurs.
+            (pm / 'observer/service-error.log').write_text('old\n' * 1000)
             logger = observer.service_logger(pm / 'observer', max_bytes=256)
+            self.assertLessEqual((pm / 'observer/service-error.log').stat().st_size, 256)
             try:
                 for _ in range(50):
                     logger.error('x' * 100)

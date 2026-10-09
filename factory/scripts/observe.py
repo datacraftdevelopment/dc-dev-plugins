@@ -23,7 +23,7 @@ LOG_BACKUPS = 2
 
 def atomic_write(path, text):
     temp = path.with_suffix('.tmp')
-    with temp.open('w') as stream:
+    with temp.open('wb' if isinstance(text, bytes) else 'w') as stream:
         stream.write(text)
         stream.flush()
         os.fsync(stream.fileno())
@@ -31,8 +31,11 @@ def atomic_write(path, text):
 
 
 def retained(packets):
-    result, size = [], 0
+    result, size, ids = [], 0, set()
     for packet in reversed(packets[-MAX_PACKETS:]):
+        if packet.get('id') in ids:
+            continue
+        ids.add(packet.get('id'))
         length = len((json.dumps(packet) + '\n').encode())
         if size + length > MAX_QUEUE_BYTES:
             break
@@ -44,6 +47,15 @@ def retained(packets):
 def service_logger(out, max_bytes=LOG_BYTES):
     logger = logging.Logger('runway-observer', level=logging.INFO)
     for name, level in [('service.log', logging.INFO), ('service-error.log', logging.ERROR)]:
+        # Bound pre-upgrade outputs immediately, including error logs that may
+        # receive no new messages. Touch only the exact observer-owned filenames.
+        for suffix in ['', *[f'.{n}' for n in range(1, LOG_BACKUPS + 1)]]:
+            path = out / (name + suffix)
+            if path.exists() and path.stat().st_size > max_bytes:
+                with path.open('rb') as stream:
+                    stream.seek(-max_bytes, os.SEEK_END)
+                    tail = stream.read(max_bytes)
+                atomic_write(path, tail.split(b'\n', 1)[-1])
         handler = RotatingFileHandler(out / name, maxBytes=max_bytes,
                                       backupCount=LOG_BACKUPS, encoding='utf-8')
         handler.setLevel(level)
@@ -207,12 +219,12 @@ def main():
     # One observer per output directory; never acquire the runner's lock.
     import fcntl
     out.mkdir(parents=True, exist_ok=True)
-    logger = service_logger(out)
     with (out / 'observer.lock').open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
+        logger = service_logger(out)
         while True:
             try:
                 packets = tick(root, out)
