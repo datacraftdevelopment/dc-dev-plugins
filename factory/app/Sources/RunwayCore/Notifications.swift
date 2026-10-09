@@ -102,8 +102,12 @@ public struct StatusSnapshot: Equatable, Sendable {
         }
     }
 
+    /// What the panel's "Needs you" section draws, in the order of status's `waiting` group.
+    public let needsYou: [NeedsYouRow]
+
     public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
-                upNext: [UpNext] = []) {
+                upNext: [UpNext] = [], needsYou: [NeedsYouRow] = []) {
+        self.needsYou = needsYou
         self.tickets = tickets
         self.readyCount = readyCount
         self.titles = titles
@@ -137,8 +141,11 @@ public struct StatusSnapshot: Equatable, Sendable {
                        blockedBy: (byID[id]?["blocked_by"] as? [String]) ?? [])
             }
         }
+        let needsYou = ((groups["waiting"] as? [String]) ?? []).compactMap { id in
+            byID[id].map { NeedsYouRow(entry: $0, url: urls[id]) }
+        }
         return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
-                              urls: urls, upNext: upNext)
+                              urls: urls, upNext: upNext, needsYou: needsYou)
     }
 }
 
