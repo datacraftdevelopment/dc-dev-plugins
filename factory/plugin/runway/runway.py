@@ -1086,6 +1086,10 @@ def prep(cfg: dict, root: Path, t) -> None:
 RUN_PROMPT = """Implement this ticket in the current repository (a git worktree on its own branch).
 Stay inside the ticket's scope. Work test-first: use the /tdd skill if it's available
 (red-green, one slice at a time); otherwise write a failing test before the code.
+/tdd asks you to confirm test seams with the user; this run is headless, so there is no one to
+ask. In this run the agreed seams are the ones the ticket or its spec names. If they name none,
+test at the existing public interface of the module being changed. Don't stop to confirm seams.
+Only a new module or a changed public interface is a reason to write RUNWAY_QUESTION.md.
 If docs/agents/worker-env.md exists, read it first: it lists what this fresh worktree
 lacks (env files, dependencies, local data), the repo's verify command, and paths to leave alone.
 Before you call it done, run the check that would catch your most likely mistake, after your
