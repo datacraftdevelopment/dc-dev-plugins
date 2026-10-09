@@ -123,6 +123,10 @@ def main() -> int:
     out = a.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     workdir = out / "work"
+    # Every run starts clean: a report left by an earlier run must never be read back as this run's.
+    shutil.rmtree(workdir, ignore_errors=True)
+    for key in SEATS.values():
+        (out / f"{key}.md").unlink(missing_ok=True)
     manifest = build_manifest(load_template(root / TEMPLATE), a.repo.resolve(), a.base, a.brief_file.read_text(),
                               workdir, root / "templates" / "adversarial-review",
                               slug=time.strftime("runway-%Y%m%d-%H%M%S"))
