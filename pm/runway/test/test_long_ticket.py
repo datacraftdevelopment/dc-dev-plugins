@@ -89,7 +89,7 @@ class GitHubLong(unittest.TestCase):
         self.assertEqual(self.calls(), 1 + 2)  # 123 comments: the window plus two older pages
         t = self.load(history(120), labels=("ready-for-agent", "needs-human"))
         self.assertIsNone(t.claimed_by)
-        self.assertEqual(self.calls(), 1)  # parked: no owner, nothing paged
+        self.assertEqual(self.calls(), 3)  # parked: shared barriers still require history
 
 
 class LinearApi:

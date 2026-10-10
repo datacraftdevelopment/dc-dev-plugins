@@ -229,6 +229,10 @@ class LinearTicket(ticket_protocol.Ticket):
             return self.tr.reload(self).closed
         self._update(landed=landed, stateId=state)
 
+    def _reopen(self) -> None:
+        self._update(stateId=self.tr.state_id(None, "unstarted"),
+                     landed=lambda: not self.tr.reload(self).closed)
+
     def _release(self, add=(), remove=()) -> None:
         # Back to an unstarted state, so clearing the label makes it ready again. State and labels are one write:
         # two would leave an approved ticket ready, with `go` still on, when the second failed.

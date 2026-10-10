@@ -20,6 +20,8 @@ class StatefulApi:
         self.node = node
 
     def gql(self, query, variables=None, landed=None):
+        if query is L.Q_ISSUE:
+            return {"issue": self.node}
         if query is L.Q_ISSUES:
             return {"issues": {"nodes": [self.node], "pageInfo": {"hasNextPage": False, "endCursor": None}}}
         if query is L.M_UPDATE:
@@ -46,6 +48,7 @@ def make(labels):
     tr.root, tr.c, tr.api = Path(tempfile.mkdtemp()), dict(L.DEFAULTS, team="DAT"), StatefulApi(node)
     tr._team = {"all_labels": dict(LABELS),
                 "states": {"nodes": [{"id": "s-un", "name": "Todo", "type": "unstarted", "position": 0}]}}
+    tr.c["park_authority"] = tr.park_owner()
     return tr, node
 
 
@@ -67,7 +70,7 @@ class LinearPark(unittest.TestCase):
         self.assertEqual(len(labelled), 1)
         self.assertEqual(labelled[0].args[1]["input"]["removedLabelIds"], [LABELS["go"]])
         self.assertEqual(sorted(names(node)), ["needs-human", "ready-for-human"])
-        self.assertIn("Comment `go` (or re-add the `go` label) to retry.", node["comments"]["nodes"][-1]["body"])
+        self.assertIn("Comment `go` after parking completes to retry.", node["comments"]["nodes"][-2]["body"])
 
     def test_park_is_one_issue_update_for_state_and_labels(self):
         tr, node = make(["ready-for-human", "go"])
@@ -91,7 +94,7 @@ class LinearPark(unittest.TestCase):
             tr.sync()
             t = tr.load()[0]
             self.assertEqual((t.status, t.gate), ("needs-human", "human"))
-        self.assertEqual(len(node["comments"]["nodes"]), 1)  # just the park comment, no Approved churn
+        self.assertEqual(len(node["comments"]["nodes"]), 3)  # intent, park note, completion; no approval churn
 
     def test_park_then_go_comment_approves(self):
         tr, node = self.park_approved()
@@ -100,21 +103,21 @@ class LinearPark(unittest.TestCase):
         t = tr.load()[0]
         self.assertEqual((t.status, t.gate), ("ready", "approved"))
 
-    def test_park_then_go_label_readded_approves(self):
+    def test_label_alone_cannot_prove_post_completion_approval(self):
         tr, node = self.park_approved()
         node["labels"]["nodes"].append({"id": LABELS["go"], "name": "go"})
         tr.sync()
         t = tr.load()[0]
-        self.assertEqual((t.status, t.gate), ("ready", "approved"))
+        self.assertEqual((t.status, t.gate), ("needs-human", "human"))
 
-    def test_parked_ready_for_agent_is_ready_when_the_label_is_removed(self):
+    def test_parked_ready_for_agent_still_needs_fresh_go_when_label_removed(self):
         tr, node = make(["ready-for-agent"])
         tr.load()[0].mark_needs_human("x", "d")
         tr.sync()
         self.assertEqual(tr.load()[0].status, "needs-human")
-        self.assertIn("Remove `needs-human` or comment `go` to retry.", node["comments"]["nodes"][-1]["body"])
+        self.assertIn("Comment `go` after parking completes to retry.", node["comments"]["nodes"][-2]["body"])
         node["labels"]["nodes"] = [x for x in node["labels"]["nodes"] if x["name"] != "needs-human"]
-        self.assertEqual(tr.load()[0].status, "ready")
+        self.assertEqual(tr.load()[0].status, "needs-human")
 
     def test_release_keeps_go(self):
         tr, node = make(["ready-for-human", "go"])

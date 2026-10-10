@@ -262,7 +262,7 @@ class SetupScript(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             cfg = json.loads((repo / "runway.json").read_text())
             self.assertEqual(cfg["tracker"], "linear")
-            self.assertEqual(cfg["linear"], {"team": "DAT", "project": "Runway app"})
+            self.assertEqual(cfg["linear"], {"park_authority": "", "team": "DAT", "project": "Runway app"})
             self.assertIn("Linear", (repo / "docs/agents/issue-tracker.md").read_text())
 
 
