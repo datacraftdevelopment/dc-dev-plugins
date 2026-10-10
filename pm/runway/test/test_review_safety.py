@@ -80,6 +80,14 @@ class SharedParks(unittest.TestCase):
                         with contextlib.redirect_stdout(io.StringIO()):b.sync()
                         self.assertEqual(b.load()[0].gate,'approved');self.assertEqual(b.load()[0].status,'ready')
 
+    def test_terminal_drop_after_completed_park_is_resolved(self):
+        for rules in (P.GITHUB,P.LINEAR):
+            tr=MemoryTracker(Path(tempfile.mkdtemp()),rules,[issue("#1",held=True,labels=["ready-for-human","go"])])
+            tr.load()[0].mark_needs_human("failed","detail")
+            tr.load()[0].decline("drop requested")
+            self.assertTrue(tr.load()[0].closed)
+            self.assertEqual(tr.load()[0].status,"resolved")
+
     def test_unrelated_completion_cannot_clear_pending_operation(self):
         data=issue("#1",held=True,labels=["ready-for-human","go"])
         a=MemoryTracker(Path(tempfile.mkdtemp()),P.GITHUB,[data]);a.fail_at=1

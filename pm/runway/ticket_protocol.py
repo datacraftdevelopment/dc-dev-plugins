@@ -177,10 +177,12 @@ class Ticket:
 
     @property
     def status(self) -> str:
-        if self.park_intent or self.park_requires_approval:
+        if self.park_intent:
             return "needs-human"
         if self.closed:
             return "resolved"
+        if self.park_requires_approval:
+            return "needs-human"
         if self.tr.c["needs_human_label"] in self.labels:
             return "needs-human"
         if self.held:
