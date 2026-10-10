@@ -1,10 +1,9 @@
 # Playbook: Matt Pocock's skills with Runway
 
 How a repo runs when the thinking happens in sessions with Matt Pocock's skills
-and the building happens in Runway. Bring this file into a new repo and tell the
-session: "Read the Runway playbook and set this repo up for it." It lives in the
-factory plugin at `skills/runway/playbook.md`, so any session with the plugin
-installed can read it at `${CLAUDE_PLUGIN_ROOT}/skills/runway/playbook.md`.
+and the building happens in Runway. It is a reference file of the `runway` skill,
+which reads it when asked to set a repo up. In a new repo, tell the session: "Set
+this repo up for Runway with Matt's skills."
 
 The runway skill and the repo's `docs/agents/issue-tracker.md` hold the full
 rules. This file is the order things happen in, and the places where Matt's
