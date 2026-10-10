@@ -63,14 +63,21 @@ Create a Linear issue in team {{TEAM}}, project {{PROJECT}}.
 
 ## When a skill says "publish a spec"
 
-`/to-spec` publishes the spec as an issue. Label it `spec`, and never `ready-for-agent` or `ready-for-human`,
+The spec is a file in the repo: write it to `docs/specs/<slug>.md` (kebab-case, a few words) and get it onto
+the base branch before its tickets are labelled for Runway, so every worker reads it from its own checkout.
+Then `/to-spec` publishes the tracker entry as an issue: first line `Spec: docs/specs/<slug>.md`, then a copy
+of the text. A later change goes into the file first, then re-paste it into the issue.
+
+Label the issue `spec`, and never `ready-for-agent` or `ready-for-human`,
 whatever the skill says about triage. Runway skips any issue labelled `spec`, and any issue that has child issues,
 so the spec doesn't run as a ticket alongside its own tickets. `/to-tickets` then publishes the build tickets as
-child issues of the spec, and those carry the triage labels.
+child issues of the spec, and those carry the triage labels. Each ticket's description names its spec in a
+header line, `Spec: docs/specs/<slug>.md`.
 
 ## When a skill says "fetch the relevant ticket"
 
 Fetch the Linear issue by its identifier (e.g. `{{TEAM}}-12`) or URL, with comments.
+If it has a `Spec:` line, read that file from the checkout too: it is the spec the ticket builds.
 
 ## Blocking
 
