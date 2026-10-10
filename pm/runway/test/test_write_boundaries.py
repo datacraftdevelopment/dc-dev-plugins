@@ -69,7 +69,7 @@ class Boundaries(unittest.TestCase):
         self.assertEqual(t.status, "needs-human")
         self.assertFalse(runnable(t))
         self.assertNotIn("go", data["labels"])
-        parks = [c for c in data["comments"] if "Parked: run failed" in c["body"]]
+        parks = [c for c in data["comments"] if c["body"].startswith(f"{M} · Parked: run failed")]
         self.assertEqual(len(parks), 1)
         self.assertEqual(len([c for c in data["comments"] if "Approved." in c["body"]]), 0)
 
@@ -87,7 +87,7 @@ class Boundaries(unittest.TestCase):
                         comments=[(f"{M} · Claimed-by: Mini-One · Started on `b`.", True), ("go", True)]),
                    self.park, lambda tr, data, t: (self.assertEqual(t.status, "needs-human"),
                                                    self.assertEqual(len([c for c in data["comments"]
-                                                                         if "Parked:" in c["body"]]), 1)),
+                                                                         if c["body"].startswith(f"{M} · Parked:")]), 1)),
                    self.not_ready)
 
     # -- approve --

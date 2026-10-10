@@ -32,6 +32,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import uuid
+import fcntl
+import hashlib
+from contextlib import contextmanager
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -126,13 +130,62 @@ class Ticket:
     @property
     def packet(self) -> str | None:
         """Runway's latest comment (the decision packet, or why it parked), without the marker."""
-        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)]
+        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)
+                and not cm["body"].startswith(marked("Park intent:"))
+                and not cm["body"].startswith(marked("Park complete:"))]
         return mine[-1][len(MARK):].lstrip(" ·\n").strip() if mine else None
 
     @property
+    def park_intent(self) -> dict | None:
+        """Latest trusted shared park barrier, paging beyond the normal comment window."""
+        if not hasattr(self, "_park_history"):
+            got = list(self.comments)
+            while not any(cm["body"].startswith(marked("Park intent:")) for cm in got):
+                page = self._older_comments()
+                if not page:
+                    break
+                got = [cm for cm in page if cm["trusted"]] + got
+            self._park_history = got
+        completed = set()
+        for cm in reversed(self._park_history):
+            body = cm["body"]
+            if body.startswith(marked("Park complete:")):
+                completed.add(body[len(marked("Park complete:")):].strip())
+                continue
+            prefix = marked("Park intent:") + " "
+            if body.startswith(prefix):
+                try:
+                    rec = json.loads(body[len(prefix):])
+                    if (isinstance(rec, dict) and isinstance(rec.get("op"), str)
+                            and re.fullmatch(r"[0-9a-f]{32}", rec["op"])
+                            and isinstance(rec.get("comment"), str) and rec["comment"]):
+                        return None if rec["op"] in completed else rec
+                except ValueError:
+                    pass
+                # An unreadable trusted intent must never enable work.
+                return {"invalid": True}
+        return None
+
+    @property
+    def park_requires_approval(self) -> bool:
+        # Labels have no trusted timestamp: a re-added go may have landed during the barrier.
+        # Only a durable Approved note after completion proves a fresh consumed approval.
+        _ = self.park_intent
+        after = []
+        for cm in reversed(self._park_history):
+            if cm["body"].startswith(marked("Park complete:")):
+                return not any(c["body"].startswith(marked("Approved.")) for c in after)
+            after.append(cm)
+        return False
+
+    @property
     def status(self) -> str:
+        if self.park_intent:
+            return "needs-human"
         if self.closed:
             return "resolved"
+        if self.park_requires_approval:
+            return "needs-human"
         if self.tr.c["needs_human_label"] in self.labels:
             return "needs-human"
         if self.held:
@@ -147,6 +200,10 @@ class Ticket:
     @property
     def gate(self) -> str:
         c = self.tr.c
+        if self.park_intent:
+            return "none"
+        if self.park_requires_approval:
+            return "human" if c["human_label"] in self.labels else "none"
         if self.is_spec:
             return "none"
         if c["human_label"] in self.labels:
@@ -192,7 +249,7 @@ class Ticket:
         if self._cycle is None:
             def ends_cycle(cm):
                 return cm["body"].startswith(MARK) and not CLAIMED_RE.search(cm["body"])
-            got = list(self.comments)
+            got = list(getattr(self, "_park_history", self.comments))
             while not any(ends_cycle(cm) for cm in got):
                 page = self._older_comments()
                 if not page:
@@ -224,61 +281,112 @@ class Ticket:
     # -- write side --
 
     def _comment(self, body: str) -> None:
+        self.tr.require_park_authority()
         self._post(marked(body))
 
+    @property
+    def claim_generation(self):
+        if not self.held or self.closed:
+            return None
+        for cm in reversed(self._claim_cycle()):
+            if cm["body"].startswith(MARK) and CLAIMED_RE.search(cm["body"]):
+                return (cm["createdAt"], cm["body"])
+        return None
+
     def mark_claimed(self, branch: str, machine: str) -> None:
-        # Stamp first: a failure between the two writes then leaves the ticket ready (retried next tick), never
-        # claimed with no owner on it.
-        self._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
-        self._claim()
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            if self.tr._pending().get(self.id) or fresh.park_intent or fresh.park_requires_approval:
+                raise RuntimeError(f"{self.id}: park blocks a new claim")
+            fresh._comment(f"Claimed-by: {machine} · Started on `{branch}`.")
+            fresh._claim()
 
     def _finish(self, reason: str, body: str) -> None:
-        full = marked(body)
-        if self.rules.close_with_comment:
-            self._close(reason, full)
-        else:
-            self._close(reason, None)
-            self._post(full)
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            if self.tr._pending().get(self.id) or fresh.park_intent:
+                raise RuntimeError(f"{self.id}: closure must wait for park completion")
+            full = marked(body)
+            if self.rules.close_with_comment:
+                fresh._close(reason, full)
+            else:
+                fresh._close(reason, None)
+                fresh._post(full)
 
     def mark_resolved(self, note: str) -> None:
         self._finish("completed", note)
 
     def mark_needs_human(self, why: str, detail: str) -> None:
-        c = self.tr.c
-        label, approve = c["needs_human_label"], c["approve_label"]
-        gated = self.gate == "approved"
-        if gated:
-            retry = f"Comment `go` (or re-add the `{approve}` label) to retry."
-        else:
-            retry = f"Remove `{label}` or comment `go` to retry."
-        full = marked(f"Parked: {why}. {retry}\n\n{detail}")
-        # The park is written down before the first tracker write, so a write that fails halfway is finished by the
-        # next sync (Tracker.finish_parks) instead of leaving a go Joe posted since Runway last wrote to be replayed.
-        self.tr.park_begin(self.id, full)
-        # One write: an approval is spent by the run it let through, so `go` goes in the same write that parks it.
-        self._release(add=[label], remove=[approve])
-        self._post(full)
-        self.tr.park_done(self.id)
+        # Creation and recovery share the same local serialization boundary. Cross-root
+        # creation is restricted to an explicitly designated writer, never elected by comments.
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            pending = fresh.park_intent
+            local = self.tr.unpublished_park(fresh) if not pending else None
+            if not pending and local:
+                if local.get("owner") != self.tr.park_owner() or not local.get("op"):
+                    raise RuntimeError(f"{self.id}: ambiguous local intent needs manual recovery")
+                fresh._post(marked("Park intent: " + json.dumps(local, sort_keys=True)))
+                fresh = self.tr.reload(fresh)
+                pending = fresh.park_intent
+            if pending:
+                if pending.get("owner") != self.tr.park_owner():
+                    raise RuntimeError(f"{self.id}: unfinished foreign park cannot be replaced")
+                self.tr._complete_park_locked(fresh, pending)
+                return
+            if fresh.claim_generation != self.claim_generation:
+                raise RuntimeError(f"{self.id}: stale claim cannot create a park operation")
+            if fresh.park_requires_approval:
+                raise RuntimeError(f"{self.id}: completed park awaits fresh approval; no replacement created")
+            full = marked(f"Parked: {why}. Comment `go` after parking completes to retry.\n\n{detail}")
+            rec = {"op": uuid.uuid4().hex, "owner": self.tr.park_owner(), "comment": full}
+            self.tr.park_begin(self.id, rec)
+            fresh._post(marked("Park intent: " + json.dumps(rec, sort_keys=True)))
+            self.tr._complete_park_locked(fresh, rec)
+
 
     def mark_ready(self, note: str) -> None:
-        self._release()
-        self._comment(note)
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            if self.tr._pending().get(self.id) or fresh.park_intent or fresh.claim_generation != self.claim_generation:
+                raise RuntimeError(f"{self.id}: pending park or stale claim blocks release")
+            fresh._release()
+            fresh._comment(note)
 
     def post_packet(self, packet: str) -> None:
-        a = self.tr.c["approve_label"]
-        self._comment(
-            f"**Decision packet**\n\n_Reply with a comment starting `go` (add any choice or note after it) "
-            f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
-        self._relabel(add=[self.tr.c["needs_human_label"]])
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            if self.tr._pending().get(self.id) or fresh.park_intent:
+                raise RuntimeError(f"{self.id}: pending park blocks a new packet")
+            a = self.tr.c["approve_label"]
+            fresh._comment(
+                f"**Decision packet**\n\n_Reply with a comment starting `go` (add any choice or note after it) "
+                f"or add the `{a}` label to approve. Comment `drop` to cancel it._\n\n{packet}")
+            fresh._relabel(add=[self.tr.c["needs_human_label"]])
 
     def approve(self, note: str) -> None:
-        # The note first: it is the durable record of the approval, and `approval_half_done` finishes the label
-        # write from it if that write fails. Labels first would enable the ticket and could lose the note.
-        self._comment(f"Approved. {note}".strip())
-        self.enable()
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            fresh = self.tr.reload(self)
+            if self.tr._pending().get(self.id) or fresh.park_intent:
+                raise RuntimeError(f"{self.id}: approval must wait for park completion")
+            fresh._comment(f"Approved. {note}".strip())
+            fresh = self.tr.reload(fresh)
+            fresh._enable_locked()
 
     def enable(self) -> None:
-        """The label write of an approval: `go` on a ready-for-human ticket, and off `needs-human`."""
+        with self.tr.park_lock(self.id):
+            self.tr.require_park_authority()
+            self.tr.reload(self)._enable_locked()
+
+    def _enable_locked(self) -> None:
+        if self.tr._pending().get(self.id) or self.park_intent:
+            raise RuntimeError(f"{self.id}: pending park blocks enable")
         c = self.tr.c
         add = [c["approve_label"]] if self.gate == "human" else []
         self._relabel(add=add, remove=[c["needs_human_label"]])
@@ -322,46 +430,140 @@ class Tracker:
     def _pending(self) -> dict:
         try:
             data = json.loads(self._pending_path().read_text())
-        except (OSError, ValueError):
+        except FileNotFoundError:
             return {}
-        return data if isinstance(data, dict) else {}
+        except (OSError, ValueError) as e:
+            raise RuntimeError("Unreadable local park journal; manual recovery required") from e
+        if not isinstance(data, dict) or any(not isinstance(rec, dict) for rec in data.values()):
+            raise RuntimeError("Invalid local park journal; manual recovery required")
+        return data
 
     def _pending_save(self, data: dict) -> None:
         p = self._pending_path()
         if data:
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(data, indent=1) + "\n")
+            tmp = p.with_name(p.name + "." + uuid.uuid4().hex)
+            tmp.write_text(json.dumps(data, indent=1) + "\n")
+            tmp.replace(p)
         elif p.exists():
             p.unlink()
 
-    def park_begin(self, ticket_id: str, comment: str) -> None:
-        self._pending_save({**self._pending(), ticket_id: {"comment": comment}})
+    def park_begin(self, ticket_id: str, rec: dict) -> None:
+        with self.park_lock("local-journal"):
+            self._pending_save({**self._pending(), ticket_id: rec})
 
-    def park_done(self, ticket_id: str) -> None:
-        data = self._pending()
-        if data.pop(ticket_id, None) is not None:
-            self._pending_save(data)
+    def park_owner(self) -> str:
+        """Persistent non-secret root identity, initialized under its own local lock."""
+        with self.park_lock("owner-identity"):
+            p = self.root / "_pm" / "park-owner"
+            if not p.exists():
+                p.write_text(uuid.uuid4().hex)
+            owner = p.read_text().strip()
+            if not re.fullmatch(r"[0-9a-f]{32}", owner):
+                raise RuntimeError("Invalid local park owner identity; manual recovery required")
+            return owner
+
+    def require_park_authority(self) -> None:
+        self._pending()  # corrupt recovery state must not silently permit new work
+        designated = self.c.get("park_authority", "")
+        if not designated or designated != self.park_owner():
+            raise RuntimeError("This root lacks exclusive park mutation authority. Configure the same "
+                               "designated park_authority in every runner; mixed-version runners must be stopped "
+                               "before enabling the protocol. No claim or park mutation was made.")
+
+    @contextmanager
+    def park_lock(self, ticket_id):
+        locks = self.root / "_pm" / "park-locks"
+        locks.mkdir(parents=True, exist_ok=True)
+        with (locks / hashlib.sha256(ticket_id.encode()).hexdigest()).open("a") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+    def park_done(self, ticket_id: str, op=None) -> None:
+        with self.park_lock("local-journal"):
+            data = self._pending()
+            if ticket_id in data and (op is None or data[ticket_id].get("op") == op):
+                data.pop(ticket_id)
+                self._pending_save(data)
+
+    def unpublished_park(self, t):
+        """Only republish a journal known not to be completed or superseded."""
+        rec = self._pending().get(t.id)
+        if not rec:
+            return None
+        _ = t.park_intent
+        history = t._park_history
+        if any(cm["body"] == marked("Park complete: " + rec.get("op", "")) for cm in history):
+            self.park_done(t.id, rec.get("op"))
+            return None
+        for cm in reversed(history):
+            prefix = marked("Park intent:") + " "
+            if cm["body"].startswith(prefix):
+                try:
+                    shared = json.loads(cm["body"][len(prefix):])
+                except ValueError:
+                    raise RuntimeError(f"{t.id}: ambiguous shared intent needs manual recovery")
+                if shared.get("op") != rec.get("op"):
+                    raise RuntimeError(f"{t.id}: conflicting journal needs manual recovery")
+                break
+        return rec
+
+    def complete_park(self, t, rec: dict) -> bool:
+        """Local fencing plus exclusive configured writer authority; no cross-root election."""
+        with self.park_lock(t.id):
+            return self._complete_park_locked(t, rec)
+
+    def _complete_park_locked(self, t, rec: dict) -> bool:
+        fresh = self.reload(t)
+        current = fresh.park_intent
+        if not current or current.get("op") != rec.get("op"):
+            self.park_done(t.id, rec.get("op"))
+            return False  # completed or superseded: stale work is discarded
+        if current.get("invalid"):
+            raise RuntimeError(f"Unreadable shared park intent for {t.id}; manual recovery required")
+        if current.get("owner") != self.park_owner():
+            return False  # fail closed; another root cannot race the owner
+        self.require_park_authority()
+        c = self.c
+        fresh._release(add=[c["needs_human_label"]], remove=[c["approve_label"]])
+        fresh = self.reload(t)
+        if fresh.closed:
+            fresh._reopen()
+        fresh = self.reload(t)
+        if not any(cm["body"] == current["comment"] for cm in fresh.comments):
+            fresh._post(current["comment"])
+        fresh._post(marked("Park complete: " + current["op"]))
+        self.park_done(t.id, current["op"])
+        return True
 
     def finish_parks(self) -> None:
-        """Finish every park a failed write left half done: the state change when it never landed, then the comment."""
-        pending = self._pending()
-        if not pending:
-            return
-        c = self.c
-        by_id = {t.id: t for t in self.load()}
-        for ticket_id, rec in pending.items():
-            t = by_id.get(ticket_id)
-            if t is not None and not t.closed:
-                if t.status != "needs-human":
-                    t._release(add=[c["needs_human_label"]], remove=[c["approve_label"]])
-                if not any(cm["body"] == rec["comment"] for cm in t.comments):
-                    t._post(rec["comment"])
-                print(f"sync  {ticket_id} finished a park that failed halfway")
-            self.park_done(ticket_id)
+        """Observe shared barriers everywhere; only the designated owner resumes mutations."""
+        local = self._pending()
+        for observed in self.load():
+            with self.park_lock(observed.id):
+                t = self.reload(observed)
+                rec = t.park_intent
+                if rec is None and t.id in local:
+                    rec = self.unpublished_park(t)
+                    if rec is None:
+                        continue
+                    self.require_park_authority()
+                    if not rec.get("owner") or not rec.get("op"):
+                        raise RuntimeError(f"{t.id}: legacy or ambiguous local intent needs manual recovery")
+                    if rec["owner"] != self.park_owner():
+                        continue
+                    self.park_begin(t.id, rec)
+                    t._post(marked("Park intent: " + json.dumps(rec, sort_keys=True)))
+                if rec:
+                    self._complete_park_locked(t, rec)
 
     def create(self, title: str, body: str, labels: list[str]) -> str:
         """Open a new ticket and return its ref. The body starts with the 🛫 marker so a later read never takes
         it for Joe's. The adapter's `_create(title, full, labels)` does the write."""
+        self.require_park_authority()
         return self._create(title, marked(body), labels)
 
     def _log_spec_skips(self, tickets) -> None:
@@ -374,8 +576,10 @@ class Tracker:
         """Turn Joe's answers in the tracker into ticket state before the tick decides anything."""
         r = self.rules
         self.finish_parks()
+        if self.c.get("park_authority") != self.park_owner():
+            return  # peers observe barriers but never consume approvals or mutate lifecycle
         for t in self.load():
-            if t.status != "needs-human":
+            if t.status != "needs-human" or t.park_intent:
                 continue
             if t.approval_half_done:
                 t.enable()  # the note landed, the labels didn't: finish the approval, don't post the note again

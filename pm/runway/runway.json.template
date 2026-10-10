@@ -1,6 +1,7 @@
 {
   "tracker": "linear",
   "linear": {
+    "park_authority": "",
     "team": "{{TEAM}}",
     "project": "{{PROJECT}}"
   },
