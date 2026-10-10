@@ -88,6 +88,11 @@ class MemoryTicket(ticket_protocol.Ticket):
         if full is not None:
             self._comment_in(full)
 
+    def _reopen(self) -> None:
+        self.tr.write("reopen")
+        self.tr.ops.append(("reopen",))
+        self.data["closed"] = False
+
     def _release(self, add=(), remove=()) -> None:
         self.tr.write("release")
         self.tr.ops.append(("release", list(add), list(remove)))
@@ -104,6 +109,11 @@ class MemoryTracker(ticket_protocol.Tracker):
     def __init__(self, root: Path, rules: ticket_protocol.Rules, issues=()):
         self.root, self.rules, self.c = root, rules, dict(LABELS)
         self.issues = list(issues)
+        authority = next((d.get("test_authority") for d in self.issues if d.get("test_authority")), None)
+        authority = authority or self.park_owner()
+        self.c["park_authority"] = authority
+        for d in self.issues:
+            d.setdefault("test_authority", authority)
         self.ops: list[tuple] = []
         self.now: str | None = None      # createdAt for the next comment a write posts
         self.window: int | None = None   # a ticket reads only its latest N comments (None: all of them)

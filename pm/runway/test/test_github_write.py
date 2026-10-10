@@ -57,6 +57,8 @@ if body:
     i["comments"]["nodes"].append({"body": body, "createdAt": "2026-10-09T10:%02d:00Z" % k, "authorAssociation": "OWNER"})
 if verb == "close":
     i["state"], i["stateReason"] = "CLOSED", opt("--reason")[0].upper().replace(" ", "_")
+elif verb == "reopen":
+    i["state"], i["stateReason"] = "OPEN", None
 json.dump(data, open(path, "w"))
 '''
 
@@ -78,13 +80,18 @@ class GitHubWrites(unittest.TestCase):
         return next(i for i in json.loads((self.dir / "data.json").read_text())["issues"] if i["number"] == n)
 
     def tracker(self):
-        return runway.make_tracker(self.cfg, self.dir)
+        tr = runway.make_tracker(self.cfg, self.dir)
+        self.cfg["github"]["park_authority"] = tr.park_owner()
+        tr.c["park_authority"] = tr.park_owner()
+        return tr
 
     def ticket(self, n=1):
         return next(t for t in self.tracker().load() if t.id == f"#{n}")
 
     def comments(self, n=1):
-        return [c["body"] for c in self.stored(n)["comments"]["nodes"]]
+        return [c["body"] for c in self.stored(n)["comments"]["nodes"]
+                if not c["body"].startswith("🛫 runway · Park intent:")
+                and not c["body"].startswith("🛫 runway · Park complete:")]
 
     # -- the four writes --
 
@@ -107,19 +114,33 @@ class GitHubWrites(unittest.TestCase):
         self.assertEqual(self.comments(), ["\U0001f6eb runway · Done on `b`, check passed."])
         self.assertEqual(self.ticket().status, "resolved")
 
-    def test_park_labels_unassigns_and_says_why_then_label_removal_makes_it_ready(self):
+    def test_park_labels_unassigns_and_says_why_label_removal_still_requires_fresh_go(self):
         self.data(issue(1))
         self.ticket().mark_claimed("b", "Mini-One")
         self.ticket().mark_needs_human("run failed", "Check failed.")
         t = self.ticket()
         self.assertEqual((t.status, t.claimed_by), ("needs-human", None))
         self.assertEqual(self.stored()["assignees"]["totalCount"], 0)
-        self.assertIn("Parked: run failed. Remove `needs-human` or comment `go` to retry.\n\nCheck failed.", self.comments()[-1])
-        self.assertEqual(t.packet.splitlines()[0], "Parked: run failed. Remove `needs-human` or comment `go` to retry.")
+        self.assertIn("Parked: run failed. Comment `go` after parking completes to retry.\n\nCheck failed.", self.comments()[-1])
+        self.assertEqual(t.packet.splitlines()[0], "Parked: run failed. Comment `go` after parking completes to retry.")
         s = self.stored()  # Joe removes the label
         s["labels"]["nodes"] = [l for l in s["labels"]["nodes"] if l["name"] != "needs-human"]
         self.data(s)
-        self.assertEqual(self.ticket().status, "ready")
+        self.assertEqual(self.ticket().status, "needs-human")
+
+    def test_closed_fix_reopens_only_after_shared_intent_and_spent_go_removal(self):
+        self.data(issue(1, state="CLOSED", labels=("ready-for-human", "go")))
+        self.ticket().mark_needs_human("second review failed", "both reviews")
+        t = self.ticket()
+        self.assertEqual(t.status, "needs-human")
+        self.assertFalse(t.closed)
+        self.assertNotIn("go", t.labels)
+        calls = [json.loads(line) for line in (self.dir / "log").read_text().splitlines()]
+        writes = [c for c in calls if c[0] == "issue"]
+        verbs = [c[1] for c in writes]
+        self.assertLess(verbs.index("comment"), verbs.index("edit"))
+        self.assertLess(verbs.index("edit"), verbs.index("reopen"))
+        self.assertIn("both reviews", t.packet)
 
     def test_release_unassigns_and_the_claim_clears(self):
         self.data(issue(1))
@@ -160,7 +181,7 @@ class GitHubWrites(unittest.TestCase):
         self.park_approved()
         self.assertIn("needs-human", self.labels())
         self.assertNotIn("go", self.labels())
-        self.assertIn("Parked: checks failed. Comment `go` (or re-add the `go` label) to retry.", self.comments()[-1])
+        self.assertIn("Parked: checks failed. Comment `go` after parking completes to retry.", self.comments()[-1])
 
     def test_park_then_sync_leaves_it_parked_across_ticks(self):
         self.park_approved()
@@ -178,13 +199,13 @@ class GitHubWrites(unittest.TestCase):
         self.tracker().sync()
         self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
 
-    def test_park_then_go_label_readded_approves_and_retries(self):
+    def test_label_alone_cannot_prove_post_completion_approval(self):
         self.park_approved()
         s = self.stored()
         s["labels"]["nodes"].append({"name": "go"})
         self.data(s)
         self.tracker().sync()
-        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+        self.assertEqual(self.tick_as("Mini-Two")[0], [])
 
     def test_a_go_comment_from_before_the_park_does_not_count(self):
         self.data(issue(1, labels=("ready-for-human", "go"), comments=[("go", "OWNER")]))
@@ -193,7 +214,7 @@ class GitHubWrites(unittest.TestCase):
         self.tracker().sync()
         self.assertEqual(self.ticket().status, "needs-human")
 
-    def test_a_parked_ready_for_agent_ticket_is_ready_when_the_label_goes(self):
+    def test_a_parked_ready_for_agent_ticket_requires_fresh_go_even_when_label_goes(self):
         self.data(issue(1))
         self.ticket().mark_claimed("b", "Mini-One")
         self.ticket().mark_needs_human("x", "d")
@@ -202,7 +223,7 @@ class GitHubWrites(unittest.TestCase):
         s = self.stored()
         s["labels"]["nodes"] = [lb for lb in s["labels"]["nodes"] if lb["name"] != "needs-human"]
         self.data(s)
-        self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])
+        self.assertEqual(self.tick_as("Mini-Two")[0], [])
 
     def test_release_keeps_go_so_the_approved_ticket_runs_again(self):
         self.data(issue(1, labels=("ready-for-human", "go")))
@@ -244,7 +265,7 @@ class GitHubWrites(unittest.TestCase):
         self.ticket().mark_needs_human("x", "d")
         self.assertEqual(self.tick_as("Mini-Two")[0], [])  # parked: nobody runs it
         s = self.stored()
-        s["labels"]["nodes"] = [l for l in s["labels"]["nodes"] if l["name"] != "needs-human"]
+        s["comments"]["nodes"].append({"body":"go", "createdAt":"2026-10-10T10:00:00Z", "authorAssociation":"OWNER"})
         self.data(s)
         self.assertEqual(self.tick_as("Mini-Two")[0], ["#1"])  # the old stamp doesn't hold it
         self.ticket().mark_claimed("b", "Mini-Two")
@@ -275,7 +296,9 @@ class GitHubTick(unittest.TestCase):
         cfg = dict(runway.DEFAULT_CONFIG, **json.loads((root / "runway.json").read_text()))
         cfg.update(w.cfg)
         with mock.patch.object(runway, "machine_name", return_value="Mini-One"):
-            runway.tick(cfg, root, runway.make_tracker(cfg, root))
+            tr = runway.make_tracker(cfg, root)
+            tr.c["park_authority"] = tr.park_owner()
+            runway.tick(cfg, root, tr)
         return w.stored()
 
     def test_ready_to_closed(self):
@@ -290,7 +313,7 @@ class GitHubTick(unittest.TestCase):
         self.assertEqual(s["state"], "OPEN")
         self.assertIn("needs-human", [l["name"] for l in s["labels"]["nodes"]])
         self.assertEqual(s["assignees"]["totalCount"], 0)
-        self.assertIn("Parked:", s["comments"]["nodes"][-1]["body"])
+        self.assertTrue(any(c["body"].startswith("🛫 runway · Parked:") for c in s["comments"]["nodes"]))
 
 
 if __name__ == "__main__":

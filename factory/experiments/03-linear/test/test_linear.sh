@@ -13,9 +13,13 @@ F="http://127.0.0.1:$PORT"
 REPO="$(mktemp -d)/linear-demo"; mkdir -p "$REPO"; cd "$REPO"
 git init -q -b main; git config user.email runway@example.com; git config user.name runway
 echo "# demo" > README.md; printf '_pm/\nrunway.json\n' > .gitignore; git add -A; git commit -qm init
+# This fake tracker has exactly one test-owned writer; never configure a real runner.
+TEST_OWNER="$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+mkdir -p _pm
+printf '%s\n' "$TEST_OWNER" > _pm/park-owner
 cat > runway.json <<JSON
 {"tracker": "linear",
- "linear": {"team": "SF", "project": "Practice", "api_url": "$F/graphql"},
+ "linear": {"team": "SF", "project": "Practice", "api_url": "$F/graphql", "park_authority": "$TEST_OWNER"},
  "agent_cmd": "python3 $HERE/fake_agent.py", "prep_cmd": "python3 $HERE/fake_prep.py",
  "check_cmd": "true", "finish": "off",
  "signin_cmds": {"claude": "true", "codex": "true", "gh": "true"}}

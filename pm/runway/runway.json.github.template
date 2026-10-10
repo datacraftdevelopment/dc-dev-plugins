@@ -1,6 +1,7 @@
 {
   "tracker": "github",
   "github": {
+    "park_authority": "",
     "repo": "{{REPO}}"
   },
   "agent_cmd": "claude -p --model claude-sonnet-5-5 --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3 -m unittest:*),Bash(python3 -m pytest:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*)\"",
