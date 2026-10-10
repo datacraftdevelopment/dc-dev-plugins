@@ -1,6 +1,6 @@
 # SoftwareFactory
 
-Research repo plus small experiments. The one shipped part is `plugin/` (the `factory` plugin: the Runway engine and the `runway` skill); edit the engine there, not in `experiments/`.
+Research repo plus small experiments. Nothing here ships. The Runway engine and the `runway` skill live in pm (`../pm/runway/`, `../pm/skills/runway/`); edit the engine there, not in `experiments/`.
 
 The local oversight pilot lives in `scripts/observe.py`; operation, evidence and
 merge gates are in `scripts/OBSERVER.md`. It reads Runway records and writes a

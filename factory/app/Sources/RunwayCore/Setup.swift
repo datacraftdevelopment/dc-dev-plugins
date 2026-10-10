@@ -409,10 +409,12 @@ extension SetupChecks {
         "-e", "tell application \"Terminal\" to activate",
         "-e", "tell application \"Terminal\" to do script \"claude\""])
 
-    /// The checkout a `runway.py` path belongs to: `<checkout>/factory/plugin/runway/runway.py` (or the old `…/factory/experiments/01-runway/runway.py`).
+    /// The checkout a `runway.py` path belongs to: `<checkout>/pm/runway/runway.py` (or, in a plist written before the
+    /// engine moved into pm, `…/factory/plugin/runway/runway.py` or `…/factory/experiments/01-runway/runway.py`).
     public static func checkout(ofRunwayScript path: String) -> String {
         var url = URL(fileURLWithPath: path)
-        for _ in 0..<4 { url.deleteLastPathComponent() }
+        let inPM = url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "pm"
+        for _ in 0..<(inPM ? 3 : 4) { url.deleteLastPathComponent() }
         return url.path
     }
 }

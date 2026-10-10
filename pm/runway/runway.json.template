@@ -1,0 +1,25 @@
+{
+  "tracker": "linear",
+  "linear": {
+    "team": "{{TEAM}}",
+    "project": "{{PROJECT}}"
+  },
+  "agent_cmd": "claude -p --model claude-sonnet-5-5 --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3 -m unittest:*),Bash(python3 -m pytest:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*)\"",
+  "prep_cmd": "claude -p --model claude-sonnet-5-5 --output-format json --allowedTools \"Read,Grep,Glob\"",
+  "review_cmd": "claude -p --model claude-sonnet-5-5 --output-format json --allowedTools \"Read,Grep,Glob,Skill,Bash(git diff:*),Bash(git log:*)\"",
+  "harnesses": {
+    "opus": {
+      "agent_cmd": "claude -p --model claude-opus-5-5 --output-format json --permission-mode acceptEdits --allowedTools \"Bash(python3 -m unittest:*),Bash(python3 -m pytest:*),Bash(git add:*),Bash(git commit:*),Bash(git status:*),Bash(git diff:*)\"",
+      "prep_cmd": "claude -p --model claude-opus-5-5 --output-format json --allowedTools \"Read,Grep,Glob\"",
+      "review_cmd": "claude -p --model claude-opus-5-5 --output-format json --allowedTools \"Read,Grep,Glob,Skill,Bash(git diff:*),Bash(git log:*)\""
+    }
+  },
+  "_harness_note": "Workers are pinned to claude-sonnet-5-5. Label a ticket harness:opus to run it on claude-opus-5-5.",
+  "check_cmd": "python3 -m unittest discover -s tests",
+  "review": "panel",
+  "merge": "off",
+  "base_branch": "main",
+  "integration_branch": "runway/integration",
+  "notify_cmd": "osascript -e 'display notification \"{msg}\" with title \"Runway\"'",
+  "agent_timeout_s": 1800
+}

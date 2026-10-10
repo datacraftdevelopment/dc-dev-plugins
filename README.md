@@ -101,7 +101,7 @@ Update everything later with:
 
 ### Not a plugin: `factory/`
 
-[`factory/`](factory/README.md) holds the software-factory research and the Runway experiments, plus the factory site (`factory/site/`). It isn't listed in `marketplace.json` and none of the `make-*.sh` cuts or Codex builds ship it.
+[`factory/`](factory/README.md) holds the software-factory research and the Runway experiments, plus the factory site (`factory/site/`). It isn't listed in `marketplace.json` and none of the `make-*.sh` cuts or Codex builds ship it. Only Runway's engine and `runway` skill ship, inside pm (`pm/runway/`, `pm/skills/runway/`; folded in from the old `factory` plugin at pm 0.26.0).
 
 ## Adding a new plugin
 

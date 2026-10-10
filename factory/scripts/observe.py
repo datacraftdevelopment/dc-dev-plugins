@@ -122,8 +122,13 @@ def inspect(root, saved):
                 if not isinstance(row, dict):
                     continue
                 kind = row.get('kind')
-                if kind in ('finish', 'prep') or (kind == 'outcome' and row.get('result') not in ('done', 'stopped')) or row.get('exit', 0) != 0:
-                    event = {k: row[k] for k in ('at', 'kind', 'ticket', 'result', 'exit', 'check_exit', 'pr') if k in row}
+                # A verdict row is an event only when it needs a person: a fail (Runway files a fix
+                # ticket) or a pass held for Joe. A clean pass is a normal run. A merge row always is.
+                gate = kind == 'merge' or (kind == 'verdict' and (row.get('verdict') != 'pass' or row.get('hold')))
+                if kind in ('finish', 'prep') or gate or (kind == 'outcome' and row.get('result') not in ('done', 'stopped')) or row.get('exit', 0) != 0:
+                    event = {k: row[k] for k in ('at', 'kind', 'ticket', 'result', 'exit', 'check_exit', 'pr', 'sha', 'verdict', 'hold', 'merge', 'base', 'mode') if k in row}
+                    if kind == 'verdict' and isinstance(row.get('blocking'), list):
+                        event['blocking_count'] = len(row['blocking'])
                     event['_baseline'] = st.st_ino == saved['baseline_identity'] and start < saved['baseline_end']
                     events.append(event)
             saved['identity'] = st.st_ino

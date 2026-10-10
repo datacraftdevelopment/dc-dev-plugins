@@ -179,13 +179,13 @@ final class SetupTests: XCTestCase {
         let steps = SetupPlan.steps(config(), tools: tools)
         XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/plugin/runway/setup.sh", "/r/demo", "DAT", "Runway app"])))
+            "/co/pm/runway/setup.sh", "/r/demo", "DAT", "Runway app"])))
         XCTAssertEqual(steps[1].action, .run(Command(executable: "/usr/bin/env", arguments: [
-            "python3", "/co/factory/plugin/runway/runway.py", "--root", "/r/demo", "setup"])))
+            "python3", "/co/pm/runway/runway.py", "--root", "/r/demo", "setup"])))
         XCTAssertEqual(steps[2].action, .claimCheck(Command(executable: "/usr/bin/env", arguments: [
-            "python3", "/co/factory/plugin/runway/runway.py", "--root", "/r/demo", "status", "--json"])))
+            "python3", "/co/pm/runway/runway.py", "--root", "/r/demo", "status", "--json"])))
         XCTAssertEqual(steps[3].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/plugin/runway/schedule.sh", "install", "/r/demo", "15"])))
+            "/co/pm/runway/schedule.sh", "install", "/r/demo", "15"])))
     }
 
     func testGitHubPlanUsesTheSetupScriptsGitHubMode() {
@@ -193,14 +193,14 @@ final class SetupTests: XCTestCase {
         XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[0].title, "Point the repo at GitHub")
         XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/plugin/runway/setup.sh", "/r/demo", "--github"])))
+            "/co/pm/runway/setup.sh", "/r/demo", "--github"])))
     }
 
     func testGitHubPlanPassesTheRepoWhenGiven() {
         let cfg = SetupConfig(repo: "/r/demo", tracker: .github, team: "", project: "", harness: "claude", minutes: 15,
                               githubRepo: " acme/widgets ")
         XCTAssertEqual(SetupPlan.steps(cfg, tools: tools)[0].action, .run(Command(executable: "/bin/bash", arguments: [
-            "/co/factory/plugin/runway/setup.sh", "/r/demo", "--github", "acme/widgets"])))
+            "/co/pm/runway/setup.sh", "/r/demo", "--github", "acme/widgets"])))
     }
 
     func testGitHubValidation() {
@@ -225,8 +225,8 @@ final class SetupTests: XCTestCase {
     func testDisplayShowsEachCommandQuoted() {
         let steps = SetupPlan.steps(config(), tools: tools)
         XCTAssertEqual(steps[0].display,
-                       "bash /co/factory/plugin/runway/setup.sh /r/demo DAT 'Runway app'")
-        XCTAssertEqual(steps[3].display, "bash /co/factory/plugin/runway/schedule.sh install /r/demo 15")
+                       "bash /co/pm/runway/setup.sh /r/demo DAT 'Runway app'")
+        XCTAssertEqual(steps[3].display, "bash /co/pm/runway/schedule.sh install /r/demo 15")
     }
 
     func testValidation() {
@@ -402,6 +402,8 @@ final class SetupTests: XCTestCase {
     }
 
     func testCheckoutOfRunwayScript() {
+        XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/pm/runway/runway.py"), "/co")
+        XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/factory/plugin/runway/runway.py"), "/co")
         XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/factory/experiments/01-runway/runway.py"), "/co")
     }
 

@@ -176,6 +176,35 @@ class ObserverTests(unittest.TestCase):
         self.assertNotIn('loop', data['ProgramArguments'])
         self.assertEqual(data['ProgramArguments'][-1], '45')
 
+    def _events_for(self, rows):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pm = root / '_pm'
+            pm.mkdir()
+            path = pm / 'runway-runs.jsonl'
+            path.write_text('')
+            observer.tick(root, pm / 'observer')
+            with path.open('a') as stream:
+                for row in rows:
+                    stream.write(json.dumps(row) + '\n')
+            return observer.tick(root, pm / 'observer')
+
+    def test_failed_or_held_verdict_and_merge_rows_are_events(self):
+        failed = {'kind': 'verdict', 'ticket': 'finish', 'sha': 'a1', 'verdict': 'fail', 'blocking': ['x'], 'hold': False, 'merge': 'shadow'}
+        held = {'kind': 'verdict', 'ticket': 'finish', 'sha': 'b2', 'verdict': 'pass', 'blocking': [], 'hold': True, 'merge': 'on_pass'}
+        merge = {'kind': 'merge', 'ticket': 'finish', 'sha': 'c3', 'pr': 'https://example/pr/1', 'base': 'main', 'mode': 'draft'}
+        events = self._events_for([failed, held, merge])
+        self.assertEqual(len(events), 3)
+        got = [(e['event']['kind'], e['event'].get('sha')) for e in events]
+        self.assertEqual(got, [('verdict', 'a1'), ('verdict', 'b2'), ('merge', 'c3')])
+        self.assertEqual(events[0]['event']['verdict'], 'fail')
+        self.assertTrue(events[1]['event']['hold'])
+        self.assertEqual(events[2]['event']['base'], 'main')
+
+    def test_clean_passing_verdict_is_not_an_event(self):
+        ok = {'kind': 'verdict', 'ticket': 'finish', 'sha': 'd4', 'verdict': 'pass', 'blocking': [], 'hold': False, 'merge': 'shadow'}
+        self.assertEqual(self._events_for([ok]), [])
+
     def test_bad_and_oversized_records_do_not_block_later_finish(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

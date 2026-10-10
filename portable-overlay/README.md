@@ -28,24 +28,37 @@ tc-plugins                               (plain copy, Joe's credit)
 ```
 
 From 2026-10-04 RCC and TC carry the same pm. From pm 0.25.0 that pm also carries
-what sdlc and ui-test used to be (they were folded into pm, so there is no separate
-`sdlc` to pass). The hand pass into
-`rcc-plugins`:
+what sdlc and ui-test used to be, and the editions follow: one pm in every
+edition, no separate `sdlc` plugin and no split rule (decided 2026-10-09, GitHub
+#6, `factory/decisions.md`). The edition scripts hold no `sdlc` path or version
+entries. The hand pass into `rcc-plugins`:
 
 - copy the files in this folder over `rcc-plugins/pm/`, and the private
   `pm/scripts/session.py`; set the pm version to the private one. The
   credential guard, the gate kit and the review policy (`hooks/`, `kit/`,
   `agents/`, `templates/`, `GATES.md`, the `credential-guard`, `gate-hooks` and
-  `review-policy` skills, the credential and `install_gates` scripts) now live
-  in `pm/` itself, so the next pass copies them with the rest of pm and deletes
-  `rcc-plugins/sdlc/`. In `GATES.md` the three sentences that name Ringer or
-  Codex are rewritten, and the install lines name `FMTrainingTV-AI/rcc-fm`;
+  `review-policy` skills, the credential and `install_gates` scripts) live in
+  `pm/` itself, so the pass copies them with the rest of pm. The guard arrives
+  with pm: there is no `sdlc/` copy to take it from, and the old
+  `rcc-plugins/sdlc/` folder is deleted;
+- rewrite the sdlc-origin sentences that name Ringer or private paths, or the
+  TC cut fails: `GATES.md` (the Ringer/Codex lines near the top, the library
+  page path, the two `dc-dev-plugins` install lines, which become
+  `FMTrainingTV-AI/rcc-fm`, and the Ringer-workers line near the end),
+  `skills/review-policy/SKILL.md` (the `cross-review-gate` sentence) and
+  `skills/credential-guard/SKILL.md` (the build-swarm policy-snapshot lines);
 - `ui-test` stays out of the shared editions: it needs Ringer and Codex, so the
   pass leaves `skills/ui-test/`, `requirements.txt` and `UI-TEST.md` behind;
 - no `granola-transcript` skill and no mention of it.
 
 `make-tc-plugins.sh` fails the build on any Ringer, private-path or Granola
 word, so a slip in the hand pass is caught at the TC cut.
+
+Order and reinstall. Run the hand pass and the cuts only after the pm that folds
+sdlc in (#5, pm 0.25.0) is on `main`; before that the paths above don't exist.
+Students reinstall pm once, and anyone who has the old `sdlc` plugin removes it
+(`/plugin uninstall sdlc`) or they carry two copies of the credential guard.
+Joe runs the cuts and any push to the public RCC repo himself; agents don't.
 
 Not ported, on purpose: `orchestrate` (2.6x usage as a default), `fast-grill`
 (its point is a second vendor), `session-succession` (beta, host-specific),

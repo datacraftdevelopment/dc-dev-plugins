@@ -24,6 +24,8 @@ public final class ProjectStore {
     public var requestedRoute: NotificationRoute?
     /// The last command's stderr when it failed; cleared by the next success or `dismissError()`.
     public private(set) var lastError: String?
+    /// Failed "Talk it through" launches, by project and ticket, so the error sits beside its button.
+    private var talkErrors: [String: String] = [:]
     /// The dc-dev-plugins checkout holding `schedule.sh` and `runway.py`; nil means the one the plists point at.
     public private(set) var checkout: String?
     /// Labels of projects hidden from the app. Hiding touches nothing on disk; the loop, plist and repo stay as they are.
@@ -35,6 +37,12 @@ public final class ProjectStore {
     public static let knownReposKey = "knownRepos"
     public static let knownScriptKey = "knownRunwayScript"
     public static let hiddenKey = "hiddenProjects"
+    public static let sessionPlaceKey = "sessionPlace"
+
+    /// The Claude sessions "Talk it through" opened in the Runway window's terminal pane.
+    public let sessions = SessionRegistry()
+    /// Where "Talk it through" opens its session.
+    public private(set) var sessionPlace: SessionPlace
 
     @ObservationIgnored private let discovery: ProjectDiscovery
     @ObservationIgnored private let interval: TimeInterval
@@ -51,6 +59,16 @@ public final class ProjectStore {
     @ObservationIgnored private let deliver: (([NotificationEvent]) -> Void)?
     @ObservationIgnored private var waitingFetchedAt: Date = .distantPast
     @ObservationIgnored private var fetchingWaiting = false
+
+    /// The heartbeat if its tick is really running (active phase, pid alive), else nil.
+    public func live(_ heartbeat: Heartbeat?) -> Heartbeat? {
+        heartbeat.flatMap { $0.isLive(pidAlive: pidAlive) ? $0 : nil }
+    }
+
+    /// "Loop stopped during check · 17:18" when the heartbeat is a dead tick.
+    public func stoppedLine(_ heartbeat: Heartbeat?) -> String? {
+        heartbeat?.stoppedDescription(pidAlive: pidAlive)
+    }
 
     public init(discovery: ProjectDiscovery = ProjectDiscovery(), interval: TimeInterval = 5,
                 defaults: UserDefaults = .standard, pauseURL: URL = PauseInfo.defaultURL,
@@ -70,6 +88,12 @@ public final class ProjectStore {
         self.ledger = deliver == nil ? NotificationLedger() : NotificationLedger.load(from: ledgerURL)
         self.checkout = defaults.string(forKey: Self.checkoutKey)
         self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
+        self.sessionPlace = defaults.string(forKey: Self.sessionPlaceKey).flatMap(SessionPlace.init(rawValue:)) ?? .window
+    }
+
+    public func setSessionPlace(_ place: SessionPlace) {
+        sessionPlace = place
+        defaults.set(place.rawValue, forKey: Self.sessionPlaceKey)
     }
 
     public func hide(_ label: String) { setHidden(hidden.union([label])) }
@@ -113,6 +137,7 @@ public final class ProjectStore {
             let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
             let status = StatusResolver.resolve(project: project, heartbeat: heartbeat, pause: pause,
                                                 waiting: project.loaded ? snapshots[project.label]?.tickets.count ?? 0 : 0,
+                                                errored: project.loaded ? snapshots[project.label]?.erroredOnlyCount ?? 0 : 0,
                                                 now: now, pidAlive: pidAlive)
             return ProjectEntry(project: project, status: status)
         }
@@ -157,6 +182,48 @@ public final class ProjectStore {
     }
 
     public func dismissError() { lastError = nil }
+
+    // MARK: talk it through
+
+    /// Opens Terminal on `runway discuss <ticket>` for the project.
+    public func talkThrough(ticket: String, in project: Project) async {
+        guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: ticket, spec: tools.discussSession(ticket: ticket, repo: repo))
+            return
+        }
+        await launch(tools.discuss(ticket: ticket, repo: repo), key: Self.talkKey(project, ticket))
+    }
+
+    /// Opens Terminal on `runway discuss --loop` for the project.
+    public func talkThroughLoop(_ project: Project) async {
+        guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: nil, spec: tools.discussLoopSession(repo: repo))
+            return
+        }
+        await launch(tools.discussLoop(repo: repo), key: Self.talkKey(project, nil))
+    }
+
+    /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.
+    public func popOut(_ id: UUID) async {
+        guard let session = sessions.sessions.first(where: { $0.id == id }), let tools = requireTools() else { return }
+        let repo = session.spec.workingDirectory
+        sessions.close(id)
+        let command = session.ticket.map { tools.discuss(ticket: $0, repo: repo) } ?? tools.discussLoop(repo: repo)
+        let result = await run(command)
+        if !result.succeeded { lastError = result.failureMessage }
+    }
+
+    /// Why the last launch for this ticket (or the loop, with nil) failed; nil after a launch that worked.
+    public func talkError(project: Project, ticket: String?) -> String? { talkErrors[Self.talkKey(project, ticket)] }
+
+    private static func talkKey(_ project: Project, _ ticket: String?) -> String { project.label + "/" + (ticket ?? "") }
+
+    private func launch(_ command: Command, key: String) async {
+        let result = await run(command)
+        talkErrors[key] = result.succeeded ? nil : result.failureMessage
+    }
 
     /// The last `runway status --json` answer for a project; nil before the first one (or if every call failed).
     public func snapshot(for label: String) -> StatusSnapshot? { snapshots[label] }

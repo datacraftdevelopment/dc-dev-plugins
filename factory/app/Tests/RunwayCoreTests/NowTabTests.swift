@@ -21,6 +21,25 @@ final class NowTabTests: XCTestCase {
         XCTAssertEqual(hb.lastResult, "fail")
     }
 
+    // MARK: dead pid
+
+    func testDeadTickHasNoTimerAndNoHighlight() {
+        XCTAssertNil(NowMath.elapsed(heartbeat: beat(), now: now, pidAlive: { _ in false }))
+        let strip = NowMath.phaseStrip(heartbeat: beat(), pidAlive: { _ in false })
+        XCTAssertTrue(strip.allSatisfy { $0.state == .todo })
+    }
+
+    func testLiveTickDrawsAsBefore() {
+        XCTAssertEqual(NowMath.elapsed(heartbeat: beat(), now: now, pidAlive: { _ in true }), 300)
+        let strip = NowMath.phaseStrip(heartbeat: beat(["phase": "agent"]), pidAlive: { _ in true })
+        XCTAssertEqual(strip.map(\.state), [.done, .done, .current, .todo, .todo])
+    }
+
+    func testMissingPidTickDrawsAsLive() {
+        let hb = beat(["pid": NSNull()])
+        XCTAssertEqual(NowMath.elapsed(heartbeat: hb, now: now, pidAlive: { _ in false }), 300)
+    }
+
     // MARK: elapsed
 
     func testElapsedRunsFromTickStart() {

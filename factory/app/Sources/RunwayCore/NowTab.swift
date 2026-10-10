@@ -26,8 +26,9 @@ public enum NowMath {
     public static let phases = ["sync", "prep", "agent", "check", "merge"]
 
     /// Seconds since the current tick began, or nil when no tick is in flight.
-    public static func elapsed(heartbeat: Heartbeat?, now: Date) -> TimeInterval? {
-        guard let heartbeat, heartbeat.isActive, let start = heartbeat.tickStarted ?? heartbeat.since else { return nil }
+    public static func elapsed(heartbeat: Heartbeat?, now: Date,
+                               pidAlive: (Int) -> Bool = StatusResolver.systemPidAlive) -> TimeInterval? {
+        guard let heartbeat, heartbeat.isLive(pidAlive: pidAlive), let start = heartbeat.tickStarted ?? heartbeat.since else { return nil }
         return max(0, now.timeIntervalSince(start))
     }
 
@@ -56,9 +57,10 @@ public enum NowMath {
     }
 
     /// Done / current / todo for sync → prep → agent → check → merge. `finish` comes after merge, so all are done.
-    public static func phaseStrip(heartbeat: Heartbeat?) -> [PhaseStep] {
+    public static func phaseStrip(heartbeat: Heartbeat?,
+                                 pidAlive: (Int) -> Bool = StatusResolver.systemPidAlive) -> [PhaseStep] {
         var current: Int?
-        if let heartbeat, heartbeat.isActive {
+        if let heartbeat, heartbeat.isLive(pidAlive: pidAlive) {
             current = heartbeat.phase == "finish" ? phases.count : phases.firstIndex(of: heartbeat.phase)
         }
         return phases.enumerated().map { index, name in

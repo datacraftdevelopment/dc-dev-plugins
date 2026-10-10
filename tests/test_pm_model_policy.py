@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class PMModelPolicyTests(unittest.TestCase):
     def test_source_declares_session_and_review_tiers(self):
         manifest = json.loads((ROOT / 'pm/.claude-plugin/plugin.json').read_text())
-        self.assertEqual(manifest['version'], '0.25.0')
+        self.assertEqual(manifest['version'], '0.26.14')
 
         workflow = (ROOT / 'pm/WORKFLOW.md').read_text()
         flat_workflow = ' '.join(workflow.split())
@@ -101,7 +101,7 @@ class PMModelPolicyTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             pm = Path(tmp) / 'pm'
             manifest = json.loads((pm / '.codex-plugin/plugin.json').read_text())
-            self.assertTrue(manifest['version'].startswith('0.25.0+codex.'))
+            self.assertTrue(manifest['version'].startswith('0.26.14+codex.'))
 
             workflow = (pm / 'WORKFLOW.md').read_text()
             flat_workflow = ' '.join(workflow.split())

@@ -7,7 +7,8 @@ sid = str(uuid.uuid4())
 if prompt.startswith("You are preparing a decision"):
     out = "### Decision needed\nUse greet()?\n### Options\n- greet() (recommended)\n- hello()"
 elif prompt.startswith("You are reviewing"):
-    out = "- greeting.txt:1 says 'helo', a typo the tickets didn't ask for."
+    head = re.search(r"head under review is ([0-9a-f]{40})", prompt).group(1)
+    out = f"Reviewed: {head}\n- greeting.txt:1 says 'helo', a typo the tickets didn't ask for."
 elif prompt.startswith("Fix these review findings"):
     p = pathlib.Path("greeting.txt"); p.write_text(p.read_text().replace("helo", "hello"))
     out = "fixed the typo"

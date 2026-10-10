@@ -27,6 +27,26 @@ public struct Heartbeat: Equatable, Sendable {
 
     public var isActive: Bool { Self.activePhases.contains(phase) }
 
+    /// In an active phase and its process still exists. A missing `pid` can't be checked, so it counts as live.
+    public func isLive(pidAlive: (Int) -> Bool) -> Bool {
+        guard isActive else { return false }
+        guard let pid else { return true }
+        return pidAlive(pid)
+    }
+
+    /// An active phase whose process is gone: the loop died mid-ticket.
+    public func isStopped(pidAlive: (Int) -> Bool) -> Bool { isActive && !isLive(pidAlive: pidAlive) }
+
+    /// "Loop stopped during check · 17:18" for a dead tick, else nil. The time is when the phase began.
+    public func stoppedDescription(timeZone: TimeZone = .current, pidAlive: (Int) -> Bool) -> String? {
+        guard isStopped(pidAlive: pidAlive) else { return nil }
+        guard let since else { return "Loop stopped during \(phase)" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.timeZone = timeZone
+        return "Loop stopped during \(phase) · \(formatter.string(from: since))"
+    }
+
     public static func parse(_ data: Data) -> Heartbeat? {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let phase = json["phase"] as? String else { return nil }
@@ -95,24 +115,26 @@ public struct ProjectStatus: Equatable, Sendable {
     public let detail: String
     /// Decisions waiting on Joe in this project.
     public let waiting: Int
+    /// Tickets with a failed attempt that are not already counted as waiting.
+    public var errored: Int = 0
 }
 
 public enum StatusResolver {
     /// Heartbeat + launchctl + pause file + decisions waiting → one state.
     /// A heartbeat in an active phase whose `pid` is gone means the tick died; that is an error, not running.
-    public static func resolve(project: Project, heartbeat: Heartbeat?, pause: PauseInfo?, waiting: Int,
+    public static func resolve(project: Project, heartbeat: Heartbeat?, pause: PauseInfo?, waiting: Int, errored: Int = 0,
                                now: Date, pidAlive: (Int) -> Bool) -> ProjectStatus {
         func status(_ state: RunState, _ detail: String) -> ProjectStatus {
-            ProjectStatus(label: project.label, name: project.name, state: state, detail: detail, waiting: waiting)
+            ProjectStatus(label: project.label, name: project.name, state: state, detail: detail, waiting: waiting, errored: errored)
         }
         if let message = project.error { return status(.error(message), message) }
         guard project.loaded else { return status(.off, "loop off") }
 
-        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
-        if let live, let pid = live.pid, !pidAlive(pid) {
+        if let heartbeat, heartbeat.isStopped(pidAlive: pidAlive), let pid = heartbeat.pid {
             let message = "stale heartbeat (pid \(pid) not running)"
             return status(.error(message), message)
         }
+        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
         if !project.running, let exit = project.lastExit, exit != 0 {
             return status(.error("exit \(exit)"), "last tick exit \(exit)")
         }
@@ -178,6 +200,6 @@ public enum OverallState: Equatable, Sendable {
 
     /// Decisions waiting across every project.
     public static func badge(_ statuses: [ProjectStatus]) -> Int {
-        statuses.reduce(0) { $0 + $1.waiting }
+        statuses.reduce(0) { $0 + $1.waiting + $1.errored }
     }
 }

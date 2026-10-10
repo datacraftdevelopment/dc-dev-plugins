@@ -12,6 +12,7 @@ struct SidePanel: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     if store.entries.isEmpty {
@@ -19,7 +20,7 @@ struct SidePanel: View {
                             .frame(maxWidth: .infinity).padding(.top, 40)
                     }
                     ForEach(store.entries) { entry in
-                        ProjectNow(store: store, entry: entry, now: context.date) { route in
+                        ProjectNow(store: store, entry: entry, now: context.date, scroll: proxy) { route in
                             store.requestedRoute = route
                             NSApplication.shared.activate(ignoringOtherApps: true)
                             openWindow(id: "runway")
@@ -36,6 +37,7 @@ struct SidePanel: View {
                     await finished.reload(store.entries)
                     try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
                 }
+            }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -64,17 +66,21 @@ private struct ProjectNow: View {
     let store: ProjectStore
     let entry: ProjectEntry
     let now: Date
+    let scroll: ScrollViewProxy
     let open: (NotificationRoute) -> Void
     @State private var log: LogModel
     @State private var showAllQueued = false
+    @State private var highlightNeedsYou = false
 
     /// Queued tickets shown before the rest fold into "+N more".
     private static let queueShown = 4
 
-    init(store: ProjectStore, entry: ProjectEntry, now: Date, open: @escaping (NotificationRoute) -> Void) {
+    init(store: ProjectStore, entry: ProjectEntry, now: Date, scroll: ScrollViewProxy,
+         open: @escaping (NotificationRoute) -> Void) {
         self.store = store
         self.entry = entry
         self.now = now
+        self.scroll = scroll
         self.open = open
         let repo = entry.project.repoPath ?? ""
         _log = State(initialValue: LogModel(url: URL(fileURLWithPath: repo).appendingPathComponent("_pm/runway.log")))
@@ -84,29 +90,66 @@ private struct ProjectNow: View {
         let project = entry.project
         let snapshot = store.snapshot(for: project.label)
         let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
-        let live = heartbeat.flatMap { $0.isActive ? $0 : nil }
+        let live = store.live(heartbeat)
         let queued = (snapshot?.upNext ?? []).filter { $0.id != live?.ticket }
 
         VStack(alignment: .leading, spacing: 6) {
-            header(snapshot: snapshot)
+            header(needsYouCount: NeedsYouRow.rows(from: snapshot).count)
+            NeedsYouSection(store: store, entry: entry, rows: NeedsYouRow.rows(from: snapshot),
+                            highlighted: highlightNeedsYou, open: open)
             if !queued.isEmpty { upNext(queued, snapshot: snapshot) }
-            nowCard(heartbeat: heartbeat, live: live, snapshot: snapshot)
+            if case .error = entry.status.state {
+                errorCard
+            } else if let heartbeat, let stopped = store.stoppedLine(heartbeat) {
+                stoppedCard(heartbeat, line: stopped, snapshot: snapshot)
+            } else {
+                nowCard(heartbeat: heartbeat, live: live, snapshot: snapshot)
+            }
         }
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) { open(NotificationRoute(projectLabel: project.label, ticketID: nil, tab: .projects)) }
+        // The double-click sits behind the block, not on it, so it can't swallow a single click on the bell or a button.
+        .background(Color.clear.contentShape(Rectangle())
+            .onTapGesture(count: 2) { open(NotificationRoute(projectLabel: project.label, ticketID: nil, tab: .projects)) })
         .task(id: now) { log.poll() }
     }
 
-    private func header(snapshot: StatusSnapshot?) -> some View {
+    /// A project in error: the reason in full, a click to the window's Now tab where the log lines are, and the button.
+    private var errorCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                open(NotificationRoute(projectLabel: entry.project.label, ticketID: nil, tab: .projects))
+            } label: {
+                Label(entry.status.detail, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.medium)).foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).help("Show the error details")
+            TalkButton(store: store, project: entry.project).buttonStyle(.borderless).font(.caption)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.red.opacity(0.5), lineWidth: 1))
+    }
+
+    private func showNeedsYou() {
+        withAnimation { scroll.scrollTo(NeedsYouSection.anchor(entry.project.label), anchor: .top) }
+        highlightNeedsYou = true
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            highlightNeedsYou = false
+        }
+    }
+
+    private func header(needsYouCount: Int) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color(entry.status.state)).frame(width: 8, height: 8)
             Text(entry.status.name).font(.headline).lineLimit(1)
             Spacer()
-            if entry.status.waiting > 0 {
-                Button { open(NotificationRoute(projectLabel: entry.project.label, ticketID: nil, tab: .decisions)) } label: {
-                    Label("\(entry.status.waiting)", systemImage: "bell.fill").font(.caption.bold())
+            if needsYouCount > 0 {
+                Button { showNeedsYou() } label: {
+                    Label("\(needsYouCount)", systemImage: "bell.fill").font(.caption.bold())
                 }
-                .buttonStyle(.borderless).foregroundStyle(.orange).help("Decisions waiting")
+                .buttonStyle(.borderless).foregroundStyle(.orange).help("Jump to Needs you")
             }
             Text(entry.project.loaded ? (store.pause != nil ? "paused" : "loop on") : "loop off")
                 .font(.caption).foregroundStyle(.secondary)
@@ -186,9 +229,148 @@ private struct ProjectNow: View {
         }
     }
 
+    /// A dead tick: greyed, no timer, no phase highlight.
+    private func stoppedCard(_ heartbeat: Heartbeat, line: String, snapshot: StatusSnapshot?) -> some View {
+        let id = heartbeat.ticket ?? heartbeat.phase
+        let title = heartbeat.ticket.flatMap { snapshot?.titles[$0] } ?? ""
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(id).font(.caption.monospaced()).foregroundStyle(.secondary)
+            if !title.isEmpty {
+                Text(title).font(.callout.weight(.medium)).foregroundStyle(.secondary).lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(line).font(.caption.weight(.medium)).foregroundStyle(.red)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+    }
+
     private func nowMeta(_ live: Heartbeat) -> String {
         let phase = live.since.map { "\(live.phase) \(NowMath.clock(now.timeIntervalSince($0)))" } ?? live.phase
         return [live.attempt.map { "attempt \($0)" }, phase].compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
+/// Tickets waiting on Joe, above Up next. Go / No sit behind a disclosure and run the Decisions card's command.
+private struct NeedsYouSection: View {
+    let store: ProjectStore
+    let entry: ProjectEntry
+    let rows: [NeedsYouRow]
+    let highlighted: Bool
+    let open: (NotificationRoute) -> Void
+    @State private var feed = DecisionsFeed()
+
+    static func anchor(_ label: String) -> String { "needs-you-\(label)" }
+
+    /// Tickets answered here that have left the waiting list keep an "Answered" line until the panel closes.
+    private var answeredGone: [DecisionCard] {
+        let ids = Set(rows.map(\.id))
+        return feed.cards.filter { $0.answer != nil && !ids.contains($0.id) }
+    }
+
+    var body: some View {
+        let gone = answeredGone
+        if !rows.isEmpty || !gone.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionLabel(text: "Needs you · \(rows.count)", trailing: nil)
+                ForEach(rows) { row in
+                    NeedsYouRowView(row: row, store: store, project: entry.project,
+                                    answer: feed.answers[row.id], error: feed.errors[row.id],
+                                    answering: feed.isAnswering(row.id), tracker: entry.project.tracker,
+                                    canSend: canSend(row.id),
+                                    details: { open(NotificationRoute(projectLabel: entry.project.label, ticketID: row.id,
+                                                                      tab: row.waiting ? .decisions : .queue)) },
+                                    send: { go, note in send(row, go: go, note: note) })
+                }
+                ForEach(gone) { card in
+                    Text("\(card.ticket.id) \(card.answer?.text ?? "")").font(.caption).foregroundStyle(.green)
+                        .padding(.horizontal, 4)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(highlighted ? 0.35 : 0.1), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.orange.opacity(highlighted ? 1 : 0.4), lineWidth: 1))
+            .animation(.easeInOut(duration: 0.3), value: highlighted)
+            .id(Self.anchor(entry.project.label))
+        }
+    }
+
+    private var statusCommand: Command? {
+        guard let repo = entry.project.repoPath, let tools = store.tools else { return nil }
+        return tools.status(repo: repo)
+    }
+
+    private func canSend(_ id: String) -> Bool { statusCommand != nil && !feed.isAnswering(id) }
+
+    private func send(_ row: NeedsYouRow, go: Bool, note: String) {
+        guard let repo = entry.project.repoPath, let tools = store.tools, let statusCommand else { return }
+        Task {
+            await feed.answer(row.queueTicket, go: go, note: note,
+                              command: tools.answer(go: go, ticket: row.id, note: note, repo: repo),
+                              status: statusCommand)
+        }
+    }
+}
+
+private struct NeedsYouRowView: View {
+    let row: NeedsYouRow
+    let store: ProjectStore
+    let project: Project
+    let answer: DecisionAnswer?
+    let error: String?
+    let answering: Bool
+    let tracker: String?
+    let canSend: Bool
+    let details: () -> Void
+    let send: (Bool, String) -> Void
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(row.id).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+                Text(row.title.isEmpty ? "—" : row.title).font(.caption.weight(.medium))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let errored = row.errored { ErroredFlag(kind: errored, compact: true) }
+            if let reason = row.reason, row.waiting { Text(reason).font(.caption).foregroundStyle(.secondary) }
+            if let recommended = row.recommended {
+                Text("Recommended: \(recommended)").font(.caption).foregroundStyle(.green).lineLimit(2)
+            }
+            HStack(spacing: 10) {
+                if let url = row.url {
+                    Button(TicketLink.buttonTitle(tracker: tracker)) { NSWorkspace.shared.open(url) }
+                }
+                Button("Details", action: details)
+            }
+            .buttonStyle(.borderless).font(.caption)
+            TalkButton(store: store, project: project, ticket: row.id).buttonStyle(.borderless).font(.caption)
+            if !row.waiting {
+                EmptyView()  // errored only: nothing to go or no on
+            } else if let answer {
+                Text(answer.text).font(.caption).foregroundStyle(.green)
+            } else {
+                DisclosureGroup("Answer") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Note (optional)", text: $note).textFieldStyle(.roundedBorder).font(.caption)
+                        HStack {
+                            Button("Go") { send(true, note) }.disabled(!canSend)
+                            Button("No") { send(false, note) }.disabled(!canSend)
+                            if answering { ProgressView().controlSize(.small) }
+                        }
+                    }
+                }
+                .font(.caption)
+            }
+            if let error {
+                Text(error).font(.caption2.monospaced()).textSelection(.enabled).padding(6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
