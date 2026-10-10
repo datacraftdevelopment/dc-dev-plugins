@@ -1065,14 +1065,15 @@ At most 5 bullets. No investigation narrative.
 Ticket ({path}):
 
 {ticket}
-"""
+{context}"""
 
 
 def prep(cfg: dict, root: Path, t) -> None:
     beat(root, "prep", t.id)
     log(root, f"prep  {t.id} {t.title}")
     hp = resolve_harness(cfg, t)
-    r, text = run_agent(cfg, root, hp["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep",
+    r, text = run_agent(cfg, root, hp["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text,
+                                                                      context=spec_context(root, t)), t.id, "prep",
                         harness=hp)
     if stop_requested():
         log(root, f"stopped by pause  prep {t.id}")
@@ -1089,9 +1090,9 @@ Stay inside the ticket's scope. Work test-first: use the /tdd skill if it's avai
 (red-green, one slice at a time); otherwise write a failing test before the code.
 If docs/agents/worker-env.md exists, read it first: it lists what this fresh worktree
 lacks (env files, dependencies, local data), the repo's verify command, and paths to leave alone.
-If the ticket has a `Spec:` line naming a file, read that file from this checkout before you
-start: it is the spec the ticket builds. Only if the file is missing, read the spec issue the
-ticket names (`gh issue view <n>`).
+The spec the ticket builds is below the ticket when its file is in this checkout; if the ticket
+names a spec that isn't below, read the spec issue it names (`gh issue view <n>`). Use the terms in
+GLOSSARY.md and respect the decisions in docs/adr/, where those exist.
 Before you call it done, run the check that would catch your most likely mistake, after your
 last edit, and read its output. Claim only what that output shows.
 Commit your work with a clear message when done.
@@ -1101,7 +1102,7 @@ at the repo root and stop.
 Ticket ({path}):
 
 {ticket}
-{extra}"""
+{context}{extra}"""
 
 
 def ensure_integration(cfg: dict, root: Path) -> None:
@@ -1159,13 +1160,14 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
     extra, ok, detail, attempt = "", False, "", 0
     hp = resolve_harness(cfg, t)
+    context = spec_context(wt, t)
     stopped = signed_out = False
     for attempt in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
             stopped = True
             break
         beat(root, "agent", t.id, attempt)
-        prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
+        prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, context=context, extra=extra)
         r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
         if stop_requested():
             stopped = True
@@ -1281,6 +1283,29 @@ def ticket_specs(tickets) -> list[str]:
             if p not in out:
                 out.append(p)
     return out
+
+
+SPEC_CAP = 40000
+
+
+def spec_context(base: Path, t) -> str:
+    """The text of every spec file the ticket names, read from `base` (the worker's checkout), so the worker
+    has the spec without reaching the tracker. A `<slug>.notes.md` beside a spec (the planning notes it came
+    from) is named, not inlined. Files outside `base` or missing are skipped."""
+    out, root = [], base.resolve()
+    for rel in ticket_specs([t]):
+        p = (base / rel).resolve()
+        if not p.is_relative_to(root) or not p.is_file():
+            continue
+        body = p.read_text(errors="replace")
+        if len(body) > SPEC_CAP:
+            body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
+        out += ["", f"## Spec: {rel}", "", body.strip()]
+        notes = p.with_name(p.name[:-3] + ".notes.md")
+        if notes.is_file():
+            out += ["", f"Planning notes behind this spec: {notes.relative_to(root)} (read them if the spec leaves "
+                        "a question open)."]
+    return "\n".join(out) + "\n" if out else ""
 
 
 REVIEW_PROMPT = """You are reviewing a finished build before Joe merges it. Do NOT change any files.

@@ -11,7 +11,15 @@ The spec file reaches `main` before its tickets are labelled `ready-for-agent`.
 
 A spec changes here first; then re-paste the text into its issue.
 
+Runway puts the text of the ticket's spec file into the worker's prompt (and
+prep's), read from the worker's own checkout, so the worker never has to reach
+the tracker for it.
+
+Planning notes the spec came from (the plan, a grilling ledger) can sit beside
+it as `docs/specs/<slug>.notes.md`. Runway names that file to the worker
+without inlining it. This repo is public, so a notes file goes in only when it
+is clean (no client names, credentials or NDA material); whatever in the notes
+binds the build belongs in the spec itself either way.
+
 Not the same as `docs/intent/`: an intent is the earlier discovery note
-(problem, outcome, acceptance), written before anything is planned. Planning
-notes and grilling ledgers stay with the planning conversation; whatever in
-them binds the build goes into the spec.
+(problem, outcome, acceptance), written before anything is planned.
