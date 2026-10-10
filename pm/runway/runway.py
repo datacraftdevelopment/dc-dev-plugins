@@ -1099,15 +1099,11 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
         register_agent(pid, root)
         beat_update(root, agent_pid=pid)
     try:
-<<<<<<< HEAD:pm/runway/runway.py
-        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started)
+        r = (subprocess.CompletedProcess(cmd, 78, "", preflight_error) if preflight_error else
+             sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started))
     except subprocess.TimeoutExpired:
         r = subprocess.CompletedProcess(cmd, 124, "", f"timed out after {cfg['agent_timeout_s']}s")
         log(root, f"timeout  {ticket} {kind} attempt {attempt}: agent killed after {cfg['agent_timeout_s']}s")
-=======
-        r = (subprocess.CompletedProcess(cmd, 78, "", preflight_error) if preflight_error else
-             sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started))
->>>>>>> pr58-scoped-repair:factory/plugin/runway/runway.py
     finally:
         beat_update(root, agent_pid=None)
         if pids:
