@@ -1085,6 +1085,12 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
     the text, session id and usage out of stdout; unparseable output is returned raw."""
     harness = harness or resolve_harness(cfg)
+    preflight_error = None
+    if kind in ("run", "prep"):
+        try:
+            prompt += spec_context(cwd, prompt)
+        except SpecUnavailable as e:
+            preflight_error = str(e)
     t0 = time.time()
     pids: list = []
 
@@ -1093,7 +1099,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
         register_agent(pid, root)
         beat_update(root, agent_pid=pid)
     try:
-        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started)
+        r = (subprocess.CompletedProcess(cmd, 78, "", preflight_error) if preflight_error else
+             sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started))
     except subprocess.TimeoutExpired:
         r = subprocess.CompletedProcess(cmd, 124, "", f"timed out after {cfg['agent_timeout_s']}s")
         log(root, f"timeout  {ticket} {kind} attempt {attempt}: agent killed after {cfg['agent_timeout_s']}s")
@@ -1117,7 +1124,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
 # ---------- prep: the judgment lookahead ----------
 
 PREP_PROMPT = """You are preparing a decision for Joe. Do NOT change any files.
-Read the ticket below and the repository, then write a decision packet in Markdown
+Read the ticket below and the repository (and the spec file, if the ticket has a `Spec:` line naming
+one), then write a decision packet in Markdown
 with exactly these sections:
 
 ### Decision needed
@@ -1162,6 +1170,9 @@ test at the existing public interface of the module being changed. Don't stop to
 Only a new module or a changed public interface is a reason to write RUNWAY_QUESTION.md.
 If docs/agents/worker-env.md exists, read it first: it lists what this fresh worktree
 lacks (env files, dependencies, local data), the repo's verify command, and paths to leave alone.
+The spec the ticket builds is below the ticket when its file is in this checkout; if the ticket
+names a spec that isn't below, read the spec issue it names (`gh issue view <n>`). Use the terms in
+GLOSSARY.md and respect the decisions in docs/adr/, where those exist.
 Before you call it done, run the check that would catch your most likely mistake, after your
 last edit, and read its output. Claim only what that output shows.
 Commit your work with a clear message when done.
@@ -1369,6 +1380,54 @@ def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") ->
 
 
 # ---------- finish: review, fix, PR body ----------
+
+SPEC_LINE = re.compile(r"^\s*spec:\s*`?([^\s`]+\.md)`?", re.I | re.M)
+
+
+def ticket_specs(tickets) -> list[str]:
+    """The spec files the tickets name in a `Spec:` line, first seen first."""
+    out = []
+    for t in tickets:
+        for p in SPEC_LINE.findall(t if isinstance(t, str) else (getattr(t, "text", "") or "")):
+            if p not in out:
+                out.append(p)
+    return out
+
+
+class SpecUnavailable(ValueError):
+    """An explicit spec cannot be supplied; no harness may run without it."""
+
+
+SPEC_CAP = 40000
+
+
+def spec_context(base: Path, t) -> str:
+    """The text of every spec file a ticket or dispatch prompt names, read from `base` (the worker's checkout), so the worker
+    has the spec without reaching the tracker. A `<slug>.notes.md` beside a spec (the planning notes it came
+    from) is named, not inlined. Explicit invalid, unreadable, missing or outside-checkout files reject dispatch."""
+    out, root = [], base.resolve()
+    text = t if isinstance(t, str) else (getattr(t, "text", "") or "")
+    for named in re.findall(r"^\s*spec:\s*(.*?)\s*$", text, re.I | re.M):
+        if not re.fullmatch(r"`?[^\s`]+\.md`?", named):
+            raise SpecUnavailable(f"Invalid Spec header {named!r}; name a checkout-relative .md file.")
+    for rel in ticket_specs([t]):
+        p = (base / rel).resolve()
+        if not p.is_relative_to(root) or not p.is_file():
+            raise SpecUnavailable(f"Spec {rel!r} is missing or outside this checkout. Restore the spec file "
+                                  "or correct its header, then retry with go.")
+        try:
+            body = p.read_text(errors="replace")
+        except OSError as e:
+            raise SpecUnavailable(f"Cannot read spec {rel!r}: {e}. Restore access to the spec before retrying.") from e
+        if len(body) > SPEC_CAP:
+            body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
+        out += ["", f"## Spec: {rel}", "", body.strip()]
+        notes = p.with_name(p.name[:-3] + ".notes.md")
+        if notes.is_file():
+            out += ["", f"Planning notes behind this spec: {notes.relative_to(root)} (read them if the spec leaves "
+                        "a question open)."]
+    return "\n".join(out) + "\n" if out else ""
+
 
 REVIEW_PROMPT = """You are reviewing a finished build before Joe merges it. Do NOT change any files.
 The current branch, `{integration}`, holds the tickets below, each built separately and
@@ -1722,7 +1781,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     open_ = [t for t in tickets if t.status not in DONE]
     tlist = "\n".join([f"- {t.id} {t.title} ({t.ref})" for t in done] +
                       [f"- NOT DONE: {t.id} {t.title} ({t.status})" for t in open_]) or "- (none listed)"
-    spec = f"\nSpec: {cfg['spec']}\n" if cfg.get("spec") else ""
+    specs = ([cfg["spec"]] if cfg.get("spec") else []) + [p for p in ticket_specs(done) if p != cfg.get("spec")]
+    spec = f"\nSpec: {', '.join(specs)} (read it before you review)\n" if specs else ""
 
     # 1. Review the whole branch against the tickets.
     hp = resolve_harness(cfg)
