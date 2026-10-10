@@ -60,6 +60,7 @@ class GitHubCreate(unittest.TestCase):
         (self.dir / "data.json").write_text(json.dumps({"issues": []}))
         self.cfg = {"tracker": "github", "github": {"repo": "o/r", "gh": str(gh), "timeout_s": 0.5}}
         self.tr = runway.make_tracker(self.cfg, self.dir)
+        self.tr.c["park_authority"] = self.tr.park_owner()
 
     def stored(self):
         return json.loads((self.dir / "data.json").read_text())["issues"]
@@ -124,6 +125,7 @@ class LinearCreate(unittest.TestCase):
         self.addCleanup(p.stop)
         cfg = {"tracker": "linear", "linear": {"team": "DAT", "project": "P"}}
         self.tr = runway.make_tracker(cfg, Path(tempfile.mkdtemp()))
+        self.tr.c["park_authority"] = self.tr.park_owner()
 
     def test_creates_in_the_team_and_project_with_labels_and_returns_the_identifier(self):
         ref = self.tr.create("Fix it", "It broke.", ["bug"])

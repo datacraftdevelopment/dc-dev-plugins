@@ -48,6 +48,7 @@ def make(labels):
     tr.root, tr.c, tr.api = Path(tempfile.mkdtemp()), dict(L.DEFAULTS, team="DAT"), StatefulApi(node)
     tr._team = {"all_labels": dict(LABELS),
                 "states": {"nodes": [{"id": "s-un", "name": "Todo", "type": "unstarted", "position": 0}]}}
+    tr.c["park_authority"] = tr.park_owner()
     return tr, node
 
 

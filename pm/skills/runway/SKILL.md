@@ -14,6 +14,15 @@ one fix pass and writes a PR body. The base branch is never touched; Joe merges.
 The engine is `${CLAUDE_PLUGIN_ROOT}/runway/runway.py` (Python 3.9+ and git,
 nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runway.py" --root <repo>`.
 
+## Exclusive tracker writer prerequisite
+
+Before GitHub or Linear runs, follow `${CLAUDE_PLUGIN_ROOT}/runway/park-ownership.md`.
+All roots targeting the same tracker scope must agree on one `park_authority`
+identity in their tracker configuration; only that root may mutate tickets.
+Missing authority waits before model calls. Stop older runners before rollout.
+Owner loss requires verified shutdown and deliberate human recovery, never an
+automatic takeover. A claim readback is not proof of exclusive authority.
+
 ## Start a factory project
 
 1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he

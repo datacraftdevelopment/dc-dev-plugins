@@ -1690,6 +1690,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     """Review the integration branch as a whole, fix once, check, and write the PR body.
     Runs once per integration head that carries new ticket work (base syncs alone don't), unless forced.
     Returns True if it ran."""
+    if mutation_authority_waiting(root, tracker):
+        return False
     base, integ = cfg["base_branch"], cfg["integration_branch"]
     if sh(["git", "rev-parse", "--verify", integ], root).returncode != 0:
         return False
@@ -2372,9 +2374,30 @@ def release_orphans(root: Path, tickets: list, beat_before: dict) -> bool:
     return released
 
 
+_AUTHORITY_WAIT = set()
+
+
+def mutation_authority_waiting(root: Path, tracker) -> bool:
+    """No model calls or lifecycle work until the operator-designated writer is established."""
+    _AUTHORITY_WAIT.discard(str(root))
+    check = getattr(tracker, "require_park_authority", None)
+    if check is None:
+        return False  # the local markdown tracker has no cross-root recovery protocol
+    try:
+        check()
+    except RuntimeError as e:
+        _AUTHORITY_WAIT.add(str(root))
+        beat(root, "waiting", reason=str(e))
+        log(root, str(e))
+        return True
+    return False
+
+
 def tick(cfg: dict, root: Path, tracker) -> bool:
     """One pass. Returns True if it did anything. A tracker that won't answer ends the pass, not the process."""
     _DOWN.discard(str(root))
+    if mutation_authority_waiting(root, tracker):
+        return False
     try:
         return _tick(cfg, root, tracker)
     except transient.TrackerDown as e:
@@ -2616,7 +2639,7 @@ def main() -> None:
             else:
                 for _ in range(a.max_ticks):
                     if not tick(cfg, root, tracker):
-                        if tracker_is_down(root):
+                        if tracker_is_down(root) or str(root) in _AUTHORITY_WAIT:
                             return  # tracker not answering: heartbeat stays `waiting`, no finish step, exit 0
                         if active_pause() or machine_block():
                             beat(root, "idle")  # paused or waiting: no finish step, and no stale phase under a dead pid
@@ -2631,7 +2654,7 @@ def main() -> None:
         except transient.TrackerDown as e:  # finish or the status print lost the tracker
             tracker_waiting(cfg, root, e)
             return
-        if not tracker_is_down(root):
+        if not tracker_is_down(root) and str(root) not in _AUTHORITY_WAIT:
             beat(root, "idle")
     elif a.cmd in ("go", "no"):
         cmd_answer(root, tracker, a.ticket, a.cmd == "go", a.note)

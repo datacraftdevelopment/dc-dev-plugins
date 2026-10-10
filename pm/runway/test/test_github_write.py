@@ -80,7 +80,10 @@ class GitHubWrites(unittest.TestCase):
         return next(i for i in json.loads((self.dir / "data.json").read_text())["issues"] if i["number"] == n)
 
     def tracker(self):
-        return runway.make_tracker(self.cfg, self.dir)
+        tr = runway.make_tracker(self.cfg, self.dir)
+        self.cfg["github"]["park_authority"] = tr.park_owner()
+        tr.c["park_authority"] = tr.park_owner()
+        return tr
 
     def ticket(self, n=1):
         return next(t for t in self.tracker().load() if t.id == f"#{n}")
@@ -293,7 +296,9 @@ class GitHubTick(unittest.TestCase):
         cfg = dict(runway.DEFAULT_CONFIG, **json.loads((root / "runway.json").read_text()))
         cfg.update(w.cfg)
         with mock.patch.object(runway, "machine_name", return_value="Mini-One"):
-            runway.tick(cfg, root, runway.make_tracker(cfg, root))
+            tr = runway.make_tracker(cfg, root)
+            tr.c["park_authority"] = tr.park_owner()
+            runway.tick(cfg, root, tr)
         return w.stored()
 
     def test_ready_to_closed(self):

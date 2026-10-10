@@ -193,7 +193,9 @@ class LinearRetry(Base):
         self.patch = mock.patch("urllib.request.urlopen", api)
         self.patch.start()
         self.addCleanup(self.patch.stop)
-        return runway.make_tracker({"tracker": "linear", "linear": {"team": "DAT"}}, Path(tempfile.mkdtemp()))
+        tr = runway.make_tracker({"tracker": "linear", "linear": {"team": "DAT"}}, Path(tempfile.mkdtemp()))
+        tr.c["park_authority"] = tr.park_owner()
+        return tr
 
     def test_timeout_once_then_success_does_not_end_the_call(self):
         import linear_tracker as lt
@@ -322,7 +324,9 @@ class GitHubBase(Base):
         return [c["body"] for c in self.stored(n)["comments"]["nodes"]]
 
     def tracker(self, root=None):
-        return runway.make_tracker(self.cfg, root or self.dir)
+        tr = runway.make_tracker(self.cfg, root or self.dir)
+        tr.c["park_authority"] = tr.park_owner()
+        return tr
 
 
 class GitHubRetry(GitHubBase):
@@ -465,8 +469,22 @@ class TickEndsCleanly(Base):
         gh.chmod(0o755)
         cfg = json.loads((root / "runway.json").read_text())
         cfg.update(tracker="github", github={"repo": "o/r", "gh": str(gh)})
+        tr = runway.make_tracker(cfg, root)
+        cfg["github"]["park_authority"] = tr.park_owner()
         (root / "runway.json").write_text(json.dumps(cfg))
         return root
+
+    def test_unconfigured_authority_keeps_cli_waiting_without_idle_or_finish(self):
+        root = self.cli_root()
+        cfg=json.loads((root / "runway.json").read_text())
+        cfg["github"].pop("park_authority")
+        (root / "runway.json").write_text(json.dumps(cfg))
+        for command in ("tick", "loop", "finish"):
+            r=self.run_cli(root, command)
+            self.assertEqual(r.returncode,0,r.stderr)
+            self.assertEqual(state(root)["phase"],"waiting")
+        self.assertNotIn("idle",self.log_text(root))
+        self.assertIn("exclusive park",self.log_text(root))
 
     def test_tick_command_exits_zero_with_heartbeat_waiting(self):
         root = self.cli_root()
@@ -507,7 +525,9 @@ class LinearOrphans(Orphans):
         cfg = json.loads((root / "runway.json").read_text())
         cfg.update(tracker="linear", linear={"team": "DAT"})
         (root / "runway.json").write_text(json.dumps(cfg))
-        return api, root, runway.make_tracker(cfg, root)
+        tr = runway.make_tracker(cfg, root)
+        tr.c["park_authority"] = tr.park_owner()
+        return api, root, tr
 
     def test_dead_heartbeat_pid_releases_with_a_recovery_comment_then_runs(self):
         api, root, tr = self.setup_claim()
@@ -549,7 +569,9 @@ class GitHubOrphans(GitHubBase, Orphans):
         cfg = json.loads((root / "runway.json").read_text())
         cfg.update(self.cfg)
         (root / "runway.json").write_text(json.dumps(cfg))
-        return root, runway.make_tracker(cfg, root)
+        tr = runway.make_tracker(cfg, root)
+        tr.c["park_authority"] = tr.park_owner()
+        return root, tr
 
     def test_dead_heartbeat_pid_releases_with_a_recovery_comment_then_runs(self):
         root, tr = self.setup_claim()
