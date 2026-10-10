@@ -16,6 +16,10 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
 
 ## Start a factory project
 
+`playbook.md` beside this file is the end-to-end order for a repo that plans with
+Matt's skills (`/wayfinder`, grilling, `/prototype`, `/to-spec`, `/to-tickets`) and
+builds with Runway. Hand it to a session in a new repo to set that repo up.
+
 1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he
    named). GitHub: confirm the repo (`owner/name`) and that Joe's `gh` is signed in.
 2. **Point the repo at it.** If Joe wants Matt's interactive setup

@@ -6,6 +6,7 @@ experiments that produced it are one folder up in `factory/` and don't ship.
 | Piece | What it is |
 |---|---|
 | `skills/runway/` | Set up a repo for Runway, plan and label its tickets, run and watch the loop, answer decisions, retro. |
+| `skills/runway/playbook.md` | How a repo runs Matt Pocock's skills (Wayfinder, grilling, `/to-spec`, `/to-tickets`) with Runway, and how to set one up. Bring it into a new repo. |
 | `runway/runway.py`, `runway/linear_tracker.py`, `runway/github_tracker.py` | The engine and its two tracker adapters. Python 3.9+ and git only. |
 | `runway/setup.sh` | Points a repo at a Linear project or a GitHub repo (`--github`): `docs/agents/issue-tracker.md`, `runway.json`, CLAUDE.md section. |
 | `runway/schedule.sh` | Installs, fires, shows or removes the launchd job that runs the loop. |
