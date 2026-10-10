@@ -8,9 +8,15 @@ let package = Package(
         .executable(name: "RunwayBar", targets: ["RunwayBar"]),
         .library(name: "RunwayCore", targets: ["RunwayCore"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.20.0"),
+    ],
     targets: [
         .target(name: "RunwayCore"),
-        .executableTarget(name: "RunwayBar", dependencies: ["RunwayCore"]),
+        .executableTarget(name: "RunwayBar", dependencies: [
+            "RunwayCore",
+            .product(name: "SwiftTerm", package: "SwiftTerm"),
+        ]),
         .testTarget(name: "RunwayCoreTests", dependencies: ["RunwayCore"],
                     resources: [.copy("Fixtures")]),
     ]
