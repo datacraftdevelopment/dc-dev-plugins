@@ -45,7 +45,10 @@ nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runw
    worktree lacks, the verify command, paths to leave alone. Every ticket run
    reads it first. Commit it.
 5. **Plan.** `/to-spec`, then `/to-tickets`, published to the repo's tracker
-   (the Linear project or the GitHub repo).
+   (the Linear project or the GitHub repo). The spec itself is a file,
+   `docs/specs/<slug>.md`, on the base branch before its tickets go out; the
+   spec issue points to it and each ticket names it in a `Spec:` line, so
+   workers read it from their checkout (the tracker doc has the steps).
    Label each ticket with the gating rule below and add blocks relations for
    the conflict screen.
 6. **Schedule.** `bash "${CLAUDE_PLUGIN_ROOT}/runway/schedule.sh" install <repo> [minutes]`

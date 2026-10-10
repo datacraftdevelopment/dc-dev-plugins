@@ -1047,7 +1047,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
 # ---------- prep: the judgment lookahead ----------
 
 PREP_PROMPT = """You are preparing a decision for Joe. Do NOT change any files.
-Read the ticket below and the repository, then write a decision packet in Markdown
+Read the ticket below and the repository (and the spec file, if the ticket has a `Spec:` line naming
+one), then write a decision packet in Markdown
 with exactly these sections:
 
 ### Decision needed
@@ -1088,6 +1089,9 @@ Stay inside the ticket's scope. Work test-first: use the /tdd skill if it's avai
 (red-green, one slice at a time); otherwise write a failing test before the code.
 If docs/agents/worker-env.md exists, read it first: it lists what this fresh worktree
 lacks (env files, dependencies, local data), the repo's verify command, and paths to leave alone.
+If the ticket has a `Spec:` line naming a file, read that file from this checkout before you
+start: it is the spec the ticket builds. Only if the file is missing, read the spec issue the
+ticket names (`gh issue view <n>`).
 Before you call it done, run the check that would catch your most likely mistake, after your
 last edit, and read its output. Claim only what that output shows.
 Commit your work with a clear message when done.
@@ -1265,6 +1269,19 @@ def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") ->
 
 
 # ---------- finish: review, fix, PR body ----------
+
+SPEC_LINE = re.compile(r"^\s*spec:\s*`?([^\s`]+\.md)`?", re.I | re.M)
+
+
+def ticket_specs(tickets) -> list[str]:
+    """The spec files the tickets name in a `Spec:` line, first seen first."""
+    out = []
+    for t in tickets:
+        for p in SPEC_LINE.findall(getattr(t, "text", "") or ""):
+            if p not in out:
+                out.append(p)
+    return out
+
 
 REVIEW_PROMPT = """You are reviewing a finished build before Joe merges it. Do NOT change any files.
 The current branch, `{integration}`, holds the tickets below, each built separately and
@@ -1451,7 +1468,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     open_ = [t for t in tickets if t.status not in DONE]
     tlist = "\n".join([f"- {t.id} {t.title} ({t.ref})" for t in done] +
                       [f"- NOT DONE: {t.id} {t.title} ({t.status})" for t in open_]) or "- (none listed)"
-    spec = f"\nSpec: {cfg['spec']}\n" if cfg.get("spec") else ""
+    specs = ([cfg["spec"]] if cfg.get("spec") else []) + [p for p in ticket_specs(done) if p != cfg.get("spec")]
+    spec = f"\nSpec: {', '.join(specs)} (read it before you review)\n" if specs else ""
 
     # 1. Review the whole branch against the tickets.
     hp = resolve_harness(cfg)
