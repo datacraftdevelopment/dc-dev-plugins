@@ -50,6 +50,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if talk, let route, let ticket = route.ticketID,
                let project = self.store.projects.first(where: { $0.label == route.projectLabel }) {
                 await self.store.talkThrough(ticket: ticket, in: project)
+                if self.store.sessionPlace == .window { NSApplication.shared.activate(ignoringOtherApps: true) }
             } else if let route {
                 self.store.requestedRoute = route
                 NSApplication.shared.activate(ignoringOtherApps: true)

@@ -24,20 +24,27 @@ extension StatusSnapshot {
 /// the app only opens Terminal in the repo running `runway discuss`.
 extension RunwayTools {
     public func discuss(ticket: String, repo: String) -> Command {
-        terminal(repo: repo, "discuss " + Self.shellQuote(ticket))
+        terminal(repo: repo, discussTail(ticket: ticket))
     }
 
     public func discussLoop(repo: String) -> Command {
         terminal(repo: repo, "discuss --loop")
     }
 
+    /// The one shell line both launchers run: Terminal's `do script` and the window's pane.
+    func shellLine(repo: String, _ tail: String) -> String {
+        "cd \(Self.shellQuote(repo)) && python3 \(Self.shellQuote(runwayScript)) \(tail)"
+    }
+
     private func terminal(repo: String, _ tail: String) -> Command {
-        let shell = "cd \(Self.shellQuote(repo)) && python3 \(Self.shellQuote(runwayScript)) \(tail)"
+        let shell = shellLine(repo: repo, tail)
         let literal = shell.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
         return Command(executable: "/usr/bin/osascript", arguments: [
             "-e", "tell application \"Terminal\" to activate",
             "-e", "tell application \"Terminal\" to do script \"\(literal)\""])
     }
+
+    func discussTail(ticket: String) -> String { "discuss " + Self.shellQuote(ticket) }
 
     /// Always single-quoted, so a space, a quote or a `$` in a path stays one word.
     static func shellQuote(_ word: String) -> String {
