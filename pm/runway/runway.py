@@ -1085,6 +1085,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
     the text, session id and usage out of stdout; unparseable output is returned raw."""
     harness = harness or resolve_harness(cfg)
+    if kind in ("run", "prep"):
+        prompt += spec_context(cwd, prompt)
     t0 = time.time()
     pids: list = []
 
@@ -1117,7 +1119,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
 # ---------- prep: the judgment lookahead ----------
 
 PREP_PROMPT = """You are preparing a decision for Joe. Do NOT change any files.
-Read the ticket below and the repository, then write a decision packet in Markdown
+Read the ticket below and the repository (and the spec file, if the ticket has a `Spec:` line naming
+one), then write a decision packet in Markdown
 with exactly these sections:
 
 ### Decision needed
@@ -1162,6 +1165,9 @@ test at the existing public interface of the module being changed. Don't stop to
 Only a new module or a changed public interface is a reason to write RUNWAY_QUESTION.md.
 If docs/agents/worker-env.md exists, read it first: it lists what this fresh worktree
 lacks (env files, dependencies, local data), the repo's verify command, and paths to leave alone.
+The spec the ticket builds is below the ticket when its file is in this checkout; if the ticket
+names a spec that isn't below, read the spec issue it names (`gh issue view <n>`). Use the terms in
+GLOSSARY.md and respect the decisions in docs/adr/, where those exist.
 Before you call it done, run the check that would catch your most likely mistake, after your
 last edit, and read its output. Claim only what that output shows.
 Commit your work with a clear message when done.
@@ -1369,6 +1375,42 @@ def merge_into_integration(cfg: dict, root: Path, branch: str, ref: str = "") ->
 
 
 # ---------- finish: review, fix, PR body ----------
+
+SPEC_LINE = re.compile(r"^\s*spec:\s*`?([^\s`]+\.md)`?", re.I | re.M)
+
+
+def ticket_specs(tickets) -> list[str]:
+    """The spec files the tickets name in a `Spec:` line, first seen first."""
+    out = []
+    for t in tickets:
+        for p in SPEC_LINE.findall(t if isinstance(t, str) else (getattr(t, "text", "") or "")):
+            if p not in out:
+                out.append(p)
+    return out
+
+
+SPEC_CAP = 40000
+
+
+def spec_context(base: Path, t) -> str:
+    """The text of every spec file a ticket or dispatch prompt names, read from `base` (the worker's checkout), so the worker
+    has the spec without reaching the tracker. A `<slug>.notes.md` beside a spec (the planning notes it came
+    from) is named, not inlined. Files outside `base` or missing are skipped."""
+    out, root = [], base.resolve()
+    for rel in ticket_specs([t]):
+        p = (base / rel).resolve()
+        if not p.is_relative_to(root) or not p.is_file():
+            continue
+        body = p.read_text(errors="replace")
+        if len(body) > SPEC_CAP:
+            body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
+        out += ["", f"## Spec: {rel}", "", body.strip()]
+        notes = p.with_name(p.name[:-3] + ".notes.md")
+        if notes.is_file():
+            out += ["", f"Planning notes behind this spec: {notes.relative_to(root)} (read them if the spec leaves "
+                        "a question open)."]
+    return "\n".join(out) + "\n" if out else ""
+
 
 REVIEW_PROMPT = """You are reviewing a finished build before Joe merges it. Do NOT change any files.
 The current branch, `{integration}`, holds the tickets below, each built separately and
@@ -1722,7 +1764,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     open_ = [t for t in tickets if t.status not in DONE]
     tlist = "\n".join([f"- {t.id} {t.title} ({t.ref})" for t in done] +
                       [f"- NOT DONE: {t.id} {t.title} ({t.status})" for t in open_]) or "- (none listed)"
-    spec = f"\nSpec: {cfg['spec']}\n" if cfg.get("spec") else ""
+    specs = ([cfg["spec"]] if cfg.get("spec") else []) + [p for p in ticket_specs(done) if p != cfg.get("spec")]
+    spec = f"\nSpec: {', '.join(specs)} (read it before you review)\n" if specs else ""
 
     # 1. Review the whole branch against the tickets.
     hp = resolve_harness(cfg)

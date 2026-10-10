@@ -47,14 +47,21 @@ Create a GitHub issue.
 
 ## When a skill says "publish a spec"
 
-`/to-spec` publishes the spec as an issue. Label it `spec`, and never `ready-for-agent` or `ready-for-human`,
+The spec is a file in the repo: write it to `docs/specs/<slug>.md` (kebab-case, a few words) and get it onto
+`main` before its tickets are labelled for Runway, so every worker reads it from its own checkout. Then
+`/to-spec` publishes the tracker entry as an issue: first line `Spec: docs/specs/<slug>.md`, then a copy of the
+text. A later change goes into the file first, then re-paste it into the issue.
+
+Label the issue `spec`, and never `ready-for-agent` or `ready-for-human`,
 whatever the skill says about triage. Runway skips any issue labelled `spec`, and any issue that has sub-issues,
 so the spec doesn't run as a ticket alongside its own tickets. `/to-tickets` then publishes the build tickets as
-sub-issues of the spec (see **Make an issue a sub-issue of a parent**), and those carry the triage labels.
+sub-issues of the spec (see **Make an issue a sub-issue of a parent**), and those carry the triage labels. Each
+ticket's body names its spec in a header line, `Spec: docs/specs/<slug>.md`, under any `Blocked by:` line.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --comments`.
+Run `gh issue view <number> --comments`. If it has a `Spec:` line, read that file from
+the checkout too: it is the spec the ticket builds.
 
 ## Wayfinding operations
 
