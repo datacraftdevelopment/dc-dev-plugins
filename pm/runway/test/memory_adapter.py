@@ -88,6 +88,11 @@ class MemoryTicket(ticket_protocol.Ticket):
         if full is not None:
             self._comment_in(full)
 
+    def _reopen(self) -> None:
+        self.tr.write("reopen")
+        self.tr.ops.append(("reopen",))
+        self.data["closed"] = False
+
     def _release(self, add=(), remove=()) -> None:
         self.tr.write("release")
         self.tr.ops.append(("release", list(add), list(remove)))

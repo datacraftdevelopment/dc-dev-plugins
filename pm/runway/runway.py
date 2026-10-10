@@ -137,6 +137,8 @@ No dependencies beyond Python 3.9+ and git.
 """
 from __future__ import annotations
 
+import acceptance
+
 import argparse
 import datetime as dt
 import hashlib
@@ -1430,7 +1432,7 @@ Reply with one JSON object and nothing after it:
 {{"verdict": "pass" or "fail",
   "blocking": ["finding, with file:line and why"],
   "non_blocking": ["finding"],
-  "criteria": [{{"ticket": "id", "criterion": "text", "evidence": "what shows it, or empty if none"}}]}}
+  "criteria": [{{"ticket": "id", "id": "criterion id from inventory", "criterion": "text", "evidence": "what shows it, or empty if none"}}]}}
 "verdict" is "pass" only when "blocking" is empty.
 
 Done tickets and their text:
@@ -1470,12 +1472,12 @@ def parse_verdict(text: str):
         crit = [c for c in (raw if isinstance(raw, list) else []) if isinstance(c, dict)]
         return {"verdict": str(obj.get("verdict")).strip().lower(), "blocking": strs("blocking"),
                 "non_blocking": strs("non_blocking"),
-                "criteria": [{"ticket": str(c.get("ticket", "")), "criterion": str(c.get("criterion", "")),
+                "criteria": [{"ticket": str(c.get("ticket", "")), "id": str(c.get("id", "")), "criterion": str(c.get("criterion", "")),
                               "evidence": str(c.get("evidence") or "").strip()} for c in crit]}
     return None
 
 
-def decide_verdict(check_exit: int, parsed, valid_reviews=None) -> dict:
+def decide_verdict(check_exit: int, parsed, valid_reviews=None, expected=None, inventory_errors=()) -> dict:
     """pass/fail for the round. Fails on a red check, an unparseable judge, any blocking finding or a
     criterion with no evidence. Never passes by default."""
     blocking = list(parsed["blocking"]) if parsed else []
@@ -1487,6 +1489,9 @@ def decide_verdict(check_exit: int, parsed, valid_reviews=None) -> dict:
         blocking.insert(0, "No review seat proved which commit it reviewed (no valid Reviewed: <sha> report).")
     if parsed is None:
         blocking.insert(0, "The judge returned nothing parseable, so nothing was shown to pass.")
+    blocking.extend(inventory_errors)
+    if expected is not None:
+        blocking.extend(acceptance.coverage(expected, criteria))
     for c in criteria:
         if not c["evidence"]:
             blocking.append(f"No evidence for acceptance criterion ({c['ticket']}): {c['criterion']}")
@@ -1799,13 +1804,16 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
 
     # 3b. The judge: pass/fail from the final state. Reads only; the check result is already in hand.
     sha = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip()
-    ttext = "\n\n".join(f"### {t.id} {t.title}\n{t.text[:4000]}" for t in done) or "(none)"
+    expected, inventory_errors = acceptance.inventory(done)
+    ttext = "\n\n".join(f"### {t.id} {t.title}\n{getattr(t, 'body', None) or t.text}" for t in done) or "(none)"
+    ttext += "\n\nExpected criterion inventory (cover each ticket/id exactly once):\n" + json.dumps(expected)
     jr, judge_text = run_agent(cfg, root, hp["review_cmd"], wt,
                                JUDGE_PROMPT.format(integration=integ, base=base, check=cfg["check_cmd"],
                                                    code=c.returncode, tickets=ttext, fix_note=fix_note,
                                                    findings=findings), "finish", "judge", harness=hp)
     valid_reviews = sum(1 for r_ in seat_rows if r_["status"] in ("PASS", "FAIL"))
-    verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text), valid_reviews)
+    verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text), valid_reviews,
+                             expected, inventory_errors)
     if stop_requested():
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False
@@ -1855,7 +1863,8 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                   "check_exit": c.returncode, "pr": where})
     record(root, {"kind": "verdict", "ticket": "finish", "sha": sha, "verdict": verdict["verdict"],
                   "blocking": verdict["blocking"], "non_blocking": verdict["non_blocking"],
-                  "criteria": verdict["criteria"], "hold": hold, "merge": cfg.get("merge", "off"),
+                  "criteria": verdict["criteria"], "expected_criteria": expected,
+                  "inventory_errors": inventory_errors, "hold": hold, "merge": cfg.get("merge", "off"),
                   "seats": seat_rows})
     check_note = "check passes" if c.returncode == 0 else "CHECK FAILS"
     merged = (cfg.get("merge", "off") == "on_pass" and verdict["verdict"] == "pass" and not hold
@@ -1962,6 +1971,7 @@ def fix_ticket_step(cfg, root, tracker, state, new_state, verdict, done, tickets
     refs = refs_block([t for t in done if not is_fix_ticket(t, cfg)])
     body = "The review of the integration branch failed. Fix these, then Runway reviews the new head.\n\n"
     body += "## Blocking findings\n\n" + "\n".join(f"- {b}" for b in blocking)
+    body += "\n\n## Acceptance\n\n" + "\n".join(f"- Resolve: {b}" for b in blocking)
     if c.returncode != 0:
         body += f"\n\n## Failing check (`{cfg['check_cmd']}`, exit {c.returncode})\n\n```\n{check_out}\n```"
     if refs:

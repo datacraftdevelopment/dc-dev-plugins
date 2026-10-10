@@ -297,3 +297,17 @@ ticket with an unknown harness label instead of crashing the tick. 0.5.0 sets a 
 `setup.sh --github`, a GitHub tracker doc, and `RUNWAY setup` for GitHub (auth, repo,
 Issues, labels, public-repo warning). The GitHub adapter itself landed in 0.4.5 to 0.4.9. 0.5.10 updates the docs and
 descriptions to say Runway works either Linear or GitHub, one tracker per repo, chosen in `runway.json`.
+
+## Review coverage and retry safety
+
+A merge verdict requires an explicit Acceptance or Acceptance criteria section with Markdown bullets in
+each completed ticket's original body. Runway derives stable ticket/criterion IDs from the complete text,
+then requires the judge to cover each exactly once with evidence. Missing, ambiguous, changed, duplicate
+or unknown coverage fails the round. The verdict record preserves both expected and supplied inventories.
+
+Parking writes a shared trusted operation intent before changing labels or state, then a completion marker.
+Every Mac reconciles unfinished intents before approving or selecting work. Retry a parked ticket with a
+fresh `go` comment after completion. Merely removing needs-human or re-adding go cannot prove when approval
+happened, so it no longer enables retries after a shared park. Initial approvals and stop/release behavior
+remain unchanged. Closed GitHub fix tickets reopen only after their spent approval is cleared under this
+barrier. Historical comments may be paged to locate the last barrier, even for unclaimed tickets.

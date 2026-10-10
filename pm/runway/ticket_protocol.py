@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import uuid
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -126,11 +127,58 @@ class Ticket:
     @property
     def packet(self) -> str | None:
         """Runway's latest comment (the decision packet, or why it parked), without the marker."""
-        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)]
+        mine = [cm["body"] for cm in self.comments if cm["body"].startswith(MARK)
+                and not cm["body"].startswith(marked("Park intent:"))
+                and not cm["body"].startswith(marked("Park complete:"))]
         return mine[-1][len(MARK):].lstrip(" ·\n").strip() if mine else None
 
     @property
+    def park_intent(self) -> dict | None:
+        """Latest trusted shared park barrier, paging beyond the normal comment window."""
+        if not hasattr(self, "_park_history"):
+            got = list(self.comments)
+            while not any(cm["body"].startswith(marked("Park intent:")) for cm in got):
+                page = self._older_comments()
+                if not page:
+                    break
+                got = [cm for cm in page if cm["trusted"]] + got
+            self._park_history = got
+        completed = set()
+        for cm in reversed(self._park_history):
+            body = cm["body"]
+            if body.startswith(marked("Park complete:")):
+                completed.add(body[len(marked("Park complete:")):].strip())
+                continue
+            prefix = marked("Park intent:") + " "
+            if body.startswith(prefix):
+                try:
+                    rec = json.loads(body[len(prefix):])
+                    if (isinstance(rec, dict) and isinstance(rec.get("op"), str)
+                            and re.fullmatch(r"[0-9a-f]{32}", rec["op"])
+                            and isinstance(rec.get("comment"), str) and rec["comment"]):
+                        return None if rec["op"] in completed else rec
+                except ValueError:
+                    pass
+                # An unreadable trusted intent must never enable work.
+                return {"invalid": True}
+        return None
+
+    @property
+    def park_requires_approval(self) -> bool:
+        # Labels have no trusted timestamp: a re-added go may have landed during the barrier.
+        # Only a durable Approved note after completion proves a fresh consumed approval.
+        _ = self.park_intent
+        after = []
+        for cm in reversed(self._park_history):
+            if cm["body"].startswith(marked("Park complete:")):
+                return not any(c["body"].startswith(marked("Approved.")) for c in after)
+            after.append(cm)
+        return False
+
+    @property
     def status(self) -> str:
+        if self.park_intent or self.park_requires_approval:
+            return "needs-human"
         if self.closed:
             return "resolved"
         if self.tr.c["needs_human_label"] in self.labels:
@@ -147,6 +195,10 @@ class Ticket:
     @property
     def gate(self) -> str:
         c = self.tr.c
+        if self.park_intent:
+            return "none"
+        if self.park_requires_approval:
+            return "human" if c["human_label"] in self.labels else "none"
         if self.is_spec:
             return "none"
         if c["human_label"] in self.labels:
@@ -192,7 +244,7 @@ class Ticket:
         if self._cycle is None:
             def ends_cycle(cm):
                 return cm["body"].startswith(MARK) and not CLAIMED_RE.search(cm["body"])
-            got = list(self.comments)
+            got = list(getattr(self, "_park_history", self.comments))
             while not any(ends_cycle(cm) for cm in got):
                 page = self._older_comments()
                 if not page:
@@ -248,17 +300,18 @@ class Ticket:
         label, approve = c["needs_human_label"], c["approve_label"]
         gated = self.gate == "approved"
         if gated:
-            retry = f"Comment `go` (or re-add the `{approve}` label) to retry."
+            retry = "Comment `go` after parking completes to retry."
         else:
-            retry = f"Remove `{label}` or comment `go` to retry."
+            retry = "Comment `go` after parking completes to retry."
         full = marked(f"Parked: {why}. {retry}\n\n{detail}")
         # The park is written down before the first tracker write, so a write that fails halfway is finished by the
         # next sync (Tracker.finish_parks) instead of leaving a go Joe posted since Runway last wrote to be replayed.
-        self.tr.park_begin(self.id, full)
-        # One write: an approval is spent by the run it let through, so `go` goes in the same write that parks it.
-        self._release(add=[label], remove=[approve])
-        self._post(full)
-        self.tr.park_done(self.id)
+        rec = {"op": uuid.uuid4().hex, "comment": full}
+        self.tr.park_begin(self.id, rec)
+        # Publish the barrier BEFORE state/labels change. Every Mac sees the same intent.
+        self._post(marked("Park intent: " + json.dumps(rec, sort_keys=True)))
+        self.tr.complete_park(self, rec)
+
 
     def mark_ready(self, note: str) -> None:
         self._release()
@@ -334,30 +387,45 @@ class Tracker:
         elif p.exists():
             p.unlink()
 
-    def park_begin(self, ticket_id: str, comment: str) -> None:
-        self._pending_save({**self._pending(), ticket_id: {"comment": comment}})
+    def park_begin(self, ticket_id: str, rec: dict) -> None:
+        self._pending_save({**self._pending(), ticket_id: rec})
 
     def park_done(self, ticket_id: str) -> None:
         data = self._pending()
         if data.pop(ticket_id, None) is not None:
             self._pending_save(data)
 
-    def finish_parks(self) -> None:
-        """Finish every park a failed write left half done: the state change when it never landed, then the comment."""
-        pending = self._pending()
-        if not pending:
-            return
+    def complete_park(self, t, rec: dict) -> None:
+        if rec.get("invalid"):
+            raise RuntimeError(f"Unreadable shared park intent for {t.id}; manual recovery required")
         c = self.c
-        by_id = {t.id: t for t in self.load()}
-        for ticket_id, rec in pending.items():
-            t = by_id.get(ticket_id)
-            if t is not None and not t.closed:
-                if t.status != "needs-human":
-                    t._release(add=[c["needs_human_label"]], remove=[c["approve_label"]])
-                if not any(cm["body"] == rec["comment"] for cm in t.comments):
-                    t._post(rec["comment"])
-                print(f"sync  {ticket_id} finished a park that failed halfway")
-            self.park_done(ticket_id)
+        t._release(add=[c["needs_human_label"]], remove=[c["approve_label"]])
+        # GitHub edits do not reopen a completed fix. Clear approval before reopening.
+        fresh = self.reload(t)
+        if fresh.closed:
+            fresh._reopen()
+        fresh = self.reload(t)
+        if not any(cm["body"] == rec["comment"] for cm in fresh.comments):
+            fresh._post(rec["comment"])
+        fresh._post(marked("Park complete: " + rec["op"]))
+        self.park_done(t.id)
+
+    def finish_parks(self) -> None:
+        """Reconcile shared intents on every Mac; local records only aid pre-publication recovery."""
+        local = self._pending()
+        for t in self.load():
+            rec = t.park_intent
+            if rec is None and t.id in local:
+                rec = local[t.id]
+                # Migration for legacy local journals, retaining their full note.
+                rec = {"op": rec.get("op") or uuid.uuid4().hex, "comment": rec["comment"]}
+                if any(cm["body"] == marked("Park complete: " + rec["op"]) for cm in getattr(t, "_park_history", t.comments)):
+                    self.park_done(t.id)
+                    continue
+                self.park_begin(t.id, rec)
+                t._post(marked("Park intent: " + json.dumps(rec, sort_keys=True)))
+            if rec:
+                self.complete_park(t, rec)
 
     def create(self, title: str, body: str, labels: list[str]) -> str:
         """Open a new ticket and return its ref. The body starts with the 🛫 marker so a later read never takes

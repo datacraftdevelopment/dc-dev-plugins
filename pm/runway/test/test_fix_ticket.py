@@ -28,7 +28,7 @@ class FixTicket(unittest.TestCase):
         self.home = Path(tempfile.mkdtemp()).resolve()
         self._env = os.environ.get("RUNWAY_HOME")
         os.environ["RUNWAY_HOME"] = str(self.home)
-        self.root = make_repo({"01-thing": "Status: resolved"})
+        self.root = make_repo({"01-thing": "Status: resolved\n\n## Acceptance\n- it works"})
         self.cfg = dict(runway.DEFAULT_CONFIG, **json.loads((self.root / "runway.json").read_text()))
         self.cfg["merge"] = self.merge
         g = lambda *a: subprocess.run(["git", *a], cwd=self.root, check=True, capture_output=True)
@@ -53,6 +53,15 @@ class FixTicket(unittest.TestCase):
         self.kinds.append(kind)
         m = re.search(r"head under review is ([0-9a-f]{40})", prompt)
         text = {"review": (f"Reviewed: {m.group(1)}\n" if m else "") + FINDINGS, "judge": self.judge, "pr": TWO_WAY}.get(kind, "")
+        if kind == "judge":
+            try:
+                data = json.loads(text)
+            except ValueError:
+                data = {}
+            if data.get("verdict") == "pass":
+                expected = json.loads(prompt.split("Expected criterion inventory (cover each ticket/id exactly once):\n")[1].split("\n\nReview findings")[0])
+                data["criteria"] = [dict(r, evidence="test_x passes") for r in expected]
+                text = json.dumps(data)
         return SimpleNamespace(failure=None, returncode=0, auth=False, stderr=""), text
 
     def finish(self):

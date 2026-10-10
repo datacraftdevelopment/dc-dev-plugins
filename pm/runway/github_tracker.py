@@ -311,6 +311,10 @@ class GitHubTicket(ticket_protocol.Ticket):
                 args += ["--remove-label", name]
         return args
 
+    def _reopen(self) -> None:
+        self.tr.api.run(["issue", "reopen", self.num[1:], "--repo", self.tr.repo],
+                        landed=lambda: self.tr.fetch(self)["state"] == "OPEN")
+
     def _release(self, add=(), remove=()) -> None:
         self._issue("edit", *self._label_args(add, remove), *self._unassign())
 
