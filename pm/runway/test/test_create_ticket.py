@@ -122,6 +122,10 @@ class LinearCreate(unittest.TestCase):
         p = mock.patch("urllib.request.urlopen", self.api)
         p.start()
         self.addCleanup(p.stop)
+        # A fake key, so the test never reads this machine's keychain (and runs off the Mac).
+        k = mock.patch.dict(os.environ, {"LINEAR_API_KEY": "k"})
+        k.start()
+        self.addCleanup(k.stop)
         cfg = {"tracker": "linear", "linear": {"team": "DAT", "project": "P"}}
         self.tr = runway.make_tracker(cfg, Path(tempfile.mkdtemp()))
 

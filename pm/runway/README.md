@@ -2,7 +2,9 @@
 
 Runway's engine and setup scripts. They moved here from the old `factory` plugin
 (2026-10-09, pm 0.26.0); the research, decisions and experiments are in `factory/`
-and don't ship. The `runway` skill is `pm/skills/runway/`.
+and don't ship. The `runway` skill is `pm/skills/runway/`; its `playbook.md` covers how a
+repo runs Matt Pocock's skills (Wayfinder, grilling, `/to-spec`, `/to-tickets`) with Runway,
+and the skill reads it when setting up a repo.
 
 | Piece | What it is |
 |---|---|

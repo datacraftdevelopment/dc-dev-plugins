@@ -1,6 +1,6 @@
 ---
 name: runway
-description: Set up and run Runway, the factory loop that works a repo's ready tickets unattended, from either Linear or GitHub Issues (one tracker per repo, chosen in runway.json). Use when the user wants to start a new factory project, point a repo at Linear or GitHub for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
+description: Set up and run Runway, the factory loop that works a repo's ready tickets unattended, from either Linear or GitHub Issues (one tracker per repo, chosen in runway.json). Use when the user wants to start a new factory project, set a repo up to plan with Matt Pocock's skills (/wayfinder, grilling, /prototype, /to-spec, /to-tickets) and build with Runway, point a repo at Linear or GitHub for Runway, label tickets for Runway, write a repo's worker-env.md, check what Runway is doing or waiting on, answer a decision packet, schedule, pause, resume or stop the loop, check quiet-time rules, or run a retro on its runs.
 ---
 
 # Runway
@@ -15,6 +15,12 @@ The engine is `${CLAUDE_PLUGIN_ROOT}/runway/runway.py` (Python 3.9+ and git,
 nothing else). Below, `RUNWAY` means `python3 "${CLAUDE_PLUGIN_ROOT}/runway/runway.py" --root <repo>`.
 
 ## Start a factory project
+
+**Read `playbook.md` (beside this file) before setting up a repo or planning its
+first tickets.** It is the end-to-end order for a repo that plans with Matt's skills
+(`/wayfinder`, grilling, `/prototype`, `/to-spec`, `/to-tickets`) and builds with
+Runway: who does what, the setup steps, where Matt's defaults and Runway's
+disagree, and a ready-to-run checklist. The steps below are the short form.
 
 1. **Tracker.** Linear: create the project in Joe's team (or confirm the one he
    named). GitHub: confirm the repo (`owner/name`) and that Joe's `gh` is signed in.
