@@ -1018,8 +1018,12 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
     the text, session id and usage out of stdout; unparseable output is returned raw."""
     harness = harness or resolve_harness(cfg)
+    preflight_error = None
     if kind in ("run", "prep"):
-        prompt += spec_context(cwd, prompt)
+        try:
+            prompt += spec_context(cwd, prompt)
+        except SpecUnavailable as e:
+            preflight_error = str(e)
     t0 = time.time()
     pids: list = []
 
@@ -1028,7 +1032,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
         register_agent(pid, root)
         beat_update(root, agent_pid=pid)
     try:
-        r = sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started)
+        r = (subprocess.CompletedProcess(cmd, 78, "", preflight_error) if preflight_error else
+             sh(cmd, cwd, stdin=prompt, timeout=cfg["agent_timeout_s"], on_start=started))
     finally:
         beat_update(root, agent_pid=None)
         if pids:
@@ -1285,19 +1290,31 @@ def ticket_specs(tickets) -> list[str]:
     return out
 
 
+class SpecUnavailable(ValueError):
+    """An explicit spec cannot be supplied; no harness may run without it."""
+
+
 SPEC_CAP = 40000
 
 
 def spec_context(base: Path, t) -> str:
     """The text of every spec file a ticket or dispatch prompt names, read from `base` (the worker's checkout), so the worker
     has the spec without reaching the tracker. A `<slug>.notes.md` beside a spec (the planning notes it came
-    from) is named, not inlined. Files outside `base` or missing are skipped."""
+    from) is named, not inlined. Explicit invalid, unreadable, missing or outside-checkout files reject dispatch."""
     out, root = [], base.resolve()
+    text = t if isinstance(t, str) else (getattr(t, "text", "") or "")
+    for named in re.findall(r"^\s*spec:\s*(.*?)\s*$", text, re.I | re.M):
+        if not re.fullmatch(r"`?[^\s`]+\.md`?", named):
+            raise SpecUnavailable(f"Invalid Spec header {named!r}; name a checkout-relative .md file.")
     for rel in ticket_specs([t]):
         p = (base / rel).resolve()
         if not p.is_relative_to(root) or not p.is_file():
-            continue
-        body = p.read_text(errors="replace")
+            raise SpecUnavailable(f"Spec {rel!r} is missing or outside this checkout. Restore the spec file "
+                                  "or correct its header, then retry with go.")
+        try:
+            body = p.read_text(errors="replace")
+        except OSError as e:
+            raise SpecUnavailable(f"Cannot read spec {rel!r}: {e}. Restore access to the spec before retrying.") from e
         if len(body) > SPEC_CAP:
             body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
         out += ["", f"## Spec: {rel}", "", body.strip()]

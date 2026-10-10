@@ -66,16 +66,50 @@ class SpecContext(unittest.TestCase):
             self.assertEqual("BOUND SPEC CONTENT" in captured[0], kind in ("run", "prep"))
 
     def test_missing_file_or_no_spec_gives_nothing(self):
-        self.assertEqual(runway.spec_context(self.base, ticket("Spec: docs/specs/not-yet-on-main.md\n")), "")
+        with self.assertRaises(runway.SpecUnavailable):
+            runway.spec_context(self.base, ticket("Spec: docs/specs/not-yet-on-main.md\n"))
         self.assertEqual(runway.spec_context(self.base, ticket("# T\n\nNo spec.\n")), "")
 
     def test_never_reads_outside_the_checkout(self):
         outside = self.base.parent / "secret-spec.md"
         outside.write_text("secret")
         try:
-            self.assertEqual(runway.spec_context(self.base, ticket("Spec: ../secret-spec.md\n")), "")
+            with self.assertRaises(runway.SpecUnavailable):
+                runway.spec_context(self.base, ticket("Spec: ../secret-spec.md\n"))
         finally:
             outside.unlink()
+
+    def test_bad_explicit_specs_never_dispatch(self):
+        for header in ("docs/specs/missing.md", "../outside.md", "/tmp/outside.md", "bad.txt", ""):
+            for kind in ("run", "prep"):
+                with self.subTest(header=header, kind=kind), mock.patch.object(runway, "sh") as sh, \
+                     mock.patch.object(runway, "record"), mock.patch.object(runway, "beat_update"):
+                    r, _ = runway.run_agent(dict(runway.DEFAULT_CONFIG), self.base, "fake", self.base,
+                                            "Spec: " + header + "\n", "#1", kind,
+                                            harness={"name":"fake", "parser":"text"})
+                    sh.assert_not_called()
+                    self.assertEqual(r.returncode, 78)
+                    self.assertIn("Spec", r.failure)
+
+    def test_missing_spec_parks_ticket_without_running_agent(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_agent_failure import AgentFailure, GOOD_JSON
+        case = AgentFailure()
+        case.setUp()
+        try:
+            root = case.repo(GOOD_JSON, tickets={"01-thing":"Spec: docs/specs/missing.md"})
+            cfg = case.cfg(root)
+            with mock.patch.object(runway, "notify"):
+                runway.tick(cfg, root, runway.make_tracker(cfg, root))
+            issue = (root / ".scratch/eff/issues/01-thing.md").read_text()
+            self.assertIn("Status: needs-human", issue)
+            self.assertIn("Restore the spec file", issue)
+            self.assertFalse((root / "work.txt").exists())
+            records = (root / "_pm/runway-runs.jsonl").read_text()
+            self.assertIn('"exit": 78', records)
+            self.assertIn('"result": "needs-human"', records)
+        finally:
+            case.tearDown()
 
     def test_cuts_a_huge_spec(self):
         (self.base / "docs/specs/big.md").write_text("x" * (runway.SPEC_CAP + 10))
