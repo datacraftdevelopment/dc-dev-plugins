@@ -134,6 +134,7 @@ final class ProjectStoreTests: XCTestCase {
     func testTalkItThroughOpensTerminalAndAFailedLaunchShowsItsOutputBesideTheButton() async throws {
         try installPlist()
         let store = makeStore()
+        store.setSessionPlace(.terminal)
         store.refresh()
         let project = try XCTUnwrap(store.projects.first)
         await store.talkThrough(ticket: "GH-7", in: project)
@@ -153,6 +154,38 @@ final class ProjectStoreTests: XCTestCase {
         nextResult = CommandResult(status: 0, stdout: "", stderr: "")
         await store.talkThrough(ticket: "GH-7", in: project)
         XCTAssertNil(store.talkError(project: project, ticket: "GH-7"))
+    }
+
+    func testTalkItThroughInTheWindowOpensATabAndRunsNothing() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        await store.talkThrough(ticket: "GH-7", in: project)
+        await store.talkThrough(ticket: "GH-7", in: project)
+        await store.talkThroughLoop(project)
+        XCTAssertTrue(ran.isEmpty)
+        XCTAssertEqual(store.sessions.sessions.map(\.title), ["GH-7", "loop"])
+        XCTAssertEqual(store.sessions.sessions.first?.spec, store.tools?.discussSession(ticket: "GH-7", repo: repo.path))
+    }
+
+    func testPopOutEndsTheTabAndRunsTheTerminalCommand() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        await store.talkThrough(ticket: "GH-7", in: project)
+        let id = try XCTUnwrap(store.sessions.sessions.first?.id)
+        await store.popOut(id)
+        XCTAssertTrue(store.sessions.sessions.isEmpty)
+        XCTAssertEqual(ran, [store.tools!.discuss(ticket: "GH-7", repo: repo.path)])
+    }
+
+    func testSessionPlaceDefaultsToTheWindowAndIsRemembered() {
+        XCTAssertEqual(makeStore().sessionPlace, .window)
+        let store = makeStore()
+        store.setSessionPlace(.terminal)
+        XCTAssertEqual(makeStore().sessionPlace, .terminal)
     }
 
     func testFailureShowsStderr() async throws {

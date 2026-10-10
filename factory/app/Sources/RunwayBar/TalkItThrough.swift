@@ -14,12 +14,13 @@ struct ErroredFlag: View {
     }
 }
 
-/// "Talk it through": opens Terminal on `runway discuss` for a ticket, or for the loop when `ticket` is nil.
+/// "Talk it through": starts `runway discuss` (in the Runway window's pane or in Terminal, per the setting) for a ticket, or for the loop when `ticket` is nil.
 /// A failed launch shows its output beside the button, like a failed Go.
 struct TalkButton: View {
     let store: ProjectStore
     let project: Project
     var ticket: String?
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -27,6 +28,11 @@ struct TalkButton: View {
                 Task {
                     if let ticket { await store.talkThrough(ticket: ticket, in: project) }
                     else { await store.talkThroughLoop(project) }
+                    // The session lives in the Runway window's pane, so bring that window up (the side panel is another one).
+                    if store.sessionPlace == .window {
+                        NSApplication.shared.activate(ignoringOtherApps: true)
+                        openWindow(id: "runway")
+                    }
                 }
             }
             .disabled(project.repoPath == nil)

@@ -37,6 +37,12 @@ public final class ProjectStore {
     public static let knownReposKey = "knownRepos"
     public static let knownScriptKey = "knownRunwayScript"
     public static let hiddenKey = "hiddenProjects"
+    public static let sessionPlaceKey = "sessionPlace"
+
+    /// The Claude sessions "Talk it through" opened in the Runway window's terminal pane.
+    public let sessions = SessionRegistry()
+    /// Where "Talk it through" opens its session.
+    public private(set) var sessionPlace: SessionPlace
 
     @ObservationIgnored private let discovery: ProjectDiscovery
     @ObservationIgnored private let interval: TimeInterval
@@ -82,6 +88,12 @@ public final class ProjectStore {
         self.ledger = deliver == nil ? NotificationLedger() : NotificationLedger.load(from: ledgerURL)
         self.checkout = defaults.string(forKey: Self.checkoutKey)
         self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
+        self.sessionPlace = defaults.string(forKey: Self.sessionPlaceKey).flatMap(SessionPlace.init(rawValue:)) ?? .window
+    }
+
+    public func setSessionPlace(_ place: SessionPlace) {
+        sessionPlace = place
+        defaults.set(place.rawValue, forKey: Self.sessionPlaceKey)
     }
 
     public func hide(_ label: String) { setHidden(hidden.union([label])) }
@@ -176,13 +188,31 @@ public final class ProjectStore {
     /// Opens Terminal on `runway discuss <ticket>` for the project.
     public func talkThrough(ticket: String, in project: Project) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: ticket, spec: tools.discussSession(ticket: ticket, repo: repo))
+            return
+        }
         await launch(tools.discuss(ticket: ticket, repo: repo), key: Self.talkKey(project, ticket))
     }
 
     /// Opens Terminal on `runway discuss --loop` for the project.
     public func talkThroughLoop(_ project: Project) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: nil, spec: tools.discussLoopSession(repo: repo))
+            return
+        }
         await launch(tools.discussLoop(repo: repo), key: Self.talkKey(project, nil))
+    }
+
+    /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.
+    public func popOut(_ id: UUID) async {
+        guard let session = sessions.sessions.first(where: { $0.id == id }), let tools = requireTools() else { return }
+        let repo = session.spec.workingDirectory
+        sessions.close(id)
+        let command = session.ticket.map { tools.discuss(ticket: $0, repo: repo) } ?? tools.discussLoop(repo: repo)
+        let result = await run(command)
+        if !result.succeeded { lastError = result.failureMessage }
     }
 
     /// Why the last launch for this ticket (or the loop, with nil) failed; nil after a launch that worked.

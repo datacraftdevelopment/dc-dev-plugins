@@ -6,6 +6,7 @@ import RunwayCore
 struct RunwayBarApp: App {
     @State private var store: ProjectStore
     private let notifier: Notifier
+    @NSApplicationDelegateAdaptor(QuitGuard.self) private var quitGuard
 
     init() {
         // The store needs the notifier to deliver and the notifier needs the store to route clicks.
@@ -15,6 +16,7 @@ struct RunwayBarApp: App {
         deliver = { notifier.deliver($0) }
         self.notifier = notifier
         store.start()
+        QuitGuard.store = store
         _store = State(initialValue: store)
     }
 
@@ -86,7 +88,7 @@ struct RunwayMenu: View {
                 let project = entry.project
                 if case .error = entry.status.state {
                     Button("Show error details") { show(project.label, ticket: nil, tab: .projects) }
-                    Button("Talk it through") { Task { await store.talkThroughLoop(project) } }
+                    Button("Talk it through") { Task { await store.talkThroughLoop(project); showSession() } }
                     if let failure = store.talkError(project: project, ticket: nil) { Text("⚠︎ \(String(failure.prefix(200)))") }
                     Divider()
                 }
@@ -139,6 +141,10 @@ struct RunwayMenu: View {
             }
         }
         Divider()
+        Picker("Open Claude sessions in", selection: Binding(get: { store.sessionPlace }, set: { store.setSessionPlace($0) })) {
+            Text("Runway window").tag(SessionPlace.window)
+            Text("Terminal").tag(SessionPlace.terminal)
+        }
         Menu("Scripts") {
             Text(store.tools?.runwayScript ?? "Not found")
             Button("Choose dc-dev-plugins checkout…") { chooseCheckout() }
@@ -155,9 +161,16 @@ struct RunwayMenu: View {
         let flag = errored.map { "  ⚑ \(ErroredKind.words($0))" } ?? ""
         Menu("\(id) \(title)\(flag)") {
             Button(tab == .decisions ? "Open decision" : "Open in queue") { show(project.label, ticket: id, tab: tab) }
-            Button("Talk it through") { Task { await store.talkThrough(ticket: id, in: project) } }
+            Button("Talk it through") { Task { await store.talkThrough(ticket: id, in: project); showSession() } }
             if let failure = store.talkError(project: project, ticket: id) { Text("⚠︎ \(String(failure.prefix(200)))") }
         }
+    }
+
+    /// A session opened in the window needs the window in front.
+    private func showSession() {
+        guard store.sessionPlace == .window else { return }
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        openWindow(id: "runway")
     }
 
     private func show(_ label: String, ticket: String?, tab: NotificationTab) {

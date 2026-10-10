@@ -68,6 +68,7 @@ struct RunwayWindow: View {
         } detail: {
             if let entry {
                 VStack(spacing: 0) {
+                  VStack(spacing: 0) {
                     Picker("", selection: $tab) {
                         ForEach(RunwayTab.allCases) { Text($0.rawValue).tag($0) }
                     }
@@ -85,6 +86,11 @@ struct RunwayWindow: View {
                         Text("\(tab.rawValue): coming soon")
                             .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                  }
+                  if !store.sessions.sessions.isEmpty {
+                      Divider()
+                      SessionPane(store: store)
+                  }
                 }
                 .toolbar { toolbar(for: entry) }
                 .navigationTitle(entry.status.name)
