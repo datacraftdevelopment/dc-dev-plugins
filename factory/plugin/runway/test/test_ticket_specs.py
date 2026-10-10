@@ -3,6 +3,8 @@ Run: python3 -m pytest -q test_ticket_specs.py"""
 import sys
 import tempfile
 import unittest
+import subprocess
+from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -24,12 +26,11 @@ class TicketSpecs(unittest.TestCase):
     def test_ignores_tickets_without_a_spec_file(self):
         self.assertEqual(runway.ticket_specs([ticket("# T\n\nThe spec says so.\nSpec: #46\n"), SimpleNamespace()]), [])
 
-    def test_prompts_carry_the_spec(self):
+    def test_prompt_formatters_need_no_context_argument(self):
+        # The extracted attempt() in pm formats the same template without context.
         self.assertIn("gh issue view", runway.RUN_PROMPT)
-        run = runway.RUN_PROMPT.format(path="p", ticket="T", context="SPEC", extra="")
-        prep = runway.PREP_PROMPT.format(path="p", ticket="T", context="SPEC")
-        for prompt in (run, prep):
-            self.assertLess(prompt.index("T"), prompt.index("SPEC"))
+        runway.RUN_PROMPT.format(path="p", ticket="T", extra="")
+        runway.PREP_PROMPT.format(path="p", ticket="T")
 
 
 class SpecContext(unittest.TestCase):
@@ -49,6 +50,20 @@ class SpecContext(unittest.TestCase):
         self.assertIn("The plan is pure.", out)
         self.assertIn("docs/specs/queue-plan.notes.md", out)
         self.assertNotIn("ledger", out)
+
+    def test_dispatch_inlines_spec_for_run_and_prep_only(self):
+        (self.base / "docs/specs/queue-plan.md").write_text("BOUND SPEC CONTENT")
+        prompt = "Ticket:\nSpec: docs/specs/queue-plan.md\n"
+        for kind in ("run", "prep", "review"):
+            captured = []
+            def fake_sh(cmd, cwd, **kw):
+                captured.append(kw["stdin"])
+                return subprocess.CompletedProcess(cmd, 0, "ok", "")
+            with mock.patch.object(runway, "sh", fake_sh), mock.patch.object(runway, "record"), \
+                 mock.patch.object(runway, "beat_update"):
+                runway.run_agent(dict(runway.DEFAULT_CONFIG), self.base, "fake", self.base, prompt,
+                                 "#1", kind, harness={"name":"fake", "parser":"text"})
+            self.assertEqual("BOUND SPEC CONTENT" in captured[0], kind in ("run", "prep"))
 
     def test_missing_file_or_no_spec_gives_nothing(self):
         self.assertEqual(runway.spec_context(self.base, ticket("Spec: docs/specs/not-yet-on-main.md\n")), "")

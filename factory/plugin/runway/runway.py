@@ -1018,6 +1018,8 @@ def run_agent(cfg: dict, root: Path, cmd: str, cwd: Path, prompt: str, ticket: s
     """Run one agent call and log it. Returns (process, text). The harness profile's parser pulls
     the text, session id and usage out of stdout; unparseable output is returned raw."""
     harness = harness or resolve_harness(cfg)
+    if kind in ("run", "prep"):
+        prompt += spec_context(cwd, prompt)
     t0 = time.time()
     pids: list = []
 
@@ -1065,15 +1067,14 @@ At most 5 bullets. No investigation narrative.
 Ticket ({path}):
 
 {ticket}
-{context}"""
+"""
 
 
 def prep(cfg: dict, root: Path, t) -> None:
     beat(root, "prep", t.id)
     log(root, f"prep  {t.id} {t.title}")
     hp = resolve_harness(cfg, t)
-    r, text = run_agent(cfg, root, hp["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text,
-                                                                      context=spec_context(root, t)), t.id, "prep",
+    r, text = run_agent(cfg, root, hp["prep_cmd"], root, PREP_PROMPT.format(path=t.ref, ticket=t.text), t.id, "prep",
                         harness=hp)
     if stop_requested():
         log(root, f"stopped by pause  prep {t.id}")
@@ -1102,7 +1103,7 @@ at the repo root and stop.
 Ticket ({path}):
 
 {ticket}
-{context}{extra}"""
+{extra}"""
 
 
 def ensure_integration(cfg: dict, root: Path) -> None:
@@ -1160,14 +1161,13 @@ def run_ticket(cfg: dict, root: Path, tracker, t) -> None:
 
     extra, ok, detail, attempt = "", False, "", 0
     hp = resolve_harness(cfg, t)
-    context = spec_context(wt, t)
     stopped = signed_out = False
     for attempt in range(1, cfg["max_attempts"] + 1):
         if stop_requested():
             stopped = True
             break
         beat(root, "agent", t.id, attempt)
-        prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, context=context, extra=extra)
+        prompt = RUN_PROMPT.format(path=t.ref, ticket=t.text, extra=extra)
         r, _ = run_agent(cfg, root, hp["agent_cmd"], wt, prompt, t.id, "run", attempt, harness=hp)
         if stop_requested():
             stopped = True
@@ -1279,7 +1279,7 @@ def ticket_specs(tickets) -> list[str]:
     """The spec files the tickets name in a `Spec:` line, first seen first."""
     out = []
     for t in tickets:
-        for p in SPEC_LINE.findall(getattr(t, "text", "") or ""):
+        for p in SPEC_LINE.findall(t if isinstance(t, str) else (getattr(t, "text", "") or "")):
             if p not in out:
                 out.append(p)
     return out
@@ -1289,7 +1289,7 @@ SPEC_CAP = 40000
 
 
 def spec_context(base: Path, t) -> str:
-    """The text of every spec file the ticket names, read from `base` (the worker's checkout), so the worker
+    """The text of every spec file a ticket or dispatch prompt names, read from `base` (the worker's checkout), so the worker
     has the spec without reaching the tracker. A `<slug>.notes.md` beside a spec (the planning notes it came
     from) is named, not inlined. Files outside `base` or missing are skipped."""
     out, root = [], base.resolve()
