@@ -97,6 +97,25 @@ final class ErroredTests: XCTestCase {
         XCTAssertFalse(s.canTalkThrough(finished: try finished("W", "stopped")))
     }
 
+    func testFinishedNeedsYouRowReadsAnsweredOnceTheTicketStopsWaiting() throws {
+        // W still waits; E errored; R was answered (ready now); #8 was closed, so status no longer lists it.
+        let s = try XCTUnwrap(StatusSnapshot.parse(Data("""
+        {"groups":{"waiting":["W"],"ready_auto":["E","R"]},
+         "tickets":[{"id":"W","status":"needs-human"},{"id":"E","errored":"check-failed"},{"id":"R"}]}
+        """.utf8)))
+        func finished(_ ticket: String, _ result: String) throws -> FinishedTicket {
+            let line = #"{"at":"2026-10-12 10:00 CEST","kind":"outcome","ticket":"\#(ticket)","attempts":2,"result":"\#(result)","detail":"q"}"#
+            guard case .ticket(let t)? = PanelHistory.rows(Data(line.utf8)).first else { throw XCTSkip("no ticket row") }
+            return t
+        }
+        XCTAssertEqual(s.shownResult(try finished("W", "needs-human")), "needs-human")
+        XCTAssertEqual(s.shownResult(try finished("E", "needs-human")), "needs-human")
+        XCTAssertEqual(s.shownResult(try finished("R", "needs-human")), "answered")
+        XCTAssertEqual(s.shownResult(try finished("#8", "needs-human")), "answered")
+        XCTAssertEqual(s.shownResult(try finished("R", "done")), "done")
+        XCTAssertEqual(s.shownResult(try finished("#8", "stopped")), "stopped")
+    }
+
     func testBadgeCountsErroredTickets() {
         let a = ProjectStatus(label: "a", name: "a", state: .idle, detail: "", waiting: 2, errored: 1)
         let b = ProjectStatus(label: "b", name: "b", state: .idle, detail: "", waiting: 0)

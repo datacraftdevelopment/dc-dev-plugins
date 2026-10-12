@@ -592,10 +592,10 @@ private struct FinishedRowView: View {
     @ViewBuilder private var summary: some View {
         switch tagged.row {
         case .ticket(let t):
-            line(icon: icon(t), id: t.ticket, idTint: .secondary, title: snapshot?.titles[t.ticket] ?? "",
+            line(icon: icon(shown(t)), id: t.ticket, idTint: .secondary, title: snapshot?.titles[t.ticket] ?? "",
                  pill: t.attempts > 1 ? ("\(t.attempts) tries", .orange) : nil,
                  meta: [t.wallSecs.map(PanelHistory.duration), PanelHistory.cost(t.costUSD), clock(t.finishedAt),
-                        t.result == "done" ? nil : resultText(t.result)])
+                        shown(t) == "done" ? nil : resultText(shown(t))])
         case .noWork(let group):
             line(icon: ("exclamationmark.triangle.fill", .orange),
                  id: group.count == 1 ? group[0].ticket : "\(group.count) tickets", idTint: .orange,
@@ -657,7 +657,7 @@ private struct FinishedRowView: View {
             }
             .font(.system(size: 10, design: .monospaced))
             Text("\(PanelHistory.tokens(t.tokens)) tokens · \(t.turns) turns · agent \(NowMath.clock(t.agentSecs))"
-                 + (t.result == "done" ? "" : " · \(resultText(t.result))"))
+                 + (shown(t) == "done" ? "" : " · \(resultText(shown(t)))"))
                 .font(.caption2).foregroundStyle(.secondary)
             if !t.detail.isEmpty {
                 ScrollView {
@@ -704,10 +704,14 @@ private struct FinishedRowView: View {
 
     // MARK: helpers
 
-    private func icon(_ t: FinishedTicket) -> (String, Color) {
-        switch t.result {
+    /// The row's result as it stands now: "needs you" turns to "answered" once the ticket stops waiting.
+    private func shown(_ t: FinishedTicket) -> String { snapshot?.shownResult(t) ?? t.result }
+
+    private func icon(_ result: String) -> (String, Color) {
+        switch result {
         case "done": return ("checkmark.circle.fill", .green)
         case "needs-human": return ("hand.raised.fill", .orange)
+        case "answered": return ("hand.raised", .secondary)
         case "stopped": return ("stop.circle.fill", .secondary)
         default: return ("questionmark.circle", .secondary)
         }
@@ -716,6 +720,7 @@ private struct FinishedRowView: View {
     private func resultText(_ result: String) -> String {
         switch result {
         case "needs-human": return "needs you"
+        case "answered": return "answered"
         case "stopped": return "stopped"
         default: return result
         }
