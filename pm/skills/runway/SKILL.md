@@ -298,6 +298,12 @@ you commit stays on the ticket's branch, and when Joe says go the next tick
 starts from a fresh worktree off the integration branch, so say whether you
 committed anything he wants kept, and merge it or note it on the ticket.
 
+**Done ticket or last review.** `RUNWAY discuss <ticket>` on a done ticket (or
+`--resume`, back in its worker's session) and `RUNWAY discuss --review` (back
+in the last finish review's session) are for Joe's questions about work that
+already happened. Answer from the brief, the transcript and the branch. Post
+no go or no, change nothing in the tracker, and commit nothing unless he asks.
+
 Rules for all three (and the resumed worker):
 
 - Post `RUNWAY go|no <ticket> "<note>"` only after Joe says go or no on this

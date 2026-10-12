@@ -61,6 +61,15 @@ extension RunwayTools {
         terminal(repo: repo, "discuss --loop")
     }
 
+    /// `runway discuss --review [<session>]`: that finish review's own conversation (the last one without a session), in Terminal.
+    public func discussReview(repo: String, session: String? = nil) -> Command {
+        terminal(repo: repo, reviewTail(session))
+    }
+
+    func reviewTail(_ session: String?) -> String {
+        "discuss --review" + (session.map { " " + Self.shellQuote($0) } ?? "")
+    }
+
     /// The one shell line both launchers run: Terminal's `do script` and the window's pane.
     func shellLine(repo: String, _ tail: String) -> String {
         "cd \(Self.shellQuote(repo)) && python3 \(Self.shellQuote(runwayScript)) \(tail)"

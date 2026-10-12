@@ -28,6 +28,11 @@ extension RunwayTools {
         spec(repo: repo, "discuss --loop")
     }
 
+    /// The same command as `discussReview(repo:)`, run in the pane instead of Terminal.
+    public func discussReviewSession(repo: String, session: String? = nil) -> LaunchSpec {
+        spec(repo: repo, reviewTail(session))
+    }
+
     private func spec(repo: String, _ tail: String) -> LaunchSpec {
         LaunchSpec(executable: "/bin/zsh", arguments: ["-lc", shellLine(repo: repo, tail)], workingDirectory: repo)
     }
@@ -36,19 +41,23 @@ extension RunwayTools {
 public struct Session: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let project: String
-    /// nil for the loop (`discuss --loop`) and for a command session.
+    /// nil for the loop (`discuss --loop`), for the last review (with `resume`, `discuss --review`) and for a command session.
     public let ticket: String?
     public let spec: LaunchSpec
-    /// True for "Resume worker": the ticket's own claude session, not a fresh one.
+    /// True for "Resume worker" (the ticket's own claude session, not a fresh one) and for "Open last review".
     public var resume = false
     public var alive = true
+    /// For "Open last review": the review's session id, so a newer review opens a new tab.
+    public var reviewSession: String?
     /// A command session (a sign-in, a chore): what it is, so its end can be followed up, its tab name,
     /// and the shell line "Pop out to Terminal" runs.
     public var command: CommandSession?
     /// The process's exit status once it has ended, when the terminal reported one.
     public var exitCode: Int32?
 
-    public var title: String { command?.title ?? ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
+    public var title: String {
+        command?.title ?? ticket.map { resume ? "\($0) (resume)" : $0 } ?? (resume ? "last review" : "loop")
+    }
 }
 
 /// A shell line run in the pane that isn't a discussion: `key` says what it was for (`signin:claude`).
@@ -78,12 +87,15 @@ public final class SessionRegistry {
     public var liveCount: Int { sessions.filter(\.alive).count }
 
     @discardableResult
-    public func open(project: String, ticket: String?, resume: Bool = false, spec: LaunchSpec) -> Session {
-        if let existing = sessions.first(where: { $0.alive && $0.command == nil && $0.project == project && $0.ticket == ticket && $0.resume == resume }) {
+    public func open(project: String, ticket: String?, resume: Bool = false, reviewSession: String? = nil,
+                     spec: LaunchSpec) -> Session {
+        if let existing = sessions.first(where: { $0.alive && $0.command == nil && $0.project == project && $0.ticket == ticket
+                                                  && $0.resume == resume && $0.reviewSession == reviewSession }) {
             selected = existing.id
             return existing
         }
-        let session = Session(id: UUID(), project: project, ticket: ticket, spec: spec, resume: resume)
+        var session = Session(id: UUID(), project: project, ticket: ticket, spec: spec, resume: resume)
+        session.reviewSession = reviewSession
         sessions.append(session)
         selected = session.id
         return session

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import RunwayCore
 
@@ -96,6 +97,7 @@ struct RunwayWindow: View {
             }
         }
         .frame(minWidth: 760, minHeight: 480)
+        .background(FillScreenOnOpen())
         .onChange(of: store.requestedRoute) { _, _ in applyRoute() }
         // Picking another project closes the details pane; one in error lands on the board, where the error is at the top.
         .onChange(of: selection) { _, label in
@@ -317,6 +319,27 @@ struct LogList: View {
         case "review", "finish", "pr": return .purple
         case "fail", "park": return .red
         default: return .orange
+        }
+    }
+}
+
+/// Each time the Runway window opens, it fills the screen it opens on (the visible area, menu bar and Dock left
+/// alone), so the board's five columns show without a resize. Resizing after that sticks until the window closes.
+private struct FillScreenOnOpen: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { FillView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class FillView: NSView {
+        private weak var filled: NSWindow?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window, window !== filled else { return }
+            filled = window
+            DispatchQueue.main.async {
+                guard let frame = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+                window.setFrame(frame, display: true)
+            }
         }
     }
 }

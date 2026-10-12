@@ -43,6 +43,41 @@ final class ResumeWorkerTests: XCTestCase {
         XCTAssertEqual(q.tickets.map(\.resumable), [true, false, true])
     }
 
+    func testLastReviewIsDiscussReviewInItsOwnTab() {
+        let spec = tools.discussReviewSession(repo: "/r")
+        XCTAssertEqual(spec.arguments, ["-lc", "cd '/r' && python3 '/Users/me/My Plugins/runway.py' discuss --review"])
+        XCTAssertTrue(tools.discussReview(repo: "/r").arguments.last?.contains("discuss --review") == true)
+        let registry = SessionRegistry()
+        let loop = registry.open(project: "p", ticket: nil, spec: tools.discussLoopSession(repo: "/r"))
+        let review = registry.open(project: "p", ticket: nil, resume: true, spec: spec)
+        XCTAssertNotEqual(loop.id, review.id)
+        XCTAssertEqual(loop.title, "loop")
+        XCTAssertEqual(review.title, "last review")
+    }
+
+    func testANewerReviewOpensANewTabBesideTheOlderOne() {
+        let registry = SessionRegistry()
+        let spec = tools.discussReviewSession(repo: "/r")
+        let a = registry.open(project: "p", ticket: nil, resume: true, reviewSession: "A", spec: spec)
+        XCTAssertEqual(registry.open(project: "p", ticket: nil, resume: true, reviewSession: "A", spec: spec).id, a.id)
+        let b = registry.open(project: "p", ticket: nil, resume: true, reviewSession: "B", spec: spec)
+        XCTAssertNotEqual(a.id, b.id)
+        XCTAssertEqual(registry.liveCount, 2)
+        // Each tab runs its own review, so Pop out to Terminal reopens A, not the newer B.
+        XCTAssertEqual(tools.discussReviewSession(repo: "/r", session: "A").arguments.last,
+                       "cd '/r' && python3 '/Users/me/My Plugins/runway.py' discuss --review 'A'")
+        XCTAssertTrue(tools.discussReview(repo: "/r", session: "A").arguments.last?.contains("--review 'A'") == true)
+    }
+
+    func testStatusParsesReviewResumableAndAnOlderEngineLeavesItOff() throws {
+        let on = Data(#"{"version":1,"groups":{},"tickets":[],"review_resumable":true}"#.utf8)
+        XCTAssertTrue(try XCTUnwrap(QueueStatus.parse(on)).reviewResumable)
+        let named = Data(#"{"version":1,"groups":{},"tickets":[],"review_resumable":true,"review_session":"s1"}"#.utf8)
+        XCTAssertEqual(try XCTUnwrap(QueueStatus.parse(named)).reviewSession, "s1")
+        let old = Data(#"{"version":1,"groups":{},"tickets":[]}"#.utf8)
+        XCTAssertFalse(try XCTUnwrap(QueueStatus.parse(old)).reviewResumable)
+    }
+
     func testAnOlderEngineWithoutTheFieldNeverShowsTheButton() throws {
         let data = Data(#"{"version":1,"groups":{"waiting":["W"]},"tickets":[{"id":"W","status":"needs-human"}]}"#.utf8)
         XCTAssertFalse(try XCTUnwrap(StatusSnapshot.parse(data)).canResumeWorker("W"))
