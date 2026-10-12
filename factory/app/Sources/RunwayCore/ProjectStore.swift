@@ -18,6 +18,12 @@ public final class ProjectStore {
     public private(set) var pause: PauseInfo?
     public private(set) var overall: OverallState = .allOff
     public private(set) var badge = 0
+    /// Tools this Mac needs signed in again (from the loops' sign-in checks and a sign-in pause), first in Needs you.
+    public private(set) var signInNeeds: [SignInNeed] = []
+    /// What the last sign-in re-check found, shown beside the sign-in rows until the next sign-in starts.
+    public private(set) var signInNote: String?
+    /// True while the re-check after a sign-in session runs.
+    public private(set) var signInChecking = false
     /// A project has ready tickets but its loop is off. Drives the amber icon; independent of notifications.
     public private(set) var readyWhileOff = false
     /// Set when a notification is clicked: the tab the window should open on.
@@ -92,6 +98,10 @@ public final class ProjectStore {
         self.checkout = defaults.string(forKey: Self.checkoutKey)
         self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
         self.sessionPlace = defaults.string(forKey: Self.sessionPlaceKey).flatMap(SessionPlace.init(rawValue:)) ?? .window
+        sessions.onExit = { [weak self] session in
+            guard let self, let key = session.command?.key, key.hasPrefix("signin:") else { return }
+            Task { await self.recheckSignIns() }
+        }
     }
 
     public func setSessionPlace(_ place: SessionPlace) {
@@ -147,8 +157,11 @@ public final class ProjectStore {
         if newEntries != entries { entries = newEntries }
         if pause != self.pause { self.pause = pause }
         let statuses = newEntries.map(\.status)
-        overall = OverallState.resolve(statuses, pause: pause, now: now)
-        badge = OverallState.badge(statuses)
+        let needs = SignInNeed.resolve(found.compactMap { snapshots[$0.label] }, pause: pause)
+        if needs != signInNeeds { signInNeeds = needs }
+        let resolved = OverallState.resolve(statuses, pause: pause, now: now)
+        overall = needs.isEmpty || resolved == .allOff || resolved == .error ? resolved : .waiting
+        badge = OverallState.badge(statuses) + needs.count
         let planned = found.map { ProjectSnapshot(label: $0.label, name: $0.name, loopOn: $0.loaded, status: snapshots[$0.label]) }
         readyWhileOff = ProjectSnapshot.readyWhileOff(planned)
         notify(planned, now: now)
@@ -239,11 +252,57 @@ public final class ProjectStore {
         await launch(tools.discussLoop(repo: repo), key: Self.talkKey(project, nil))
     }
 
+    // MARK: sign-in
+
+    /// Runs the need's fix command in the window's pane (always the pane: its exit starts the re-check).
+    public func signIn(_ need: SignInNeed) {
+        guard let spec = need.session(), let fix = need.fix else { return }
+        signInNote = nil
+        sessions.open(command: CommandSession(key: need.sessionKey, title: "Sign in: \(need.label)", line: fix), spec: spec)
+    }
+
+    /// After a sign-in session ends: `runway signin` in every project, then, when all pass, lift a sign-in pause
+    /// and run a tick now for each loop that was waiting on it. The result shows beside the sign-in rows.
+    public func recheckSignIns() async {
+        guard let tools = requireTools(), !signInChecking else { return }
+        signInChecking = true
+        defer { signInChecking = false }
+        var failing: [SignInCheck] = []
+        var allPassed = true
+        for project in projects where project.error == nil {
+            guard let repo = project.repoPath else { continue }
+            let result = await run(tools.signin(repo: repo))
+            let checks = (try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))).map(SignInCheck.parse) ?? []
+            if !result.succeeded {
+                allPassed = false
+                let bad = checks.filter { !$0.ok }
+                if bad.isEmpty { failing.append(SignInCheck(name: "signin", label: project.name, fix: nil, ok: false,
+                                                            detail: "\(project.name): sign-in check failed: \(result.failureMessage)")) }
+                failing += bad.filter { b in !failing.contains { $0.name == b.name } }
+            }
+        }
+        let waiting = projects.filter { $0.loaded && SignInFollowUp.wasWaiting($0.repoPath.flatMap { Heartbeat.load(repoPath: $0) }) }
+        for command in SignInFollowUp.commands(allPassed: allPassed, tools: tools, waitingLoops: waiting.map(\.label)) {
+            let result = await run(command)
+            if !result.succeeded { failing.append(SignInCheck(name: "follow-up", label: "", fix: nil, ok: false,
+                                                              detail: result.failureMessage)) }
+        }
+        let labels = signInNeeds.map(\.label).joined(separator: ", ")
+        signInNote = SignInFollowUp.note(label: labels.isEmpty ? "Sign-in" : labels, failing: failing)
+        waitingFetchedAt = .distantPast
+        refresh()
+    }
+
     /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.
     public func popOut(_ id: UUID) async {
         guard let session = sessions.sessions.first(where: { $0.id == id }), let tools = requireTools() else { return }
         let repo = session.spec.workingDirectory
         sessions.close(id)
+        if let line = session.command?.line {
+            let result = await run(RunwayTools.terminal(line: line))
+            if !result.succeeded { lastError = result.failureMessage }
+            return
+        }
         let command = session.ticket.map {
             session.resume ? tools.discussResume(ticket: $0, repo: repo) : tools.discuss(ticket: $0, repo: repo)
         } ?? tools.discussLoop(repo: repo)

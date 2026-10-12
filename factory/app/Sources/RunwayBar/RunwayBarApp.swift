@@ -82,6 +82,15 @@ struct RunwayMenu: View {
             Button("Dismiss") { store.dismissError() }
             Divider()
         }
+        ForEach(store.signInNeeds) { need in
+            Button("Sign in to \(need.label)…") {
+                store.signIn(need)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                openWindow(id: "runway")
+            }
+            .disabled(need.fix == nil)
+        }
+        if !store.signInNeeds.isEmpty { Divider() }
         if store.entries.isEmpty {
             Text("No Runway projects found")
         }
