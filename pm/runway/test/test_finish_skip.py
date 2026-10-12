@@ -121,6 +121,49 @@ class FinishSkip(unittest.TestCase):
         self.sync()
         self.assertTrue(self.finish_ran(force=True))
 
+    def add_ticket(self, name, head):
+        d = self.root / ".scratch" / "eff" / "issues"
+        (d / f"{name}.md").write_text(f"# Title {name}\n{head}\n")
+
+    def test_verdict_finish_runs_with_all_done(self):
+        self.assertTrue(self.finish_ran())
+
+    def test_verdict_wait_claimed_stops(self):
+        self.add_ticket("02-busy", "Status: claimed\nGate: auto")
+        self.assertFalse(self.finish_ran())
+
+    def test_verdict_wait_open_stops_under_all_done(self):
+        self.add_ticket("02-open", "Status: ready\nGate: auto")
+        self.assertFalse(self.finish_ran())
+
+    def test_verdict_open_does_not_stop_under_idle(self):
+        self.add_ticket("02-open", "Status: ready\nGate: auto")
+        self.cfg["finish"] = "idle"
+        self.assertTrue(self.finish_ran())
+
+    def test_verdict_off_stops(self):
+        self.cfg["finish"] = "off"
+        self.assertFalse(self.finish_ran())
+
+    def test_force_skips_every_verdict(self):
+        self.add_ticket("02-busy", "Status: claimed\nGate: auto")
+        self.cfg["finish"] = "off"
+        self.assertTrue(self.finish_ran(force=True))
+
+    def test_finish_reads_the_queue_plan_verdict(self):
+        seen = []
+        orig = runway.queue_plan_for
+        runway.queue_plan_for = lambda cfg, ts: (seen.append(1), orig(cfg, ts))[1]
+        try:
+            self.run_finish()
+        finally:
+            runway.queue_plan_for = orig
+        self.assertTrue(seen)
+
+    def test_git_checks_still_stop_a_finish_verdict(self):
+        self.reviewed()  # head already reviewed; the verdict says finish
+        self.assertFalse(self.finish_ran())
+
 
 if __name__ == "__main__":
     unittest.main()
