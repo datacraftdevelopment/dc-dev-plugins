@@ -1829,12 +1829,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if sh(["git", "rev-parse", "--verify", integ], root).returncode != 0:
         return False
     ahead = sh(["git", "rev-list", "--count", f"{base}..{integ}"], root).stdout.strip()
-    tickets = runway_tickets(tracker.load())
+    loaded = tracker.load()
+    tickets = runway_tickets(loaded)
     if not force:
-        mode = cfg["finish"]
-        if mode == "off" or ahead in ("", "0") or any(t.status == "claimed" for t in tickets):
-            return False
-        if mode == "all_done" and not all(t.status in DONE for t in tickets):
+        # The tracker half of the gate is the queue plan's finish verdict; the git checks below stay here.
+        if queue_plan_for(cfg, loaded).finish.verdict != "finish" or ahead in ("", "0"):
             return False
     state_p = root / "_pm" / "runway-finish.json"
     try:
@@ -2858,6 +2857,7 @@ def cmd_status(cfg: dict, tracker) -> None:
             else:
                 extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
             print(f"  {t.id:<24} {t.title}{extra}")
+    print(f"\nFinish: {qp.finish.verdict} ({qp.finish.reason})")
     if qp.idle_reason:
         print(f"\n{qp.idle_reason}")
 
