@@ -82,6 +82,16 @@ struct RunwayMenu: View {
             Button("Dismiss") { store.dismissError() }
             Divider()
         }
+        ForEach(store.signInNeeds) { need in
+            Button("Sign in to \(need.label)…") {
+                guard let fix = need.fix, confirmRun(title: "Sign in to \(need.label)?", why: need.detail, line: fix) else { return }
+                store.signIn(need)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                openWindow(id: "runway")
+            }
+            .disabled(need.fix == nil)
+        }
+        if !store.signInNeeds.isEmpty { Divider() }
         if store.entries.isEmpty {
             Text("No Runway projects found")
         }
@@ -93,6 +103,20 @@ struct RunwayMenu: View {
                     Button("Talk it through") { Task { await store.talkThroughLoop(project); showSession() } }
                     if let failure = store.talkError(project: project, ticket: nil) { Text("⚠︎ \(String(failure.prefix(200)))") }
                     Divider()
+                }
+                if let repo = project.repoPath {
+                    // A menu can't run show_if ahead of time without running checkout shell unasked, so only repo chores
+                    // without one are offered here.
+                    ForEach(store.choreList().chores.filter { $0.cwd == .repo && $0.showIf == nil }) { chore in
+                        Button("\(chore.title)…") {
+                            guard let line = store.choreLine(chore, repo: repo),
+                                  confirmRun(title: "\(chore.title)?", why: chore.why, line: line) else { return }
+                            store.runChore(chore, repo: repo)
+                            NSApplication.shared.activate(ignoringOtherApps: true)
+                            openWindow(id: "runway")
+                        }
+                        .help(store.choreLine(chore, repo: repo) ?? chore.run)
+                    }
                 }
                 let canStart = project.repoPath != nil && !project.loaded
                 Button("Start loop") { Task { await store.startLoop(project) } }
@@ -211,4 +235,17 @@ struct RunwayMenu: View {
         panel.message = "Pick the dc-dev-plugins checkout (the folder that contains factory/)."
         if panel.runModal() == .OK, let url = panel.url { store.setCheckout(url.path) }
     }
+}
+
+/// The menu's one look before a command runs: what it's for and the exact line, with Run or Cancel.
+/// The panel and the This Mac sheet show the line beside the button; a menu item can't.
+@MainActor
+func confirmRun(title: String, why: String, line: String) -> Bool {
+    NSApplication.shared.activate(ignoringOtherApps: true)
+    let alert = NSAlert()
+    alert.messageText = title
+    alert.informativeText = (why.isEmpty ? "" : why + "\n\n") + "Runs in the Runway window:\n" + line
+    alert.addButton(withTitle: "Run")
+    alert.addButton(withTitle: "Cancel")
+    return alert.runModal() == .alertFirstButtonReturn
 }

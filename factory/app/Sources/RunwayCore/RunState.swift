@@ -68,10 +68,13 @@ public struct Heartbeat: Equatable, Sendable {
 public struct PauseInfo: Equatable, Sendable {
     public let until: Date?
     public let mode: String
+    /// Set only when the engine paused itself: `signed-out` when an agent call failed on auth.
+    public let reason: String?
 
-    public init(until: Date?, mode: String) {
+    public init(until: Date?, mode: String, reason: String? = nil) {
         self.until = until
         self.mode = mode
+        self.reason = reason
     }
 
     /// Unreadable content stays paused with no end, same as the loop (never run on a guess).
@@ -79,7 +82,8 @@ public struct PauseInfo: Equatable, Sendable {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             return PauseInfo(until: nil, mode: "finish")
         }
-        return PauseInfo(until: (json["until"] as? String).flatMap(parseISO), mode: (json["mode"] as? String) ?? "finish")
+        return PauseInfo(until: (json["until"] as? String).flatMap(parseISO), mode: (json["mode"] as? String) ?? "finish",
+                         reason: (json["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 })
     }
 
     public func isActive(now: Date) -> Bool {
