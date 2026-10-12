@@ -89,6 +89,7 @@ class CodexInstallTests(unittest.TestCase):
         cases = {
             'no frontmatter': lambda p: skill(p, '# just a heading\n'),
             'unclosed frontmatter': lambda p: skill(p, '---\nname: one\n'),
+            'fence not on its own line': lambda p: skill(p, '---\nname: one\ndescription: d\n---not-a-fence\n'),
             'bad yaml': lambda p: skill(p, '---\nname: [one\n---\n'),
             'no description': lambda p: skill(p, '---\nname: one\n---\nbody\n'),
             'blank name': lambda p: skill(p, '---\nname: ""\ndescription: d\n---\n'),

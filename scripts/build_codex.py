@@ -325,12 +325,12 @@ def build_one(name, parent):
 
 
 def _frontmatter(skill_md):
-    text = skill_md.read_text()
-    if not text.startswith('---\n') or '\n---' not in text[4:]:
+    match = re.match(r'---\n(.*?)^---[ \t]*$', skill_md.read_text(), re.S | re.M)
+    if not match:
         return None
     import yaml  # scripts/requirements-codex.txt
     try:
-        data = yaml.safe_load(text[4:text.index('\n---', 4)])
+        data = yaml.safe_load(match.group(1))
     except yaml.YAMLError:
         return None
     return data if isinstance(data, dict) else None

@@ -140,7 +140,11 @@ class ConnectionRegressionTests(unittest.TestCase):
             self.assertIn('Ringer clone:',out.getvalue())
 
     def test_batch_validation_failure_leaves_live_packages_untouched(self):
-        from unittest.mock import patch
+        for bad in ('no frontmatter\n', '---\nname: one\ndescription: d\n---not-a-fence\n'):
+            with self.subTest(bad=bad):
+                self._batch_with_bad_skill(bad)
+
+    def _batch_with_bad_skill(self, bad):
         from refresh_codex import promote
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);stage=root/'staged';live=root/'live';packages=[]
@@ -150,7 +154,7 @@ class ConnectionRegressionTests(unittest.TestCase):
             for package in packages:
                 (package/'.codex-plugin').mkdir();(package/'.codex-plugin/plugin.json').write_text(json.dumps({'name':package.name,'version':'1','skills':'./skills/'}))
                 (package/'skills/one').mkdir(parents=True);(package/'skills/one/SKILL.md').write_text('---\nname: one\ndescription: d\n---\n')
-            (packages[1]/'skills/one/SKILL.md').write_text('no frontmatter\n')  # the later package is the bad one
+            (packages[1]/'skills/one/SKILL.md').write_text(bad)  # the later package is the bad one
             with self.assertRaisesRegex(ValueError,'frontmatter'):promote(packages,live)
             for name in ['pm','fm-dc']:
                 self.assertEqual((live/name/'old').read_text(),name)
