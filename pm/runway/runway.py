@@ -48,9 +48,12 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
               comment). A ready ticket claimed by another machine is skipped and logged
               `skip <id> claimed by <machine>`.
-  paused      The pause in force (the ~/.runway/pause contents), or null.
+  paused      The pause in force (the ~/.runway/pause contents, "reason" included), or null.
   signin      The last sign-in check, or null before any ran: {"at", "ok", "notified": [name...],
-              "checks": [{"name", "ok", "detail"}]} (the _pm/runway-signin.json file).
+              "checks": [{"name", "label", "fix", "ok", "detail"}]} (the _pm/runway-signin.json file).
+              label is the name Joe knows the tool by ("Claude Code"); fix is the command line that
+              signs in ("claude auth login"), null for a check with no command (the Linear key);
+              detail is the sentence to show.
   claimed_by  The machine that holds the ticket's claim, or null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
@@ -79,9 +82,15 @@ Always the claude harness. A GitHub brief carries trusted authors' comments only
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
 
-  {"until": "ISO-8601 or null", "mode": "finish|stop", "at": "ISO-8601"}
+  {"until": "ISO-8601 or null", "mode": "finish|stop", "at": "ISO-8601", "reason": "signed-out"}
 
-`runway resume` deletes it. While the file exists and `until` hasn't passed, `tick` logs
+reason is there only when Runway set the pause itself: "signed-out" when an agent call failed on auth
+(pause_for_auth). `runway pause` writes none. `runway resume` deletes the pause. `runway resume --if-reason
+signed-out` deletes it only when its reason matches (a pause set by hand stays) and prints what it did either way.
+
+`runway signin [--json]` runs the sign-in checks a tick with work waiting would run (the finish step's too: gh
+when a draft PR will be opened, both seats for a review panel), writes `_pm/runway-signin.json`, and exits 0
+when all pass. It claims and preps nothing, makes no model call and sends no notification. While the file exists and `until` hasn't passed, `tick` logs
 `paused until ...`, writes heartbeat phase `paused` and exits 0; `loop` stops between ticks the same
 way (no finish step). An expired pause file is removed. Mode finish (default): a running ticket
 finishes, nothing new starts. Mode stop (`--stop-now`): also SIGTERMs the running agent (agent_pid from
@@ -284,12 +293,15 @@ def paused_now(root: Path) -> bool:
     return True
 
 
-def write_pause(end: dt.datetime | None, mode: str) -> None:
+def write_pause(end: dt.datetime | None, mode: str, reason: str | None = None) -> None:
     p = pause_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
-                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
+    data = {"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
+            "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}
+    if reason:
+        data["reason"] = reason
+    tmp.write_text(json.dumps(data) + "\n")
     os.replace(tmp, p)
 
 
@@ -298,7 +310,7 @@ def pause_for_auth(cfg: dict, root: Path) -> None:
     A pause already in force is left as it is, and so is its notification."""
     if active_pause():
         return
-    write_pause(None, "finish")
+    write_pause(None, "finish", reason="signed-out")
     notify(cfg, root, "Runway: Claude Code needs signing in")
 
 
@@ -346,7 +358,16 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
                 print(f"agent {pid} already gone")
 
 
-def cmd_resume() -> None:
+def cmd_resume(if_reason: str | None = None) -> None:
+    """Delete the pause. With if_reason, only a pause that carries that reason: a pause Joe set stays."""
+    if if_reason:
+        pause = active_pause()
+        if not pause:
+            print("no pause in force; nothing to resume")
+            return
+        if pause.get("reason") != if_reason:
+            print(f"pause left in place: its reason is {pause.get('reason') or 'none'}, not {if_reason}")
+            return
     pause_path().unlink(missing_ok=True)
     print("resumed")
 
@@ -889,19 +910,20 @@ def tool_signin(cfg: dict, root: Path, key: str) -> dict:
     refresh is already dead, so the first agent call that fails on auth still pauses the loop."""
     label, default, fix = SIGNIN_TOOLS[key]
     cmd = (cfg.get("signin_cmds") or {}).get(key) or default
+    who = {"name": key, "label": label, "fix": fix}
     try:
         r = sh(cmd, root, timeout=30)
     except subprocess.TimeoutExpired:
-        return {"name": key, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
+        return {**who, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
     if r.returncode == 127:
-        return {"name": key, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
+        return {**who, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
     try:
         out = json.loads(r.stdout)
     except ValueError:
         out = None
     if r.returncode != 0 or (isinstance(out, dict) and out.get("loggedIn") is False):
-        return {"name": key, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
-    return {"name": key, "ok": True, "detail": f"{label} signed in"}
+        return {**who, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
+    return {**who, "ok": True, "detail": f"{label} signed in"}
 
 
 def harness_signin_key(cfg: dict, name: str) -> str | None:
@@ -922,25 +944,49 @@ def signin_checks(cfg: dict, root: Path, harnesses, panel: bool = False, finish:
     if finish and cfg.get("pr") == "draft":
         keys.append("gh")  # the engine opens the draft PR, whatever the tracker
     results = [tool_signin(cfg, root, k) for k in dict.fromkeys(k for k in keys if k)]
-    results += [n(cfg) for n in needs if callable(n)]
+    for n in needs:
+        if callable(n):  # a tracker's own check has no command line to run, so its fix is null
+            c = n(cfg)
+            results.append({"label": c["name"].capitalize(), "fix": None, **c})
     return results
+
+
+def record_signin(root: Path, results: list, notify_new: bool = True) -> tuple:
+    """Write _pm/runway-signin.json for these results. Returns (failing checks, the newly failing ones).
+    notify_new False leaves new failures out of `notified` (`runway signin` never sends a notification)."""
+    failing = [c for c in results if not c["ok"]]
+    prev = read_signin(root) or {}
+    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
+    new = [c for c in failing if c["name"] not in notified]
+    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
+           "checks": results, "notified": notified + ([c["name"] for c in new] if notify_new else [])}
+    p = signin_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(out) + "\n")
+    os.replace(tmp, p)
+    return failing, new
+
+
+def cmd_signin(cfg: dict, root: Path, as_json: bool) -> int:
+    """The checks the next tick would run with work waiting (the finish step's too), recorded in
+    _pm/runway-signin.json. Claims and preps nothing, makes no model call, sends no notification.
+    Exit status 0 when every check passes."""
+    results = signin_checks(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True)
+    failing, _ = record_signin(root, results, notify_new=False)
+    if as_json:
+        print(json.dumps(read_signin(root), indent=2))
+    else:
+        for c in results:
+            print(("ok   " if c["ok"] else "FAIL ") + c["detail"])
+    return 1 if failing else 0
 
 
 def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> bool:
     """Check sign-ins before work starts. True (after logging, heartbeat `waiting` with the reason, and
     one notification until it clears) when any check fails; the caller then starts nothing."""
     results = signin_checks(cfg, root, harnesses, panel, finish)
-    failing = [c for c in results if not c["ok"]]
-    prev = read_signin(root) or {}
-    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
-    new = [c for c in failing if c["name"] not in notified]
-    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
-           "checks": results, "notified": notified + [c["name"] for c in new]}
-    p = signin_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(out) + "\n")
-    os.replace(tmp, p)
+    failing, new = record_signin(root, results)
     if not failing:
         return False
     reason = "; ".join(c["detail"] for c in failing)
@@ -2717,7 +2763,10 @@ def main() -> None:
     pz.add_argument("--until", help="resume at this ISO-8601 time")
     pz.add_argument("--for", dest="span", help="resume after this long, e.g. 30m, 1h, 2d")
     pz.add_argument("--stop-now", action="store_true", help="also stop the running agent and return its ticket to ready")
-    sub.add_parser("resume", help="delete the pause")
+    rs = sub.add_parser("resume", help="delete the pause")
+    rs.add_argument("--if-reason", help="only when the pause carries this reason (signed-out: set by a failed sign-in)")
+    sg = sub.add_parser("signin", help="run the sign-in checks the next tick would run; exit 0 when all pass")
+    sg.add_argument("--json", action="store_true", help="print _pm/runway-signin.json")
     sub.add_parser("machine", help="print this Mac's quiet-time rules and whether a tick would run now")
     lp = sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
@@ -2740,7 +2789,7 @@ def main() -> None:
         cmd_pause(root, a.until, a.span, a.stop_now)
         return
     if a.cmd == "resume":
-        cmd_resume()
+        cmd_resume(a.if_reason)
         return
     if a.cmd == "machine":
         print(describe_machine(root))
@@ -2754,6 +2803,8 @@ def main() -> None:
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():
         cfg.update(json.loads(cfg_path.read_text()))
+    if a.cmd == "signin":
+        sys.exit(cmd_signin(cfg, root, a.json))
     tracker = make_tracker(cfg, root)
 
     if a.cmd == "status":
