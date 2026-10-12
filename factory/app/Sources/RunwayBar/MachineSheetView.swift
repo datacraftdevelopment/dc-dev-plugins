@@ -69,6 +69,7 @@ struct MachineSheet: View {
                     }
                     quietSection
                     otherSection
+                    ChoresSection(store: model.store, close: { dismiss() })
                     statusSection
                 }
                 .padding(16)
@@ -148,3 +149,58 @@ struct MachineSheet: View {
             .background(color.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
     }
 }
+
+/// The engine checkout's chores (`pm/runway/chores.json`) whose `show_if` passes. Run shows the exact line first, asks
+/// again for a chore marked `confirm`, then closes this sheet (it's modal over the pane) and runs it in the window's pane.
+struct ChoresSection: View {
+    let store: ProjectStore
+    let close: () -> Void
+    @State private var shown: [Chore]?
+    @State private var asking: Chore?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Chores").font(.headline)
+            switch store.choreList() {
+            case .unusable(let why):
+                Text(why).font(.caption).foregroundStyle(.secondary)
+            case .chores:
+                if let shown {
+                    if shown.isEmpty { Text("Nothing to do on this Mac right now.").font(.caption).foregroundStyle(.secondary) }
+                    ForEach(shown) { chore in row(chore) }
+                } else {
+                    HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Checking…").font(.caption) }
+                }
+            }
+        }
+        .task { shown = await store.visibleChores(.checkout) }
+        .confirmationDialog(asking?.title ?? "", isPresented: Binding(
+            get: { asking != nil }, set: { if !$0 { asking = nil } }), presenting: asking) { chore in
+            Button("Run it") { start(chore) }
+        } message: { chore in
+            Text(store.choreLine(chore) ?? chore.run)
+        }
+    }
+
+    private func row(_ chore: Chore) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(chore.title).font(.callout.weight(.medium))
+                Spacer()
+                Button("Run") { if chore.confirm { asking = chore } else { start(chore) } }
+            }
+            if !chore.why.isEmpty { Text(chore.why).font(.caption).foregroundStyle(.secondary) }
+            Text(store.choreLine(chore) ?? chore.run).font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(3)
+            if let result = store.choreResult(chore) { Text(result).font(.caption).foregroundStyle(.green) }
+        }
+        .padding(8)
+        .background(.black.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func start(_ chore: Chore) {
+        store.runChore(chore)
+        close()
+    }
+}
+

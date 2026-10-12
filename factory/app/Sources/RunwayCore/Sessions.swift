@@ -36,14 +36,32 @@ extension RunwayTools {
 public struct Session: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let project: String
-    /// nil for the loop (`discuss --loop`).
+    /// nil for the loop (`discuss --loop`) and for a command session.
     public let ticket: String?
     public let spec: LaunchSpec
     /// True for "Resume worker": the ticket's own claude session, not a fresh one.
     public var resume = false
     public var alive = true
+    /// A command session (a sign-in, a chore): what it is, so its end can be followed up, its tab name,
+    /// and the shell line "Pop out to Terminal" runs.
+    public var command: CommandSession?
+    /// The process's exit status once it has ended, when the terminal reported one.
+    public var exitCode: Int32?
 
-    public var title: String { ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
+    public var title: String { command?.title ?? ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
+}
+
+/// A shell line run in the pane that isn't a discussion: `key` says what it was for (`signin:claude`).
+public struct CommandSession: Equatable, Sendable {
+    public let key: String
+    public let title: String
+    public let line: String
+
+    public init(key: String, title: String, line: String) {
+        self.key = key
+        self.title = title
+        self.line = line
+    }
 }
 
 /// The tabs of the terminal pane. One live tab per ticket (or per project's loop); a tab whose process
@@ -52,6 +70,8 @@ public struct Session: Identifiable, Equatable, Sendable {
 public final class SessionRegistry {
     public private(set) var sessions: [Session] = []
     public var selected: UUID?
+    /// Called once when a session's process exits on its own (not when its tab is closed).
+    @ObservationIgnored public var onExit: ((Session) -> Void)?
 
     public init() {}
 
@@ -59,7 +79,7 @@ public final class SessionRegistry {
 
     @discardableResult
     public func open(project: String, ticket: String?, resume: Bool = false, spec: LaunchSpec) -> Session {
-        if let existing = sessions.first(where: { $0.alive && $0.project == project && $0.ticket == ticket && $0.resume == resume }) {
+        if let existing = sessions.first(where: { $0.alive && $0.command == nil && $0.project == project && $0.ticket == ticket && $0.resume == resume }) {
             selected = existing.id
             return existing
         }
@@ -69,9 +89,25 @@ public final class SessionRegistry {
         return session
     }
 
-    public func markExited(_ id: UUID) {
-        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+    /// Opens (or selects, while it still runs) a command session: one live tab per key.
+    @discardableResult
+    public func open(command: CommandSession, spec: LaunchSpec) -> Session {
+        if let existing = sessions.first(where: { $0.alive && $0.command?.key == command.key }) {
+            selected = existing.id
+            return existing
+        }
+        var session = Session(id: UUID(), project: "", ticket: nil, spec: spec)
+        session.command = command
+        sessions.append(session)
+        selected = session.id
+        return session
+    }
+
+    public func markExited(_ id: UUID, exitCode: Int32? = nil) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].alive else { return }
         sessions[index].alive = false
+        sessions[index].exitCode = exitCode
+        onExit?(sessions[index])
     }
 
     public func close(_ id: UUID) {

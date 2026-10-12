@@ -52,8 +52,12 @@ extension RunwayTools {
     }
 
     private func terminal(repo: String, _ tail: String) -> Command {
-        let shell = shellLine(repo: repo, tail)
-        let literal = shell.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        Self.terminal(line: shellLine(repo: repo, tail))
+    }
+
+    /// Terminal.app running one shell line (what "Pop out to Terminal" does for any pane session).
+    public static func terminal(line: String) -> Command {
+        let literal = line.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
         return Command(executable: "/usr/bin/osascript", arguments: [
             "-e", "tell application \"Terminal\" to activate",
             "-e", "tell application \"Terminal\" to do script \"\(literal)\""])

@@ -249,6 +249,94 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.sessions.sessions.first?.spec, store.tools?.discussSession(ticket: "GH-7", repo: repo.path))
     }
 
+    func testASignInPauseIsANeedAndTheRecheckResumesItAndRunsTheWaitingLoop() async throws {
+        try installPlist()
+        try Data(#"{"until":null,"mode":"finish","reason":"signed-out"}"#.utf8).write(to: pauseURL)
+        try Data(#"{"phase":"paused"}"#.utf8).write(to: repo.appendingPathComponent("_pm/runway-state.json"))
+        let store = makeStore()
+        store.refresh()
+        XCTAssertEqual(store.signInNeeds.map(\.id), ["claude"])
+        XCTAssertEqual(store.overall, .waiting)
+        XCTAssertGreaterThanOrEqual(store.badge, 1)
+
+        let need = try XCTUnwrap(store.signInNeeds.first)
+        store.signIn(need)
+        XCTAssertEqual(store.sessions.sessions.map(\.title), ["Sign in: Claude Code"])
+        XCTAssertEqual(store.sessions.sessions.first?.spec.arguments, ["-lc", "claude auth login"])
+
+        ran = []
+        nextResult = CommandResult(status: 0, stdout: #"{"ok":true,"checks":[]}"#, stderr: "")
+        await store.recheckSignIns()
+        let tools = try XCTUnwrap(store.tools)
+        XCTAssertTrue(ran.contains(tools.signin(repo: repo.path)))
+        XCTAssertTrue(ran.contains(tools.resumeIfSignedOut()))
+        XCTAssertTrue(ran.contains(RunwayTools.runNow(label: "com.joe.runway.demo")))
+        XCTAssertEqual(store.signInNote, "Claude Code: signed in. Runway carries on.")
+    }
+
+    func testAStillFailingRecheckResumesNothingAndSaysWhy() async throws {
+        try installPlist()
+        try Data(#"{"until":null,"mode":"finish","reason":"signed-out"}"#.utf8).write(to: pauseURL)
+        let store = makeStore()
+        store.refresh()
+        ran = []
+        nextResult = CommandResult(status: 1, stdout: #"{"ok":false,"checks":[{"name":"claude","label":"Claude Code","fix":"claude auth login","ok":false,"detail":"Claude Code needs signing in"}]}"#, stderr: "")
+        await store.recheckSignIns()
+        let tools = try XCTUnwrap(store.tools)
+        XCTAssertFalse(ran.contains(tools.resumeIfSignedOut()))
+        XCTAssertEqual(store.signInNote, "Claude Code needs signing in")
+    }
+
+    func testTheSignInTabEndingStartsTheRecheck() async throws {
+        try installPlist()
+        try Data(#"{"until":null,"mode":"finish","reason":"signed-out"}"#.utf8).write(to: pauseURL)
+        let store = makeStore()
+        store.refresh()
+        store.signIn(try XCTUnwrap(store.signInNeeds.first))
+        let id = try XCTUnwrap(store.sessions.sessions.first?.id)
+        ran = []
+        let signin = store.tools!.signin(repo: repo.path)
+        let ranSignin = expectation(description: "recheck ran")
+        afterRun = { if $0 == signin { ranSignin.fulfill() } }
+        store.sessions.markExited(id)
+        await fulfillment(of: [ranSignin], timeout: 2)
+    }
+
+    func testPopOutOfASignInTabRunsItsCommandInTerminal() async throws {
+        try installPlist()
+        try Data(#"{"until":null,"mode":"finish","reason":"signed-out"}"#.utf8).write(to: pauseURL)
+        let store = makeStore()
+        store.refresh()
+        store.signIn(try XCTUnwrap(store.signInNeeds.first))
+        let id = try XCTUnwrap(store.sessions.sessions.first?.id)
+        ran = []
+        await store.popOut(id)
+        XCTAssertTrue(store.sessions.sessions.isEmpty)
+        XCTAssertTrue(ran.contains(RunwayTools.terminal(line: "claude auth login")))
+    }
+
+    func testAChoreRunsInThePaneAndItsEndRechecksShowIf() async throws {
+        try installPlist(script: "/co/pm/runway/runway.py")
+        let store = makeStore()
+        store.setCheckout("/co")
+        store.refresh()
+        let chore = Chore(id: "codex-refresh", title: "Refresh Codex plugins", why: "", run: "python3 x.py",
+                          cwd: .checkout, showIf: "command -v codex")
+        XCTAssertEqual(store.choreLine(chore), "cd '/co' && python3 x.py")
+        store.runChore(chore)
+        let session = try XCTUnwrap(store.sessions.sessions.first)
+        XCTAssertEqual(session.title, "Refresh Codex plugins")
+        XCTAssertEqual(session.spec, LaunchSpec(executable: "/bin/zsh", arguments: ["-lc", "python3 x.py"], workingDirectory: "/co"))
+        let check = try XCTUnwrap(chore.showIfCommand(checkout: "/co", repo: nil))
+        let rechecked = expectation(description: "show_if ran again")
+        afterRun = { if $0 == check { rechecked.fulfill() } }
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "")
+        store.sessions.markExited(session.id, exitCode: 0)
+        await fulfillment(of: [rechecked], timeout: 2)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(store.choreResult(chore), "Done: no longer needed.")
+    }
+
     func testPopOutEndsTheTabAndRunsTheTerminalCommand() async throws {
         try installPlist()
         let store = makeStore()

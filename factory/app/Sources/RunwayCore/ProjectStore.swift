@@ -18,6 +18,15 @@ public final class ProjectStore {
     public private(set) var pause: PauseInfo?
     public private(set) var overall: OverallState = .allOff
     public private(set) var badge = 0
+    /// Tools this Mac needs signed in again (from the loops' sign-in checks and a sign-in pause), first in Needs you.
+    public private(set) var signInNeeds: [SignInNeed] = []
+    /// What the last sign-in re-check found, shown beside the sign-in rows until the next sign-in starts.
+    public private(set) var signInNote: String?
+    /// True while the re-check after a sign-in session runs.
+    public private(set) var signInChecking = false
+    /// What each chore's last run ended with, by its session key, shown beside its button.
+    public private(set) var choreResults: [String: String] = [:]
+    @ObservationIgnored private var runningChores: [String: (Chore, String?)] = [:]
     /// A project has ready tickets but its loop is off. Drives the amber icon; independent of notifications.
     public private(set) var readyWhileOff = false
     /// Set when a notification is clicked: the tab the window should open on.
@@ -92,6 +101,11 @@ public final class ProjectStore {
         self.checkout = defaults.string(forKey: Self.checkoutKey)
         self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
         self.sessionPlace = defaults.string(forKey: Self.sessionPlaceKey).flatMap(SessionPlace.init(rawValue:)) ?? .window
+        sessions.onExit = { [weak self] session in
+            guard let self, let key = session.command?.key else { return }
+            if key.hasPrefix("signin:") { Task { await self.recheckSignIns() } }
+            if key.hasPrefix("chore:") { Task { await self.choreEnded(key, exit: session.exitCode) } }
+        }
     }
 
     public func setSessionPlace(_ place: SessionPlace) {
@@ -147,8 +161,11 @@ public final class ProjectStore {
         if newEntries != entries { entries = newEntries }
         if pause != self.pause { self.pause = pause }
         let statuses = newEntries.map(\.status)
-        overall = OverallState.resolve(statuses, pause: pause, now: now)
-        badge = OverallState.badge(statuses)
+        let needs = SignInNeed.resolve(found.compactMap { snapshots[$0.label] }, pause: pause)
+        if needs != signInNeeds { signInNeeds = needs }
+        let resolved = OverallState.resolve(statuses, pause: pause, now: now)
+        overall = needs.isEmpty || resolved == .allOff || resolved == .error ? resolved : .waiting
+        badge = OverallState.badge(statuses) + needs.count
         let planned = found.map { ProjectSnapshot(label: $0.label, name: $0.name, loopOn: $0.loaded, status: snapshots[$0.label]) }
         readyWhileOff = ProjectSnapshot.readyWhileOff(planned)
         notify(planned, now: now)
@@ -239,11 +256,114 @@ public final class ProjectStore {
         await launch(tools.discussLoop(repo: repo), key: Self.talkKey(project, nil))
     }
 
+    // MARK: sign-in
+
+    /// Runs the need's fix command in the window's pane (always the pane: its exit starts the re-check).
+    public func signIn(_ need: SignInNeed) {
+        guard let spec = need.session(), let fix = need.fix else { return }
+        signInNote = nil
+        sessions.open(command: CommandSession(key: need.sessionKey, title: "Sign in: \(need.label)", line: fix), spec: spec)
+    }
+
+    /// After a sign-in session ends: `runway signin` in every project, then, when all pass, lift a sign-in pause
+    /// and run a tick now for each loop that was waiting on it. The result shows beside the sign-in rows.
+    public func recheckSignIns() async {
+        guard let tools = requireTools(), !signInChecking else { return }
+        signInChecking = true
+        defer { signInChecking = false }
+        var failing: [SignInCheck] = []
+        var allPassed = true
+        for project in projects where project.error == nil {
+            guard let repo = project.repoPath else { continue }
+            let result = await run(tools.signin(repo: repo))
+            let checks = (try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))).map(SignInCheck.parse) ?? []
+            if !result.succeeded {
+                allPassed = false
+                let bad = checks.filter { !$0.ok }
+                if bad.isEmpty { failing.append(SignInCheck(name: "signin", label: project.name, fix: nil, ok: false,
+                                                            detail: "\(project.name): sign-in check failed: \(result.failureMessage)")) }
+                failing += bad.filter { b in !failing.contains { $0.name == b.name } }
+            }
+        }
+        let pauseReason = PauseInfo.load(pauseURL)?.reason
+        let waiting = projects.filter {
+            $0.loaded && SignInFollowUp.wasWaiting($0.repoPath.flatMap { Heartbeat.load(repoPath: $0) }, pauseReason: pauseReason)
+        }
+        // In order, stopping at the first failure: no tick is kicked if the sign-in pause couldn't be lifted.
+        for command in SignInFollowUp.commands(allPassed: allPassed, tools: tools, waitingLoops: waiting.map(\.label)) {
+            let result = await run(command)
+            if !result.succeeded {
+                failing.append(SignInCheck(name: "follow-up", label: "", fix: nil, ok: false, detail: result.failureMessage))
+                break
+            }
+        }
+        let labels = signInNeeds.map(\.label).joined(separator: ", ")
+        signInNote = SignInFollowUp.note(label: labels.isEmpty ? "Sign-in" : labels, failing: failing)
+        waitingFetchedAt = .distantPast
+        refresh()
+    }
+
+    // MARK: chores
+
+    /// The engine checkout the chores list and its commands come from.
+    public var engineCheckout: String? {
+        checkout ?? tools.map { SetupChecks.checkout(ofRunwayScript: $0.runwayScript) }
+    }
+
+    public func choreList() -> ChoreList {
+        guard let engineCheckout else { return .unusable("Can't find the engine checkout. Choose it under Scripts.") }
+        return ChoreList.load(checkout: engineCheckout)
+    }
+
+    /// The chores for one place whose `show_if` passes now (each at most 10 seconds). `repo` for per-repo chores.
+    public func visibleChores(_ place: Chore.Place, repo: String? = nil) async -> [Chore] {
+        guard let engineCheckout else { return [] }
+        var shown: [Chore] = []
+        for chore in choreList().chores where chore.cwd == place {
+            guard let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else { shown.append(chore); continue }
+            if Chore.needed(probe: await run(check)) { shown.append(chore) }
+        }
+        return shown
+    }
+
+    /// The exact line a chore runs and where, for the button to show before the click.
+    public func choreLine(_ chore: Chore, repo: String? = nil) -> String? {
+        guard let tools, let engineCheckout, let folder = chore.folder(checkout: engineCheckout, repo: repo) else { return nil }
+        return "cd \(RunwayTools.shellQuote(folder)) && " + chore.line(runwayScript: tools.runwayScript, checkout: engineCheckout, repo: repo)
+    }
+
+    /// Runs the chore in the window's pane, as Joe. Its exit re-runs `show_if` and records the result.
+    public func runChore(_ chore: Chore, repo: String? = nil) {
+        guard let tools, let engineCheckout, let line = choreLine(chore, repo: repo),
+              let spec = chore.session(runwayScript: tools.runwayScript, checkout: engineCheckout, repo: repo) else { return }
+        let key = chore.sessionKey(repo: repo)
+        choreResults[key] = nil
+        runningChores[key] = (chore, repo)
+        sessions.open(command: CommandSession(key: key, title: chore.title, line: line), spec: spec)
+    }
+
+    public func choreResult(_ chore: Chore, repo: String? = nil) -> String? { choreResults[chore.sessionKey(repo: repo)] }
+
+    private func choreEnded(_ key: String, exit: Int32?) async {
+        guard let pending = runningChores.removeValue(forKey: key) else { return }
+        let (chore, repo) = pending
+        var probe: CommandResult?
+        if exit == 0, let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) {
+            probe = await run(check)
+        }
+        choreResults[key] = chore.result(exit: exit, probe: probe)
+    }
+
     /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.
     public func popOut(_ id: UUID) async {
         guard let session = sessions.sessions.first(where: { $0.id == id }), let tools = requireTools() else { return }
         let repo = session.spec.workingDirectory
         sessions.close(id)
+        if let line = session.command?.line {
+            let result = await run(RunwayTools.terminal(line: line))
+            if !result.succeeded { lastError = result.failureMessage }
+            return
+        }
         let command = session.ticket.map {
             session.resume ? tools.discussResume(ticket: $0, repo: repo) : tools.discuss(ticket: $0, repo: repo)
         } ?? tools.discussLoop(repo: repo)

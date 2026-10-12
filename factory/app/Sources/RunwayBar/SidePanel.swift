@@ -15,6 +15,7 @@ struct SidePanel: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
+                    SignInSection(store: store)
                     if store.entries.isEmpty {
                         Text("No Runway projects found").foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity).padding(.top, 40)
@@ -799,6 +800,56 @@ private struct WindowLevel: NSViewRepresentable {
         DispatchQueue.main.async {
             view.window?.level = floating ? .floating : .normal
             view.window?.collectionBehavior.insert(.canJoinAllSpaces)
+        }
+    }
+}
+
+/// A tool this Mac needs signed in again: first in Needs you, above every project. "Sign in" shows the command it
+/// runs, runs it in the Runway window's pane, and when that ends the store re-checks and resumes a sign-in pause.
+struct SignInSection: View {
+    let store: ProjectStore
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        let needs = store.signInNeeds
+        if !needs.isEmpty || store.signInNote != nil || store.signInChecking {
+            VStack(alignment: .leading, spacing: 6) {
+                if !needs.isEmpty { SectionLabel(text: "Needs you · sign in", trailing: nil) }
+                ForEach(needs) { need in row(need) }
+                if store.signInChecking {
+                    HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Checking sign-ins…").font(.caption) }
+                } else if let note = store.signInNote {
+                    Text(note).font(.caption).foregroundStyle(needs.isEmpty ? .green : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(needs.isEmpty ? 0.05 : 0.15), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.orange.opacity(needs.isEmpty ? 0.2 : 0.6), lineWidth: 1))
+        }
+    }
+
+    private func row(_ need: SignInNeed) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("\(need.label) is signed out", systemImage: "person.crop.circle.badge.exclamationmark")
+                .font(.caption.weight(.medium))
+            if !need.detail.isEmpty { Text(need.detail).font(.caption).foregroundStyle(.secondary) }
+            if let fix = need.fix {
+                Text("Runs `\(fix)` in the Runway window").font(.caption2).foregroundStyle(.secondary)
+                Button("Sign in") {
+                    store.signIn(need)
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    openWindow(id: "runway")
+                }
+                .buttonStyle(.borderless).font(.caption)
+                .disabled(store.signInChecking)
+            } else {
+                Text("Runway doesn't know a command for this one. Sign in with the tool itself, then press Recheck.")
+                    .font(.caption2).foregroundStyle(.secondary)
+                Button("Recheck") { Task { await store.recheckSignIns() } }
+                    .buttonStyle(.borderless).font(.caption)
+            }
         }
     }
 }
