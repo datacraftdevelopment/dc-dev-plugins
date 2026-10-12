@@ -147,8 +147,11 @@ class ConnectionRegressionTests(unittest.TestCase):
             for name in ['pm','fm-dc']:
                 package=stage/name;package.mkdir(parents=True);(package/'new').write_text('new');packages.append(package)
                 dest=live/name;dest.mkdir(parents=True);(dest/'.dc-codex-build.json').write_text('{}');(dest/'old').write_text(name)
-            with patch('refresh_codex.validate_package',side_effect=[None,ValueError('fm-dc: bad manifest')]):
-                with self.assertRaises(ValueError):promote(packages,live)
+            for package in packages:
+                (package/'.codex-plugin').mkdir();(package/'.codex-plugin/plugin.json').write_text(json.dumps({'name':package.name,'version':'1','skills':'./skills/'}))
+                (package/'skills/one').mkdir(parents=True);(package/'skills/one/SKILL.md').write_text('---\nname: one\ndescription: d\n---\n')
+            (packages[1]/'skills/one/SKILL.md').write_text('no frontmatter\n')  # the later package is the bad one
+            with self.assertRaisesRegex(ValueError,'frontmatter'):promote(packages,live)
             for name in ['pm','fm-dc']:
                 self.assertEqual((live/name/'old').read_text(),name)
                 self.assertFalse((live/name/'new').exists())

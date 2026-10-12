@@ -66,8 +66,58 @@ class CodexInstallTests(unittest.TestCase):
     def test_missing_skills_folder_is_refused(self):
         pm = package(self.root, 'pm')
         (pm / 'skills').rmdir()
-        with self.assertRaisesRegex(ValueError, 'skills folder'):
+        with self.assertRaisesRegex(ValueError, 'skills'):
             build_codex.validate_package(pm)
+
+    def test_invalid_catalog_is_left_byte_for_byte_and_nothing_installs(self):
+        pm = package(self.root, 'pm')
+        self.market.parent.mkdir(parents=True)
+        for catalog in ('{"plugins": []}', '{"name": "", "plugins": []}', '{"name": "  ", "plugins": []}',
+                        '{"name": 42, "plugins": []}', '{"name": "personal", "plugins": {}}',
+                        '{"name": "personal", "plugins": ["pm"]}', '[]'):
+            with self.subTest(catalog=catalog):
+                self.market.write_text(catalog)
+                with patch.object(build_codex, 'run') as run, self.assertRaises(ValueError):
+                    build_codex.install([pm], self.market)
+                self.assertEqual(self.market.read_text(), catalog)
+                run.assert_not_called()
+
+    def test_malformed_packages_are_refused(self):
+        def skill(p, text):
+            (p / 'skills/one').mkdir()
+            (p / 'skills/one/SKILL.md').write_text(text)
+        cases = {
+            'no frontmatter': lambda p: skill(p, '# just a heading\n'),
+            'unclosed frontmatter': lambda p: skill(p, '---\nname: one\n'),
+            'bad yaml': lambda p: skill(p, '---\nname: [one\n---\n'),
+            'no description': lambda p: skill(p, '---\nname: one\n---\nbody\n'),
+            'blank name': lambda p: skill(p, '---\nname: ""\ndescription: d\n---\n'),
+            'folder without SKILL.md': lambda p: (p / 'skills/one').mkdir(),
+        }
+        for label, breaks in cases.items():
+            with self.subTest(label):
+                pm = package(Path(tempfile.mkdtemp()), 'pm')
+                breaks(pm)
+                with self.assertRaisesRegex(ValueError, 'frontmatter'):
+                    build_codex.validate_package(pm)
+        pm = package(Path(tempfile.mkdtemp()), 'pm', mcpServers='./.mcp.json')
+        with self.assertRaisesRegex(ValueError, 'missing'):
+            build_codex.validate_package(pm)
+        for text in ('not json', '[]', '{"mcpServers": []}'):
+            with self.subTest(mcp=text):
+                (pm / '.mcp.json').write_text(text)
+                with self.assertRaisesRegex(ValueError, 'MCP'):
+                    build_codex.validate_package(pm)
+        pm = package(Path(tempfile.mkdtemp()), 'pm', interface={'composerIcon': './assets/icon.png'})
+        with self.assertRaisesRegex(ValueError, 'composerIcon'):
+            build_codex.validate_package(pm)
+
+    def test_a_good_package_passes(self):
+        pm = package(self.root, 'pm', mcpServers='./.mcp.json')
+        (pm / '.mcp.json').write_text('{"mcpServers": {}}')
+        (pm / 'skills/one').mkdir()
+        (pm / 'skills/one/SKILL.md').write_text('---\nname: one\ndescription: >\n  Folded text.\n---\nbody\n')
+        build_codex.validate_package(pm)
 
 
 if __name__ == '__main__':

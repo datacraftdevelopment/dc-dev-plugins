@@ -324,43 +324,83 @@ def build_one(name, parent):
     return dest
 
 
+def _frontmatter(skill_md):
+    text = skill_md.read_text()
+    if not text.startswith('---\n') or '\n---' not in text[4:]:
+        return None
+    import yaml  # scripts/requirements-codex.txt
+    try:
+        data = yaml.safe_load(text[4:text.index('\n---', 4)])
+    except yaml.YAMLError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def validate_package(package):
-    """What Codex needs to load a local plugin: a manifest named for its folder, with a version,
-    and the skills folder it declares. Codex 0.159 dropped the plugin-creator helper scripts that
-    used to check this, so the check lives here."""
+    """What Codex needs to load a local plugin, checked before anything is replaced: a manifest
+    named for its folder with a version, every path the manifest declares present, a readable MCP
+    config, and frontmatter (name, description) on every skill. Codex 0.159 dropped the
+    plugin-creator helper scripts that used to check this, so the check lives here."""
     manifest = package / '.codex-plugin/plugin.json'
     if not manifest.is_file():
         raise ValueError(f'{package.name}: missing {manifest}')
-    data = json.loads(manifest.read_text())
+    try:
+        data = json.loads(manifest.read_text())
+    except ValueError as e:
+        raise ValueError(f'{package.name}: unreadable manifest: {e}')
     if data.get('name') != package.name:
         raise ValueError(f'{package.name}: manifest name is {data.get("name")!r}')
     if not isinstance(data.get('version'), str) or not data['version']:
         raise ValueError(f'{package.name}: manifest has no version')
+    declared = [(k, v) for k, v in data.items() if isinstance(v, str) and v.startswith('./')]
+    declared += [(k, v) for k, v in (data.get('interface') or {}).items() if isinstance(v, str) and v.startswith('./')]
+    for key, rel in declared:
+        if not (package / rel).exists():
+            raise ValueError(f'{package.name}: declared {key} {rel} is missing')
+    mcp = data.get('mcpServers')
+    if isinstance(mcp, str):
+        try:
+            servers = json.loads((package / mcp).read_text()).get('mcpServers')
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f'{package.name}: unreadable MCP config {mcp}: {e}')
+        if not isinstance(servers, dict):
+            raise ValueError(f'{package.name}: MCP config {mcp} has no mcpServers object')
     skills = data.get('skills')
-    if skills and not (package / skills).is_dir():
-        raise ValueError(f'{package.name}: declared skills folder {skills} is missing')
+    if skills:
+        if not (package / skills).is_dir():
+            raise ValueError(f'{package.name}: declared skills folder {skills} is missing')
+        for folder in sorted(p for p in (package / skills).iterdir() if p.is_dir()):
+            meta = _frontmatter(folder / 'SKILL.md') if (folder / 'SKILL.md').is_file() else None
+            if not meta or not all(isinstance(meta.get(k), str) and meta[k].strip() for k in ('name', 'description')):
+                raise ValueError(f'{package.name}: skill {folder.name} has no valid frontmatter (name, description)')
 
 
 def register(packages, marketplace):
     """Add each package to the personal marketplace (~/.agents/plugins/marketplace.json), keeping
-    existing entries, their order and metadata as they are. Returns the marketplace name."""
+    existing entries, their order and metadata as they are. The whole catalog is checked before
+    anything is written. Returns the marketplace name."""
     data = json.loads(marketplace.read_text()) if marketplace.exists() else {'name': 'personal', 'plugins': []}
-    plugins = data.setdefault('plugins', [])
-    changed = not marketplace.exists()
+    name = data.get('name') if isinstance(data, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f'{marketplace}: marketplace has no name')
+    plugins = data.get('plugins')
+    if not isinstance(plugins, list) or not all(isinstance(e, dict) for e in plugins):
+        raise ValueError(f'{marketplace}: plugins is not a list of entries')
+    added = []
     for package in packages:
         expected = {'source': 'local', 'path': f'./plugins/{package.name}'}
         entry = next((e for e in plugins if e.get('name') == package.name), None)
         if entry is None:
-            plugins.append({'name': package.name, 'source': expected})
-            changed = True
+            added.append({'name': package.name, 'source': expected})
         elif entry.get('source') != expected:
             raise ValueError(f'{package.name}: personal entry points at another source')
-    if changed:
+    if added or not marketplace.exists():
+        plugins.extend(added)
         marketplace.parent.mkdir(parents=True, exist_ok=True)
         tmp = marketplace.with_name(marketplace.name + '.tmp')
         tmp.write_text(json.dumps(data, indent=2) + '\n')
         tmp.replace(marketplace)
-    return data['name']
+    return name
 
 
 def install(packages, marketplace=None):
