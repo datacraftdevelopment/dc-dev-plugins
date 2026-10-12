@@ -27,7 +27,7 @@ struct SidePanel: View {
                         }
                     }
                     if !store.entries.isEmpty {
-                        FinishedList(store: store, model: finished, now: context.date)
+                        FinishedList(store: store, model: finished, now: context.date, scroll: proxy)
                     }
                 }
                 .padding(10)
@@ -140,7 +140,46 @@ private struct ProjectNow: View {
         }
     }
 
+    /// Start or Stop for this loop, the same store calls as the window toolbar. Spinner and disabled while it runs.
+    private var loopButton: some View {
+        let project = entry.project
+        let busy = store.isLoopBusy(project)
+        return Button {
+            Task { await (project.loaded ? store.stopLoop(project) : store.startLoop(project)) }
+        } label: {
+            if busy {
+                ProgressView().controlSize(.small)
+            } else {
+                // ViewThatFits drops the label to the icon alone when the row gets too narrow.
+                ViewThatFits(in: .horizontal) {
+                    Label(project.loaded ? "Stop" : "Start", systemImage: project.loaded ? "stop.fill" : "play.fill")
+                        .labelStyle(.titleAndIcon)
+                    Image(systemName: project.loaded ? "stop.fill" : "play.fill")
+                }
+            }
+        }
+        .buttonStyle(.borderless).font(.caption)
+        .help(project.loaded ? "Stop this loop" : "Start this loop")
+        .disabled(busy || (!project.loaded && (project.repoPath == nil || project.error != nil)))
+    }
+
     private func header(needsYouCount: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            headerRow(needsYouCount: needsYouCount)
+            if let message = store.loopError(for: entry.project) {
+                HStack(alignment: .top, spacing: 4) {
+                    Text(message).font(.caption).foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    Spacer(minLength: 0)
+                    Button { store.dismissLoopError(for: entry.project) } label: { Image(systemName: "xmark") }
+                        .buttonStyle(.borderless).font(.caption).help("Dismiss")
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private func headerRow(needsYouCount: Int) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color(entry.status.state)).frame(width: 8, height: 8)
             Text(entry.status.name).font(.headline).lineLimit(1)
@@ -152,7 +191,8 @@ private struct ProjectNow: View {
                 .buttonStyle(.borderless).foregroundStyle(.orange).help("Jump to Needs you")
             }
             Text(entry.project.loaded ? (store.pause != nil ? "paused" : "loop on") : "loop off")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).lineLimit(1).fixedSize()
+            loopButton
         }
         .padding(.horizontal, 2)
     }
@@ -346,7 +386,7 @@ private struct NeedsYouRowView: View {
                 Button("Details", action: details)
             }
             .buttonStyle(.borderless).font(.caption)
-            TalkButton(store: store, project: project, ticket: row.id).buttonStyle(.borderless).font(.caption)
+            TalkButton(store: store, project: project, ticket: row.id, resumable: row.resumable).buttonStyle(.borderless).font(.caption)
             if !row.waiting {
                 EmptyView()  // errored only: nothing to go or no on
             } else if let answer {
@@ -474,6 +514,7 @@ private struct FinishedList: View {
     let store: ProjectStore
     let model: FinishedModel
     let now: Date
+    let scroll: ScrollViewProxy
     @State private var expanded: Set<String> = []
 
     var body: some View {
@@ -490,7 +531,8 @@ private struct FinishedList: View {
                              trailing: "\(PanelHistory.doneCount(rows)) done · \(PanelHistory.cost(PanelHistory.cost(of: rows)))")
                     .padding(.top, 4)
                 ForEach(day.rows) { tagged in
-                    FinishedRowView(tagged: tagged, snapshot: store.snapshot(for: tagged.projectLabel),
+                    FinishedRowView(tagged: tagged, store: store, scroll: scroll,
+                                    snapshot: store.snapshot(for: tagged.projectLabel),
                                     tracker: store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project.tracker,
                                     showProject: multiProject, isExpanded: expanded.contains(tagged.id)) {
                         if expanded.contains(tagged.id) { expanded.remove(tagged.id) } else { expanded.insert(tagged.id) }
@@ -503,6 +545,8 @@ private struct FinishedList: View {
 
 private struct FinishedRowView: View {
     let tagged: TaggedRow
+    let store: ProjectStore
+    let scroll: ScrollViewProxy
     let snapshot: StatusSnapshot?
     let tracker: String?
     let showProject: Bool
@@ -515,6 +559,7 @@ private struct FinishedRowView: View {
             Button(action: toggle) { summary.contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityHint(isExpanded ? "Hide details" : "Show details")
+            talkRow
             if isExpanded {
                 details
                     .padding(8)
@@ -525,6 +570,20 @@ private struct FinishedRowView: View {
         }
         .padding(.horizontal, 4).padding(.vertical, 4)
         .overlay(alignment: .top) { Divider().opacity(0.5) }
+    }
+
+    /// A row that ended "needs you" can be talked through from here while its ticket still waits.
+    @ViewBuilder private var talkRow: some View {
+        if case .ticket(let t) = tagged.row, snapshot?.canTalkThrough(finished: t) == true,
+           let project = store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project {
+            HStack(spacing: 10) {
+                TalkButton(store: store, project: project, ticket: t.ticket,
+                           resumable: snapshot?.canResumeWorker(t.ticket) == true)
+                Button("Go") { withAnimation { scroll.scrollTo(NeedsYouSection.anchor(tagged.projectLabel), anchor: .top) } }
+                    .help("Scroll to this ticket's Needs you row")
+            }
+            .buttonStyle(.borderless).font(.caption).padding(.leading, 20)
+        }
     }
 
     // MARK: summary

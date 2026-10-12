@@ -19,6 +19,11 @@ extension RunwayTools {
         spec(repo: repo, discussTail(ticket: ticket))
     }
 
+    /// The same command as `discussResume(ticket:repo:)`, run in the pane instead of Terminal.
+    public func discussResumeSession(ticket: String, repo: String) -> LaunchSpec {
+        spec(repo: repo, discussTail(ticket: ticket, resume: true))
+    }
+
     public func discussLoopSession(repo: String) -> LaunchSpec {
         spec(repo: repo, "discuss --loop")
     }
@@ -34,9 +39,11 @@ public struct Session: Identifiable, Equatable, Sendable {
     /// nil for the loop (`discuss --loop`).
     public let ticket: String?
     public let spec: LaunchSpec
+    /// True for "Resume worker": the ticket's own claude session, not a fresh one.
+    public var resume = false
     public var alive = true
 
-    public var title: String { ticket ?? "loop" }
+    public var title: String { ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
 }
 
 /// The tabs of the terminal pane. One live tab per ticket (or per project's loop); a tab whose process
@@ -51,12 +58,12 @@ public final class SessionRegistry {
     public var liveCount: Int { sessions.filter(\.alive).count }
 
     @discardableResult
-    public func open(project: String, ticket: String?, spec: LaunchSpec) -> Session {
-        if let existing = sessions.first(where: { $0.alive && $0.project == project && $0.ticket == ticket }) {
+    public func open(project: String, ticket: String?, resume: Bool = false, spec: LaunchSpec) -> Session {
+        if let existing = sessions.first(where: { $0.alive && $0.project == project && $0.ticket == ticket && $0.resume == resume }) {
             selected = existing.id
             return existing
         }
-        let session = Session(id: UUID(), project: project, ticket: ticket, spec: spec)
+        let session = Session(id: UUID(), project: project, ticket: ticket, spec: spec, resume: resume)
         sessions.append(session)
         selected = session.id
         return session

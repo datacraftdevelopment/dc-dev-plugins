@@ -96,9 +96,28 @@ public struct RunwayTools: Equatable, Sendable {
     }
 
     /// The checkout from the setting if there is one, else the one the first plist points at.
-    public static func locate(checkoutSetting: String?, projects: [Project]) -> RunwayTools? {
+    public static func locate(checkoutSetting: String?, projects: [Project],
+                              fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> RunwayTools? {
         if let checkoutSetting, !checkoutSetting.isEmpty { return RunwayTools(checkout: checkoutSetting) }
-        return projects.lazy.compactMap(\.runwayScript).first.map { RunwayTools(runwayScript: $0) }
+        guard let script = projects.lazy.compactMap(\.runwayScript).first else { return nil }
+        if !fileExists(script) {
+            // The engine moved to pm/runway/: look in the checkout the plist's path or the repos it names point at.
+            for candidate in checkoutCandidates(script: script, repos: projects.compactMap(\.repoPath)) {
+                let moved = RunwayTools(checkout: candidate)
+                if fileExists(moved.runwayScript) { return moved }
+            }
+        }
+        return RunwayTools(runwayScript: script)
+    }
+
+    /// Where a checkout might be: above `factory/` or `experiments/` in the old plist path, then each repo a plist names.
+    private static func checkoutCandidates(script: String, repos: [String]) -> [String] {
+        var found: [String] = []
+        let parts = script.split(separator: "/").map(String.init)
+        if let i = parts.firstIndex(where: { $0 == "factory" || $0 == "experiments" }) {
+            found.append("/" + parts[..<i].joined(separator: "/"))
+        }
+        return found + repos
     }
 
     public func start(repo: String, minutes: Int) -> Command {

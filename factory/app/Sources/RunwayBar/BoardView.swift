@@ -411,7 +411,8 @@ private struct CardDetails: View {
     private var actions: some View {
         HStack(spacing: 10) {
             if card.waiting || card.errored != nil || card.column == .running {
-                TalkButton(store: store, project: entry.project, ticket: card.id)
+                TalkButton(store: store, project: entry.project, ticket: card.id,
+                           resumable: card.ticket?.resumable == true)
             }
             if let url = card.ticket?.url.flatMap(URL.init(string:)), url.scheme?.hasPrefix("http") == true {
                 Button(TicketLink.buttonTitle(tracker: entry.project.tracker)) { openURL(url) }

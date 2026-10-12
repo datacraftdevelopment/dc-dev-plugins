@@ -17,6 +17,8 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public var errored: String?
     /// Why a waiting ticket waits, when status gives a `reason`.
     public var reason: String? = nil
+    /// The latest attempt was a claude session the engine can reopen (`discuss --resume`); false from an older engine.
+    public var resumable = false
 }
 
 public struct QueueSections: Equatable, Sendable {
@@ -49,7 +51,8 @@ public struct QueueStatus: Equatable, Sendable {
                                waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String,
                                packet: raw["packet"] as? String,
                                errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 },
-                               reason: (raw["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 })
+                               reason: (raw["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                               resumable: raw["resumable"] as? Bool ?? false)
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }

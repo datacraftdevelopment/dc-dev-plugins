@@ -85,6 +85,13 @@ Q_ISSUE = """query($id: String!) { issue(id: $id) { %s } }""" % ISSUE_FIELDS
 Q_OLDER = """query($id: String!, $before: String!) { issue(id: $id) {
   comments(last: 50, before: $before) { pageInfo { hasPreviousPage startCursor } nodes { body createdAt } } } }"""
 
+SPEC_FIELDS = """identifier title description url state { type } children(first: 50) { nodes {
+  identifier title state { type } } }"""
+
+Q_PARENT = "query($id: String!) { issue(id: $id) { parent { %s } } }" % SPEC_FIELDS
+
+Q_SPEC = "query($id: String!) { issue(id: $id) { %s } }" % SPEC_FIELDS
+
 Q_COMMENTS = """query($id: String!) { issue(id: $id) { comments(last: 50) { nodes { body createdAt } } } }"""
 
 Q_TEAM ="""query($key: String!) {
@@ -193,6 +200,10 @@ class LinearTicket(ticket_protocol.Ticket):
     def blocked_by(self) -> list[str]:
         return [r["issue"]["identifier"] for r in self.node["inverseRelations"]["nodes"] if r["type"] == "blocks"]
 
+    def parent_issue(self) -> dict | None:
+        d = self.tr.api.gql(Q_PARENT, {"id": self.node["id"]})["issue"]
+        return self.tr.spec_fact((d or {}).get("parent"))
+
     # -- writes --
 
     def _update(self, landed=None, **inp) -> None:
@@ -267,6 +278,22 @@ class LinearTracker(ticket_protocol.Tracker):
             sys.exit('runway.json needs "linear": {"team": "<team key>"} (and usually "project").')
         self.api = Linear(self.c)
         self._team = None
+
+    @staticmethod
+    def spec_fact(n: dict | None) -> dict | None:
+        """An issue node as the spec fact the discuss brief reads. Linear's workspace members are all trusted."""
+        if not n:
+            return None
+        done = ("completed", "canceled", "duplicate")
+        return {"id": n["identifier"], "title": n["title"], "url": n.get("url"), "closed": n["state"]["type"] in done,
+                "body": n.get("description"),
+                "children": [{"id": c["identifier"], "title": c["title"], "closed": c["state"]["type"] in done}
+                             for c in (n.get("children") or {}).get("nodes", [])]}
+
+    def spec_issue(self, ref: str) -> dict | None:
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*-\d+", ref):
+            return None
+        return self.spec_fact(self.api.gql(Q_SPEC, {"id": ref})["issue"])
 
     # -- team metadata (cached per run) --
 

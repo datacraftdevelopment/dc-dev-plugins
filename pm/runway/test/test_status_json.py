@@ -58,7 +58,8 @@ class StatusJson(unittest.TestCase):
         self.assertEqual(set(by), {"eff/0%d" % i for i in range(1, 8)})  # 08 is not Runway's
         w = by["eff/03"]
         self.assertEqual(set(w), {"id", "title", "url", "status", "gate", "blocked_by",
-                                  "waiting_on", "packet", "harness", "claimed_by", "errored"})
+                                  "waiting_on", "packet", "harness", "claimed_by", "errored",
+                                  "next_step", "reason", "resumable"})
         self.assertEqual(w["status"], "needs-human")
         self.assertEqual(w["gate"], "human")
         self.assertEqual(w["waiting_on"], "Joe, go/no-go")
@@ -69,6 +70,59 @@ class StatusJson(unittest.TestCase):
         self.assertIsNone(by["eff/07"]["packet"])
         self.assertIsNone(by["eff/07"]["waiting_on"])
         self.assertEqual(by["eff/05"]["url"], ".scratch/eff/issues/05-auto-a.md")
+
+    def test_next_step_reason_run_now_and_finish(self):
+        d = self.doc()
+        by = {t["id"]: t for t in d["tickets"]}
+        self.assertEqual({k: v["next_step"] for k, v in by.items()}, {
+            "eff/01": "done", "eff/02": "claimed_unknown_owner", "eff/03": "waiting", "eff/04": "run",
+            "eff/05": "queued", "eff/06": "prep", "eff/07": "blocked"})
+        self.assertEqual(by["eff/07"]["reason"], "blocked by eff/02, eff/04")
+        self.assertEqual(d["run_now"], "eff/04")
+        self.assertEqual(d["finish"], {"verdict": "wait", "reason": "a ticket is claimed"})
+        self.assertIsNone(d["idle_reason"])
+        json.dumps(d)
+
+    def test_idle_reason_when_nothing_can_run(self):
+        root = Path(tempfile.mkdtemp())
+        d = root / ".scratch" / "eff" / "issues"
+        d.mkdir(parents=True)
+        (d / "07-ask.md").write_text("# ask\nStatus: needs-human\nGate: human\nWaiting on: Joe\n")
+        for n in (8, 9):
+            (d / f"{n:02d}-stuck.md").write_text(f"# stuck\nBlocked by: 07\n")
+        doc = runway.status_json({"tracker": "markdown"}, root, runway.make_tracker({"tracker": "markdown"}, root))
+        self.assertIsNone(doc["run_now"])
+        self.assertEqual(doc["idle_reason"], "nothing can run: 2 tickets wait on eff/07 (waiting on you)")
+        self.assertEqual(doc["groups"]["blocked"], ["eff/08", "eff/09"])
+        by = {t["id"]: t for t in doc["tickets"]}
+        self.assertEqual(by["eff/08"]["reason"], "blocked by eff/07, waiting on you")
+
+    def test_gated_ticket_behind_another_decision_is_blocked(self):
+        root = Path(tempfile.mkdtemp())
+        d = root / ".scratch" / "eff" / "issues"
+        d.mkdir(parents=True)
+        (d / "01-ask.md").write_text("# ask\nStatus: needs-human\nGate: human\n")
+        (d / "02-next.md").write_text("# next\nGate: human\nBlocked by: 01\n")
+        doc = runway.status_json({"tracker": "markdown"}, root, runway.make_tracker({"tracker": "markdown"}, root))
+        self.assertEqual(doc["groups"]["blocked"], ["eff/02"])
+        self.assertEqual(doc["groups"]["ready_prep"], [])
+
+    def test_unknown_harness_waits_on_you_with_its_reason(self):
+        root = Path(tempfile.mkdtemp())
+        d = root / ".scratch" / "eff" / "issues"
+        d.mkdir(parents=True)
+        (d / "01-odd.md").write_text("# odd\nHarness: nope\n")
+        cfg = {"tracker": "markdown"}
+        doc = runway.status_json(cfg, root, runway.make_tracker(cfg, root))
+        self.assertEqual(doc["groups"]["waiting"], ["eff/01"])
+        self.assertEqual(doc["groups"]["ready_auto"], [])
+        t = doc["tickets"][0]
+        self.assertEqual(t["next_step"], "park")
+        self.assertIn("unknown harness 'nope'", t["reason"])
+        out = subprocess.run([sys.executable, str(Path(runway.__file__)), "--root", str(root), "status"],
+                             capture_output=True, text=True, check=True).stdout
+        self.assertIn("Waiting on you (1)\n  eff/01", out)
+        self.assertIn("unknown harness 'nope'", out)
 
     def run_cli(self, *args):
         script = str(Path(runway.__file__))
