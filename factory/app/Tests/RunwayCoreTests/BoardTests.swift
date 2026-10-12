@@ -93,6 +93,19 @@ final class BoardTests: XCTestCase {
         XCTAssertEqual(BoardStats.make(board: board, runs: [], now: Date()).needsYou, 1)  // an answered card isn't waiting
     }
 
+    /// A "no" that resolves the ticket: status lists it as done, no run merged it, so only the answer keeps it on the board.
+    func testAnsweredTicketResolvedWithoutAMergeStaysInNeedsYou() throws {
+        let q = try status(#"""
+        {"version": 1, "groups": {"done": ["A"]},
+         "tickets": [{"id": "A", "title": "Drop it", "status": "resolved", "gate": "human"}]}
+        """#)
+        let answered = try XCTUnwrap(q.tickets.first)
+        let board = Board.build(queue: q, answered: [answered])
+        XCTAssertEqual(board.card("A")?.column, .needsYou)
+        XCTAssertEqual(board.card("A")?.note, "Answered")
+        XCTAssertEqual(Board.build(queue: q).card("A"), nil)  // without the answer it has no column
+    }
+
     /// Go, then a refresh in which status has dropped the ticket: the card and its answer are still on the board.
     @MainActor func testAnswerThenRefreshKeepsTheAnsweredCard() async throws {
         let first = try String(contentsOf: XCTUnwrap(Bundle.module.url(forResource: "status", withExtension: "json", subdirectory: "Fixtures")), encoding: .utf8)

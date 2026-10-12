@@ -62,7 +62,7 @@ public struct Board: Equatable, Sendable {
     /// - up next: `ready_auto` then `ready_prep`, in queue order;
     /// - blocked: the `blocked` group;
     /// - done: tickets this round merged (`RoundLog.merged`), newest first.
-    /// A ticket Joe answered here (`answered`, from `DecisionsFeed`) that status no longer lists stays in Needs you,
+    /// A ticket Joe answered here (`answered`, from `DecisionsFeed`) that no column above holds stays in Needs you,
     /// so its "Answered" outlives the refresh. A live ticket status doesn't know (no status yet, or a stale one)
     /// still gets a Running card with just its id.
     public static func build(queue: QueueStatus?, liveTicket: String? = nil, runs: [RunRecord] = [],
@@ -102,10 +102,6 @@ public struct Board: Equatable, Sendable {
             add(.needsYou, card(t, .needsYou, note: t.errored.map(ErroredKind.words)))
         }
 
-        for t in answered where byID[t.id] == nil {
-            add(.needsYou, card(t, .needsYou, note: "Answered"))
-        }
-
         let auto = group("ready_auto"), prep = group("ready_prep")
         for (index, t) in auto.enumerated() {
             add(.upNext, card(t, .upNext, note: index == 0 ? "Next in line" : nil))
@@ -122,6 +118,10 @@ public struct Board: Equatable, Sendable {
             let t = byID[merged.ticket]
             add(.done, BoardCard(id: merged.ticket, title: t?.title ?? "", column: .done, note: merged.note,
                                  ticket: t, errored: nil, waiting: false, needsPrep: false, harness: t?.harness))
+        }
+        // Last, so it only catches what nothing above placed: dropped from status, or resolved by a "no" and not merged.
+        for t in answered {
+            add(.needsYou, card(t, .needsYou, note: "Answered"))
         }
         return Board(columns: columns)
     }
