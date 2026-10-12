@@ -919,9 +919,8 @@ def make_tracker(cfg: dict, root: Path):
 
 # ---------- frontier ----------
 
-# The blocker rules live in queue_plan; the tick and the sign-in check still call them from here until they move over.
+# The blocker rules live in queue_plan.
 unblocked = queue_plan.unblocked
-will_unblock_without_joe = queue_plan.will_unblock_without_joe
 
 
 def notify(cfg: dict, root: Path, msg: str) -> None:
@@ -1024,7 +1023,7 @@ def cmd_signin(cfg: dict, root: Path, as_json: bool, tickets: list | None = None
     the project's default harness. When the tickets couldn't be loaded, a failing `tickets` check says so: the
     harnesses the queue needs are unknown, so signin never reports all clear. Claims and preps nothing, makes
     no model call, sends no notification. Exit status 0 when every check passes."""
-    names = list(dict.fromkeys([resolve_harness(cfg)["name"], *work_harnesses(cfg, tickets or [])]))
+    names = list(dict.fromkeys([resolve_harness(cfg)["name"], *queue_plan_for(cfg, tickets or []).harnesses_needed]))
     results = signin_checks(cfg, root, names, panel=cfg.get("review") == "panel", finish=True)
     if load_error:
         results.append({"name": "tickets", "ok": False, "label": "Tickets", "fix": "runway status",
@@ -1053,24 +1052,10 @@ def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish
     return True
 
 
-def work_harnesses(cfg: dict, tickets: list) -> list:
-    """The harnesses the next tick needs: one per ready ticket it could run or prep, in queue order, no repeats."""
-    me = machine_name()
-    names = []
-    for t in tickets:
-        if t.status != "ready" or harness_error(cfg, t):
-            continue
-        prep_it = t.gate == "human" and will_unblock_without_joe(t, tickets)
-        run_it = t.gate in RUNNABLE_GATES and unblocked(t, tickets) and (not t.claimed_by or t.claimed_by == me)
-        if prep_it or run_it:
-            names.append(resolve_harness(cfg, t)["name"])
-    return list(dict.fromkeys(names))
-
-
-def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
-    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
-    names = work_harnesses(cfg, tickets)
-    return bool(names) and signin_waiting(cfg, root, names)
+def signin_waiting_for_plan(cfg: dict, root: Path, qp) -> bool:
+    """Only a tick with work to start checks sign-ins: the queue plan lists the harnesses its run, queued and
+    prep tickets need, and an empty list means nothing to start."""
+    return bool(qp.harnesses_needed) and signin_waiting(cfg, root, qp.harnesses_needed)
 
 
 def record(root: Path, rec: dict) -> None:
@@ -2601,14 +2586,11 @@ def cmd_discuss_loop(root: Path) -> None:
 
 # ---------- commands ----------
 
-def park_bad_harness(cfg: dict, root: Path, t) -> bool:
-    """Park a ready ticket whose harness override is unknown: log it and hand it to Joe. True if parked."""
-    err = harness_error(cfg, t) if t.status == "ready" else None
-    if not err:
-        return False
-    log(root, f"park  {t.id} {err}")
-    t.mark_needs_human("fix the harness label", f"Runway parked this ticket: {err}. Fix the harness override, then `runway go`.")
-    return True
+def park_bad_harness(root: Path, step) -> None:
+    """Park a ready ticket whose harness override is unknown (a queue plan park step): log it, hand it to Joe."""
+    t = step.ticket
+    log(root, f"park  {t.id} {step.reason}")
+    t.mark_needs_human("fix the harness label", f"Runway parked this ticket: {step.reason}. Fix the harness override, then `runway go`.")
 
 
 _DOWN: set[str] = set()  # repos whose last tick ended because the tracker wasn't answering
@@ -2744,16 +2726,19 @@ def _tick(cfg: dict, root: Path, tracker) -> bool:
     tracker_answered(root)
     if release_orphans(root, tickets, before):
         tickets = tracker.load()
-    if signin_waiting_for_work(cfg, root, tickets):
+    qp = queue_plan_for(cfg, tickets)
+    if signin_waiting_for_plan(cfg, root, qp):
         return False
-    # 1. Judgment lookahead: prep every gated ticket that is on, or headed for, the frontier.
+    # 1. Judgment lookahead: park bad harness labels, prep every gated ticket on, or headed for, the frontier.
     for t in tickets:
         if active_pause():
             return did  # a pause landed mid-tick: finish what is running, start nothing new
-        if park_bad_harness(cfg, root, t):
+        step = next((s for s in qp.park if s.ticket is t), None)
+        if step:
+            park_bad_harness(root, step)
+            qp = queue_plan_for(cfg, tickets)  # same loaded list, rebuilt after each park
             did = True
-            continue
-        if t.gate == "human" and t.status == "ready" and will_unblock_without_joe(t, tickets):
+        elif any(p is t for p in qp.prep):
             prep(cfg, root, t)
             did = True
     # 2. AFK lane: bring base into integration, then run the first ready auto (or approved) ticket.
@@ -2764,20 +2749,18 @@ def _tick(cfg: dict, root: Path, tracker) -> bool:
     if not sync_base(cfg, root):
         return did
     tickets = tracker.load()
-    me = machine_name()
-    for t in tickets:
-        if t.gate in RUNNABLE_GATES and t.status in ("ready", "claimed") and unblocked(t, tickets):
-            # A ticket another Mac is running reads as claimed, not ready, so the check covers both.
-            if t.claimed_by and t.claimed_by != me:
-                log(root, f"skip {t.id} claimed by {t.claimed_by}")
-                continue
-            if t.status != "ready":
-                continue
-            if park_bad_harness(cfg, root, t):
-                did = True
-                continue
-            run_ticket(cfg, root, tracker, t)
-            return True
+    qp = queue_plan_for(cfg, tickets)
+    for step in qp.park:  # a label that went bad since the first pass
+        park_bad_harness(root, step)
+        did = True
+    for s in qp.steps:
+        if s.kind == "run":
+            break
+        if s.kind == "running_elsewhere" and s.ticket.gate in RUNNABLE_GATES:
+            log(root, f"skip {s.id} claimed by {s.ticket.claimed_by}")
+    if qp.run_now is not None:
+        run_ticket(cfg, root, tracker, qp.run_now)
+        return True
     return did
 
 
