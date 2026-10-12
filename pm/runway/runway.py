@@ -192,6 +192,7 @@ import transient  # noqa: E402
 
 HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by|Harness):\s*(.*)$", re.M)
 import queue_plan  # noqa: E402
+import lowered_bar  # noqa: E402
 from queue_plan import DONE, RUNNABLE_GATES  # noqa: E402
 DEFAULT_CONFIG = {
     # "markdown", "linear" or "github". Linear settings live under the "linear" key.
@@ -219,6 +220,8 @@ DEFAULT_CONFIG = {
     # does not block. "required": a missing, failed or stale result is a blocking finding. An object overrides
     # BUG_CHECK_DEFAULTS, e.g. {"mode": "optional", "timeout_s": 300}. It never passes a round on its own.
     "bug_check": "off",
+    # Path globs (fnmatch, e.g. "fixtures/*") the lowered-bar diff scan skips. The scan itself is always on.
+    "lowered_bar_allow": [],
     # Which harness runs tickets by default: "claude" (the top-level commands above) or a key of
     # "harnesses". A ticket overrides it: Linear label `harness:<name>` or header `Harness: <name>`.
     "harness": "claude",
@@ -1565,12 +1568,18 @@ Triage the review findings with these rules:
 3. If a seat's section says NO REPORT, only one reviewer ran: treat every finding as single-seat.
 4. For every acceptance criterion in every done ticket below, name the evidence (a test, a file:line, a command
    output). A criterion with no evidence is a blocking finding.
-5. Never ask anyone anything. Make your best judgment.
+5. The lowered-bar scan section lists hits from a deterministic diff scan (deleted or skipped tests, new
+   suppressions, lowered thresholds, stubs, edits to the check). Every hit is BLOCKING, and you do not repeat
+   them in "blocking". Clear a hit only when a done ticket's acceptance criteria explicitly call for that exact
+   change (for example "remove the obsolete test for X"): list its id in "cleared" with that criterion quoted
+   verbatim from the ticket. A hit you cannot tie to a quoted criterion stays blocking.
+6. Never ask anyone anything. Make your best judgment.
 
 Reply with one JSON object and nothing after it:
 {{"verdict": "pass" or "fail",
   "blocking": ["finding, with file:line and why"],
   "non_blocking": ["finding"],
+  "cleared": [{{"id": "lowered-bar hit id, e.g. LB:removed-test:tests/test_x.py:5", "quote": "the ticket criterion, verbatim"}}],
   "criteria": [{{"ticket": "id", "id": "criterion id from inventory", "criterion": "text", "evidence": "what shows it, or empty if none"}}]}}
 "verdict" is "pass" only when "blocking" is empty.
 
@@ -1613,6 +1622,14 @@ def parse_verdict(text: str):
                 "non_blocking": strs("non_blocking"),
                 "criteria": [{"ticket": str(c.get("ticket", "")), "id": str(c.get("id", "")), "criterion": str(c.get("criterion", "")),
                               "evidence": str(c.get("evidence") or "").strip()} for c in crit]}
+    return None
+
+
+def judge_cleared(text: str):
+    """The judge's "cleared" list (lowered-bar hits it says a ticket criterion authorizes), or None."""
+    for obj in reversed(list(_json_objects(text or ""))):
+        if "verdict" in obj:
+            return obj.get("cleared")
     return None
 
 
@@ -2213,6 +2230,11 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
     if bc and bc["head"] != sha:
         bc = bug_check(cfg, root, wt, done)  # the fix pass moved the head: the earlier result is stale
     findings += bug_check_section(bc)
+    # The lowered-bar scan: deterministic, on the exact sha the judge reviews. Hits are blocking unless cleared.
+    lb = lowered_bar.scan(wt, base, sha, cfg["check_cmd"], cfg.get("lowered_bar_allow") or [])
+    findings += lowered_bar.section(lb)
+    if lb:
+        has_findings = True
     expected, inventory_errors = acceptance.inventory(done)
     ttext = "\n\n".join(f"### {t.id} {t.title}\n{getattr(t, 'body', None) or t.text}" for t in done) or "(none)"
     ttext += "\n\nExpected criterion inventory (cover each ticket/id exactly once):\n" + json.dumps(expected)
@@ -2221,8 +2243,12 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                                                    code=c.returncode, tickets=ttext, fix_note=fix_note,
                                                    findings=findings), "finish", "judge", harness=hp)
     valid_reviews = sum(1 for r_ in seat_rows if r_["status"] in ("PASS", "FAIL"))
+    lb_blocking, lb_cleared = lowered_bar.apply_clearances(
+        lb, None if jr.failure else judge_cleared(judge_text), ttext)
     verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text), valid_reviews,
-                             expected, inventory_errors, extra_blocking=bug_check_blocking(bc, sha, bcfg))
+                             expected, inventory_errors,
+                             extra_blocking=bug_check_blocking(bc, sha, bcfg) + lb_blocking)
+    verdict["non_blocking"].extend(lb_cleared)
     if stop_requested():
         log(root, "finish stopped by pause; the review is not recorded for this head.")
         return False

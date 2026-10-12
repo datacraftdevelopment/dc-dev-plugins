@@ -168,6 +168,34 @@ findings comments on the open fix ticket instead. Round count and fix-ticket id 
 in `_pm/runway-finish.json`; a new non-fix ticket merging starts a new batch. `off`
 keeps the fix pass.
 
+### The lowered-bar scan (always on)
+
+A plain Python diff scan (`pm/runway/lowered_bar.py`, no model) of `base...<judged sha>`,
+run in finish before the judge. It catches a worker that got to green by weakening the
+checks. Rules: `deleted-test-file`, `removed-test` (Python `def test_*` and classes,
+Swift `func test*`, JS `it`/`test`), `test-skipped` (skip, skipif, xfail, `XCTSkip`,
+`.skip(`), `test-disabled` (a test renamed so the runner no longer collects it),
+`new-suppression` (noqa, type: ignore, pragma: no cover, ts-ignore, eslint-disable,
+swiftlint:disable), `weakened-assertion` (an assert replaced by `pass`),
+`lowered-threshold` (coverage or fail-under down, a timeout up), `stub`
+(NotImplementedError, `TODO: implement`, real code replaced by an empty body) and
+`check-edited` (the file `check_cmd` runs, test config, CI workflows, the test
+sections of `pyproject.toml`). A rename that still collects, a moved file and a removed
+suppression don't fire.
+
+- Each hit has file, line, rule and the diff hunk, and goes to the judge as a
+  **blocking** finding with an id like `LB:removed-test:tests/test_x.py:5`. Hits
+  show in the PR body in every merge mode, `off` included.
+- **Authorizing a removal.** The ticket's acceptance criteria must call for the change
+  ("Remove the obsolete test for X"). The judge lists the hit's id in `"cleared"`
+  with that criterion quoted; Runway checks the quote appears verbatim in a done
+  ticket and otherwise keeps the hit blocking. Anything uncleared fails the round and
+  rides the normal fix-ticket loop.
+- A scan that can't run (git error, bad diff) is a blocking `scan-error` and can't be
+  cleared.
+- `runway.json` `"lowered_bar_allow": ["fixtures/*"]` skips matching paths (fnmatch).
+  Keep it short. Run it by hand: `python3 pm/runway/lowered_bar.py --base main --head HEAD`.
+
 ### The supplemental bug check (`"bug_check"`, default off)
 
 One cheap extra seat (Haiku, `claude-haiku-5-5`) that hunts correctness bugs once per
