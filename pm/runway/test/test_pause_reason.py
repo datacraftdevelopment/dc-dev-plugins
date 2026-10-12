@@ -94,6 +94,31 @@ class PauseReason(unittest.TestCase):
             runway.remove_pause_if(interrupted)
         self.assertEqual(runway.active_pause(clean=False)["reason"], "signed-out")
 
+    def test_expiry_cleanup_keeps_a_pause_written_just_before_it(self):
+        # active_pause read an expired pause; Joe's stop lands before the cleanup removes it.
+        root = self.repo()
+        runway.write_pause(runway.dt.datetime.now().astimezone() - runway.dt.timedelta(minutes=5), "finish")
+        real = runway.pause_expired
+        calls = []
+
+        def expired_then_replaced(data):
+            calls.append(1)
+            if len(calls) == 1:  # the first look, in active_pause: the old pause, expired
+                runway.write_pause(None, "stop")
+            return real(data)
+        runway.pause_expired = expired_then_replaced
+        try:
+            self.assertIsNone(runway.active_pause())
+        finally:
+            runway.pause_expired = real
+        self.assertEqual(runway.active_pause(clean=False)["mode"], "stop")
+
+    def test_expired_pause_is_still_cleaned_up(self):
+        root = self.repo()
+        runway.write_pause(runway.dt.datetime.now().astimezone() - runway.dt.timedelta(minutes=5), "finish")
+        self.assertIsNone(runway.active_pause())
+        self.assertFalse(self.pause_file.exists())
+
     def test_pause_writes_wait_for_the_lock(self):
         import subprocess, time
         root = self.repo()

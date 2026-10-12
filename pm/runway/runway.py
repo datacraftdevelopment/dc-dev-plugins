@@ -281,16 +281,19 @@ def active_pause(clean: bool = True) -> dict | None:
         return None
     except (OSError, ValueError):
         data = {"until": None, "mode": "finish", "at": None}  # unreadable: stay paused, never run on a guess
-    until = data.get("until")
-    try:
-        expired = bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
-    except ValueError:
-        expired = False
-    if expired:
-        if clean:
-            p.unlink(missing_ok=True)
+    if pause_expired(data):
+        if clean:  # under the pause lock, and only if the pause there now is still expired
+            remove_pause_if(pause_expired)
         return None
     return data
+
+
+def pause_expired(data: dict) -> bool:
+    until = data.get("until")
+    try:
+        return bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
+    except ValueError:
+        return False
 
 
 def stop_requested() -> bool:
