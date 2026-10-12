@@ -26,6 +26,21 @@ extension StatusSnapshot {
         finished.result == "needs-human" && tickets.contains { $0.id == finished.ticket }
     }
 
+    /// What a Finished row shows now. The row is history from the runs log, so a ticket that ended "needs you"
+    /// keeps that result there for good; once the ticket no longer waits on Joe (answered with a go, or closed in
+    /// the tracker, which drops it from status) and has no errored flag, the row reads `answered` instead.
+    /// Only a status produced after the outcome counts: one taken earlier (or kept after a failed refresh) says
+    /// nothing about whether the new question was answered, so the logged result stands then, as it does when
+    /// either time is unknown. The log keeps minutes, so the status must be a full minute past the outcome.
+    public func shownResult(_ finished: FinishedTicket) -> String {
+        guard finished.result == "needs-human",
+              let generatedAt, let outcomeAt = finished.finishedAt, generatedAt >= outcomeAt.addingTimeInterval(60),
+              !tickets.contains(where: { $0.id == finished.ticket }), errored[finished.ticket] == nil else {
+            return finished.result
+        }
+        return "answered"
+    }
+
     /// "Resume worker" shows only when the engine says the ticket's latest attempt is a claude session it can reopen.
     public func canResumeWorker(_ ticket: String) -> Bool { resumable.contains(ticket) }
 }
@@ -44,6 +59,15 @@ extension RunwayTools {
 
     public func discussLoop(repo: String) -> Command {
         terminal(repo: repo, "discuss --loop")
+    }
+
+    /// `runway discuss --review [<session>]`: that finish review's own conversation (the last one without a session), in Terminal.
+    public func discussReview(repo: String, session: String? = nil) -> Command {
+        terminal(repo: repo, reviewTail(session))
+    }
+
+    func reviewTail(_ session: String?) -> String {
+        "discuss --review" + (session.map { " " + Self.shellQuote($0) } ?? "")
     }
 
     /// The one shell line both launchers run: Terminal's `do script` and the window's pane.
