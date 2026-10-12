@@ -57,6 +57,20 @@ class PauseReason(unittest.TestCase):
         self.cli(root, "resume")
         self.assertFalse(self.pause_file.exists())
 
+    def test_a_pause_replaced_while_resuming_is_kept(self):
+        # Joe's pause lands between resume reading the sign-in pause and removing it.
+        root = self.repo()
+        self.cli(root, "pause")
+        mine = self.pause_file.read_text()
+        old = runway.active_pause
+        runway.active_pause = lambda clean=True: {"reason": "signed-out", "until": None}
+        try:
+            runway.cmd_resume("signed-out")
+        finally:
+            runway.active_pause = old
+        self.assertEqual(self.pause_file.read_text(), mine)
+        self.assertEqual(sorted(x.name for x in self.pause_file.parent.iterdir() if "resuming" in x.name), [])
+
 
 if __name__ == "__main__":
     unittest.main()
