@@ -344,17 +344,11 @@ public final class ProjectStore {
 
     public func choreResult(_ chore: Chore, repo: String? = nil) -> String? { choreResults[chore.sessionKey(repo: repo)] }
 
-    /// Whether a chore with a `show_if` is needed now (nil: it has none). For an entry point that can't list ahead of time.
-    public func choreNeeded(_ chore: Chore, repo: String? = nil) async -> Bool? {
-        guard let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else { return nil }
-        return Chore.needed(probe: await run(check))
-    }
-
     private func choreEnded(_ key: String, exit: Int32?) async {
         guard let pending = runningChores.removeValue(forKey: key) else { return }
         let (chore, repo) = pending
         var probe: CommandResult?
-        if exit == nil || exit == 0, let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) {
+        if exit == 0, let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) {
             probe = await run(check)
         }
         choreResults[key] = chore.result(exit: exit, probe: probe)

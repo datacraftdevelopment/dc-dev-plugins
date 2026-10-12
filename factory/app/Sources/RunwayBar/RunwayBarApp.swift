@@ -105,18 +105,15 @@ struct RunwayMenu: View {
                     Divider()
                 }
                 if let repo = project.repoPath {
-                    ForEach(store.choreList().chores.filter { $0.cwd == .repo }) { chore in
+                    // A menu can't run show_if ahead of time without running checkout shell unasked, so only repo chores
+                    // without one are offered here.
+                    ForEach(store.choreList().chores.filter { $0.cwd == .repo && $0.showIf == nil }) { chore in
                         Button("\(chore.title)…") {
-                            Task {
-                                // The menu can't list ahead of time, so show_if is asked at the click and its answer goes in the alert.
-                                let needed = await store.choreNeeded(chore, repo: repo)
-                                let why = needed == false ? "\(chore.why)\n\nIt doesn't look needed right now." : chore.why
-                                guard let line = store.choreLine(chore, repo: repo),
-                                      confirmRun(title: "\(chore.title)?", why: why, line: line) else { return }
-                                store.runChore(chore, repo: repo)
-                                NSApplication.shared.activate(ignoringOtherApps: true)
-                                openWindow(id: "runway")
-                            }
+                            guard let line = store.choreLine(chore, repo: repo),
+                                  confirmRun(title: "\(chore.title)?", why: chore.why, line: line) else { return }
+                            store.runChore(chore, repo: repo)
+                            NSApplication.shared.activate(ignoringOtherApps: true)
+                            openWindow(id: "runway")
                         }
                         .help(store.choreLine(chore, repo: repo) ?? chore.run)
                     }

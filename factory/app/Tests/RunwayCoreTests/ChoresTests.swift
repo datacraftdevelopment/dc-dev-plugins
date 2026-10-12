@@ -70,7 +70,9 @@ final class ChoresTests: XCTestCase {
         func probe(_ status: Int32) -> CommandResult { CommandResult(status: status, stdout: "", stderr: "") }
         XCTAssertEqual(chore.result(exit: 2, probe: probe(1)), "Failed (exit 2). Its output is in the Refresh tab.")
         XCTAssertEqual(chore.result(exit: 0, probe: probe(1)), "Done: no longer needed.")
-        XCTAssertEqual(chore.result(exit: nil, probe: probe(0)), "Finished, but it still looks needed. Check the output in its tab.")
+        XCTAssertEqual(chore.result(exit: 0, probe: probe(0)), "Finished, but it still looks needed. Check the output in its tab.")
+        XCTAssertTrue(chore.result(exit: nil, probe: probe(1)).hasPrefix("Ended, but Runway couldn't read how"),
+                      "no exit status is not a success")
         XCTAssertTrue(chore.result(exit: 0, probe: probe(127)).contains("couldn't check"))
         XCTAssertEqual(chore.result(exit: 0, probe: nil), "Finished. Its output is in the Refresh tab.")
     }

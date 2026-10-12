@@ -57,7 +57,8 @@ public struct Chore: Equatable, Sendable, Identifiable {
 
     /// The line beside the button once the chore's tab has ended: its own exit first, then what `show_if` says now.
     public func result(exit: Int32?, probe: CommandResult?) -> String {
-        if let exit, exit != 0 { return "Failed (exit \(exit)). Its output is in the \(title) tab." }
+        guard let exit else { return "Ended, but Runway couldn't read how. Check the output in the \(title) tab." }
+        if exit != 0 { return "Failed (exit \(exit)). Its output is in the \(title) tab." }
         guard let probe else { return "Finished. Its output is in the \(title) tab." }
         switch probe.status {
         case 0: return "Finished, but it still looks needed. Check the output in its tab."

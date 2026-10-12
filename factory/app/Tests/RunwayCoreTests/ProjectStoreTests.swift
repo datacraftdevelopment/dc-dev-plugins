@@ -331,7 +331,7 @@ final class ProjectStoreTests: XCTestCase {
         let rechecked = expectation(description: "show_if ran again")
         afterRun = { if $0 == check { rechecked.fulfill() } }
         nextResult = CommandResult(status: 1, stdout: "", stderr: "")
-        store.sessions.markExited(session.id)
+        store.sessions.markExited(session.id, exitCode: 0)
         await fulfillment(of: [rechecked], timeout: 2)
         try await Task.sleep(nanoseconds: 50_000_000)
         XCTAssertEqual(store.choreResult(chore), "Done: no longer needed.")
