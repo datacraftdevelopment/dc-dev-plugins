@@ -69,7 +69,44 @@ class PauseReason(unittest.TestCase):
         finally:
             runway.active_pause = old
         self.assertEqual(self.pause_file.read_text(), mine)
-        self.assertEqual(sorted(x.name for x in self.pause_file.parent.iterdir() if "resuming" in x.name), [])
+        self.assertEqual(sorted(x.name for x in self.pause_file.parent.iterdir() if x.name.startswith("pause.")),
+                         ["pause.lock"])
+
+    def test_the_pause_stays_in_force_while_a_removal_checks_it(self):
+        root = self.repo()
+        self.cli(root, "pause")
+        seen = []
+
+        def matches(data):  # runs mid-removal: an observer must still see the pause
+            seen.append(runway.active_pause(clean=False))
+            return False
+        self.assertFalse(runway.remove_pause_if(matches))
+        self.assertIsNotNone(seen[0])
+        self.assertIsNotNone(runway.active_pause(clean=False))
+
+    def test_an_interrupted_removal_leaves_the_pause_in_place(self):
+        root = self.repo()
+        runway.pause_for_auth(self.cfg(root), root)
+
+        def interrupted(data):
+            raise KeyboardInterrupt
+        with self.assertRaises(KeyboardInterrupt):
+            runway.remove_pause_if(interrupted)
+        self.assertEqual(runway.active_pause(clean=False)["reason"], "signed-out")
+
+    def test_pause_writes_wait_for_the_lock(self):
+        import subprocess, time
+        root = self.repo()
+        lock = str(self.pause_file) + ".lock"
+        holder = subprocess.Popen([sys.executable, "-c",
+                                   "import fcntl,os,sys,time; fd=os.open(sys.argv[1], os.O_RDWR|os.O_CREAT); "
+                                   "fcntl.flock(fd, fcntl.LOCK_EX); print('held', flush=True); time.sleep(1)", lock],
+                                  stdout=subprocess.PIPE, text=True)
+        self.assertEqual(holder.stdout.readline().strip(), "held")
+        start = time.monotonic()
+        runway.write_pause(None, "finish")
+        self.assertGreater(time.monotonic() - start, 0.5)
+        holder.wait()
 
 
 if __name__ == "__main__":

@@ -78,6 +78,14 @@ class SignInCommand(unittest.TestCase):
         names = {c["name"]: c["ok"] for c in self.written(root)["checks"]}
         self.assertEqual((names.get("claude"), names.get("codex")), (True, False))
 
+    def test_signin_fails_closed_when_tickets_cannot_load(self):
+        root = self.repo()
+        r = runway.cmd_signin(self.cfg(root), root, False, [], load_error="tracker down")
+        self.assertEqual(r, 1)
+        doc = self.written(root)
+        self.assertFalse(doc["ok"])
+        self.assertIn("tracker down", {c["name"]: c for c in doc["checks"]}["tickets"]["detail"])
+
 
 if __name__ == "__main__":
     unittest.main()

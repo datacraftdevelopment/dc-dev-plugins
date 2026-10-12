@@ -18,6 +18,8 @@ trap 'rm -rf "$RUNWAY_HOME"' EXIT
 PY="${PYTHON:-python3}"
 if [[ -n "${PYTHON:-}" ]]; then
   PY="$(command -v "$PYTHON" || echo "$PYTHON")"
+  # The shim lives in a temp dir, so a relative PYTHON (.venv/bin/python3) must become absolute first.
+  [[ "$PY" == /* || ! -e "$PY" ]] || PY="$(cd "$(dirname "$PY")" && pwd)/$(basename "$PY")"
   SHIM="$(mktemp -d)"
   ln -s "$PY" "$SHIM/python3"
   export PATH="$SHIM:$PATH"

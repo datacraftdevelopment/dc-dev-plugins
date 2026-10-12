@@ -276,6 +276,8 @@ class Resume(DiscussBase):
             runway.cmd_discuss(self.cfg, self.root, self.tracker, "eff/02", resume=True)
         self.assertIn("not a worktree on " + self.branch, str(e.exception.code))
         self.assertEqual(self.resume_fake.calls, [])
+        self.assertFalse(runway.is_resumable(self.root, "eff/02", self.branch))
+        self.assertTrue(runway.is_resumable(self.root, "eff/02"))  # without a branch, only the log is read
 
     def test_transcript_not_found_starts_nothing(self):
         self.run_row(session_id="nope")

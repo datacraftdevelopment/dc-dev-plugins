@@ -316,8 +316,9 @@ def write_pause(end: dt.datetime | None, mode: str, reason: str | None = None) -
             "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}
     if reason:
         data["reason"] = reason
-    tmp.write_text(json.dumps(data) + "\n")
-    os.replace(tmp, p)
+    with pause_lock():
+        tmp.write_text(json.dumps(data) + "\n")
+        os.replace(tmp, p)
 
 
 def pause_for_auth(cfg: dict, root: Path) -> None:
@@ -388,33 +389,50 @@ def cmd_resume(if_reason: str | None = None) -> None:
             return
         print("resumed")
         return
-    pause_path().unlink(missing_ok=True)
+    with pause_lock():
+        pause_path().unlink(missing_ok=True)
     print("resumed")
 
 
 def remove_pause_if(matches) -> bool:
-    """Delete the pause only if the file removed is one `matches` accepts. The file is moved aside first, so a
-    pause written in the meantime (Joe's own, say) is never the one deleted: a mismatch goes back, without
-    overwriting anything newer. True when a matching pause was removed or none was there."""
+    """Delete the pause only if the one in force now is one `matches` accepts. Under the pause lock (every
+    pause write takes it), the file is re-read and removed only if it is still that same file, so a pause
+    written meanwhile is never the one deleted, and the pause never leaves its place before it is accepted.
+    True when a matching pause was removed or none was there."""
     p = pause_path()
-    aside = p.with_name(f"{p.name}.{os.getpid()}.resuming")
-    try:
-        os.rename(p, aside)
-    except FileNotFoundError:
+    with pause_lock():
+        try:
+            before = os.stat(p)
+            data = json.loads(p.read_text())
+        except FileNotFoundError:
+            return True
+        except (OSError, ValueError):
+            return False
+        if not (isinstance(data, dict) and matches(data)):
+            return False
+        try:
+            if os.stat(p).st_ino != before.st_ino:
+                return False
+            p.unlink()
+        except FileNotFoundError:
+            pass
         return True
-    try:
-        data = json.loads(aside.read_text())
-    except (OSError, ValueError):
-        data = None
-    if isinstance(data, dict) and matches(data):
-        aside.unlink(missing_ok=True)
-        return True
-    try:
-        os.link(aside, p)  # put it back, but never over a pause written since
-    except FileExistsError:
-        pass
-    aside.unlink(missing_ok=True)
-    return False
+
+
+class pause_lock:
+    """Serializes pause writes and removals across processes: an exclusive flock on ~/.runway/pause.lock.
+    The lock file is never deleted, so every holder locks the same inode."""
+    def __enter__(self):
+        import fcntl
+        p = pause_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self.fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        os.close(self.fd)  # closing releases the flock
+        return False
 
 
 # ---------- quiet-time rules: ~/.runway/machine.json ----------
@@ -994,13 +1012,18 @@ def record_signin(root: Path, results: list, notify_new: bool = True) -> tuple:
     return failing, new
 
 
-def cmd_signin(cfg: dict, root: Path, as_json: bool, tickets: list | None = None) -> int:
+def cmd_signin(cfg: dict, root: Path, as_json: bool, tickets: list | None = None,
+               load_error: str | None = None) -> int:
     """The checks the next tick would run with work waiting (the finish step's too), recorded in
     _pm/runway-signin.json: the harness of every ticket it could run or prep (a codex ticket needs codex), plus
-    the project's default harness. Claims and preps nothing, makes no model call, sends no notification.
-    Exit status 0 when every check passes."""
+    the project's default harness. When the tickets couldn't be loaded, a failing `tickets` check says so: the
+    harnesses the queue needs are unknown, so signin never reports all clear. Claims and preps nothing, makes
+    no model call, sends no notification. Exit status 0 when every check passes."""
     names = list(dict.fromkeys([resolve_harness(cfg)["name"], *work_harnesses(cfg, tickets or [])]))
     results = signin_checks(cfg, root, names, panel=cfg.get("review") == "panel", finish=True)
+    if load_error:
+        results.append({"name": "tickets", "ok": False, "label": "Tickets", "fix": "runway status",
+                        "detail": f"Tickets could not be loaded, so the harnesses they need are unknown ({load_error})"})
     failing, _ = record_signin(root, results, notify_new=False)
     if as_json:
         print(json.dumps(read_signin(root), indent=2))
@@ -2301,12 +2324,19 @@ def latest_attempt(root: Path, ticket: str) -> dict | None:
 RESUMABLE_KINDS = ("run", "fix")
 
 
-def is_resumable(root: Path, ticket: str) -> bool:
+def is_resumable(root: Path, ticket: str, branch: str | None = None) -> bool:
     """True when the latest attempt was a claude run or fix session with an id and a recorded worktree outside
-    the repo root, so `discuss --resume` can reopen it."""
+    the repo root, so `discuss --resume` can reopen it. Given the ticket's branch, a folder that still exists
+    at the recorded path must be on it (resume refuses one that isn't)."""
     r = latest_attempt(root, ticket)
-    return bool(r and r.get("kind") in RESUMABLE_KINDS and r.get("session_id") and r.get("cwd")
-                and (r.get("harness") or "claude") == "claude" and not _is_repo_root(root, Path(r["cwd"])))
+    if not (r and r.get("kind") in RESUMABLE_KINDS and r.get("session_id") and r.get("cwd")
+            and (r.get("harness") or "claude") == "claude" and not _is_repo_root(root, Path(r["cwd"]))):
+        return False
+    cwd = Path(r["cwd"])
+    if branch and cwd.exists():
+        head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+        return head.returncode == 0 and head.stdout.strip() == branch
+    return True
 
 
 def _is_repo_root(root: Path, cwd: Path) -> bool:
@@ -2793,7 +2823,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
-    resumable = {t.id: is_resumable(root, t.id) for t in loaded if t.id in steps}
+    resumable = {t.id: is_resumable(root, t.id, f"runway/{t.effort}-{t.slug}") for t in loaded if t.id in steps}
 
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
@@ -2919,11 +2949,10 @@ def main() -> None:
     tracker = make_tracker(cfg, root)
     if a.cmd == "signin":
         try:
-            tickets = tracker.load()
-        except Exception as e:  # a tracker that can't be read still gets the default harness checked
-            print(f"(tickets not loaded, checking the default harness only: {e})", file=sys.stderr)
-            tickets = []
-        sys.exit(cmd_signin(cfg, root, a.json, tickets))
+            tickets, load_error = tracker.load(), None
+        except Exception as e:  # fail closed: the queue's harness needs are unknown, so signin can't pass
+            tickets, load_error = [], str(e) or type(e).__name__
+        sys.exit(cmd_signin(cfg, root, a.json, tickets, load_error))
 
     if a.cmd == "status":
         if a.json:
