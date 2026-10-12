@@ -62,8 +62,9 @@ Runway.app, and:
   that repo and the session's brief says not to edit it. A "Report a Runway
   problem" action drafts a report (what happened, the log tail, versions,
   with paths under the home folder and repo names replaced) and shows it to
-  the user before anything leaves the Mac. Where it goes is Joe's call (see
-  Open questions).
+  the user before anything leaves the Mac. It goes to a `needs-triage` issue on
+  `datacraftdevelopment/dc-dev-plugins` (Joe, 2026-10-12), which is public,
+  so the user reads the redacted text before it's filed.
 
 ## The wizard
 
@@ -118,11 +119,7 @@ checks pass.
 
 ## Open questions for Joe
 
-1. **Where do other people's problem reports go?** Default in this draft: an
-   issue on `datacraftdevelopment/dc-dev-plugins`, which is public, after the
-   user reads the redacted report. Alternatives: email to Joe, or nowhere
-   (Talk it through only).
-2. **Who's first?** A specific person Joe will help set up, or anyone with
+1. **Who's first?** A specific person Joe will help set up, or anyone with
    the link. That decides how much the wizard has to explain, and whether
    notarization (#67) gates the first hand-off.
 
