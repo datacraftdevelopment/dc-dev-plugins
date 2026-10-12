@@ -281,16 +281,21 @@ def active_pause(clean: bool = True) -> dict | None:
         return None
     except (OSError, ValueError):
         data = {"until": None, "mode": "finish", "at": None}  # unreadable: stay paused, never run on a guess
-    until = data.get("until")
-    try:
-        expired = bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
-    except ValueError:
-        expired = False
-    if expired:
-        if clean:
-            p.unlink(missing_ok=True)
+    if pause_expired(data):
+        # Under the pause lock, and only if the pause there now is still expired. When a fresh pause replaced it
+        # meanwhile, that one is in force: report it, not None.
+        if clean and not remove_pause_if(pause_expired):
+            return active_pause(clean=False)
         return None
     return data
+
+
+def pause_expired(data: dict) -> bool:
+    until = data.get("until")
+    try:
+        return bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
+    except ValueError:
+        return False
 
 
 def stop_requested() -> bool:
@@ -316,8 +321,9 @@ def write_pause(end: dt.datetime | None, mode: str, reason: str | None = None) -
             "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}
     if reason:
         data["reason"] = reason
-    tmp.write_text(json.dumps(data) + "\n")
-    os.replace(tmp, p)
+    with pause_lock():
+        tmp.write_text(json.dumps(data) + "\n")
+        os.replace(tmp, p)
 
 
 def pause_for_auth(cfg: dict, root: Path) -> None:
@@ -383,8 +389,55 @@ def cmd_resume(if_reason: str | None = None) -> None:
         if pause.get("reason") != if_reason:
             print(f"pause left in place: its reason is {pause.get('reason') or 'none'}, not {if_reason}")
             return
-    pause_path().unlink(missing_ok=True)
+        if not remove_pause_if(lambda p: p.get("reason") == if_reason):
+            print("pause left in place: it changed while resuming")
+            return
+        print("resumed")
+        return
+    with pause_lock():
+        pause_path().unlink(missing_ok=True)
     print("resumed")
+
+
+def remove_pause_if(matches) -> bool:
+    """Delete the pause only if the one in force now is one `matches` accepts. Under the pause lock (every
+    pause write takes it), the file is re-read and removed only if it is still that same file, so a pause
+    written meanwhile is never the one deleted, and the pause never leaves its place before it is accepted.
+    True when a matching pause was removed or none was there."""
+    p = pause_path()
+    with pause_lock():
+        try:
+            before = os.stat(p)
+            data = json.loads(p.read_text())
+        except FileNotFoundError:
+            return True
+        except (OSError, ValueError):
+            return False
+        if not (isinstance(data, dict) and matches(data)):
+            return False
+        try:
+            if os.stat(p).st_ino != before.st_ino:
+                return False
+            p.unlink()
+        except FileNotFoundError:
+            pass
+        return True
+
+
+class pause_lock:
+    """Serializes pause writes and removals across processes: an exclusive flock on ~/.runway/pause.lock.
+    The lock file is never deleted, so every holder locks the same inode."""
+    def __enter__(self):
+        import fcntl
+        p = pause_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self.fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        os.close(self.fd)  # closing releases the flock
+        return False
 
 
 # ---------- quiet-time rules: ~/.runway/machine.json ----------
@@ -964,11 +1017,18 @@ def record_signin(root: Path, results: list, notify_new: bool = True) -> tuple:
     return failing, new
 
 
-def cmd_signin(cfg: dict, root: Path, as_json: bool) -> int:
+def cmd_signin(cfg: dict, root: Path, as_json: bool, tickets: list | None = None,
+               load_error: str | None = None) -> int:
     """The checks the next tick would run with work waiting (the finish step's too), recorded in
-    _pm/runway-signin.json. Claims and preps nothing, makes no model call, sends no notification.
-    Exit status 0 when every check passes."""
-    results = signin_checks(cfg, root, [resolve_harness(cfg)["name"]], panel=cfg.get("review") == "panel", finish=True)
+    _pm/runway-signin.json: the harness of every ticket it could run or prep (a codex ticket needs codex), plus
+    the project's default harness. When the tickets couldn't be loaded, a failing `tickets` check says so: the
+    harnesses the queue needs are unknown, so signin never reports all clear. Claims and preps nothing, makes
+    no model call, sends no notification. Exit status 0 when every check passes."""
+    names = list(dict.fromkeys([resolve_harness(cfg)["name"], *work_harnesses(cfg, tickets or [])]))
+    results = signin_checks(cfg, root, names, panel=cfg.get("review") == "panel", finish=True)
+    if load_error:
+        results.append({"name": "tickets", "ok": False, "label": "Tickets", "fix": "runway status",
+                        "detail": f"Tickets could not be loaded, so the harnesses they need are unknown ({load_error})"})
     failing, _ = record_signin(root, results, notify_new=False)
     if as_json:
         print(json.dumps(read_signin(root), indent=2))
@@ -993,8 +1053,8 @@ def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish
     return True
 
 
-def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
-    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+def work_harnesses(cfg: dict, tickets: list) -> list:
+    """The harnesses the next tick needs: one per ready ticket it could run or prep, in queue order, no repeats."""
     me = machine_name()
     names = []
     for t in tickets:
@@ -1004,7 +1064,13 @@ def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
         run_it = t.gate in RUNNABLE_GATES and unblocked(t, tickets) and (not t.claimed_by or t.claimed_by == me)
         if prep_it or run_it:
             names.append(resolve_harness(cfg, t)["name"])
-    return bool(names) and signin_waiting(cfg, root, list(dict.fromkeys(names)))
+    return list(dict.fromkeys(names))
+
+
+def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
+    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+    names = work_harnesses(cfg, tickets)
+    return bool(names) and signin_waiting(cfg, root, names)
 
 
 def record(root: Path, rec: dict) -> None:
@@ -2259,10 +2325,30 @@ def latest_attempt(root: Path, ticket: str) -> dict | None:
     return rows[-1] if rows else None
 
 
-def is_resumable(root: Path, ticket: str) -> bool:
-    """True when the latest attempt was a claude session with an id, so `discuss --resume` can reopen it."""
+# Only a run or fix attempt works in the ticket's own worktree; a decision prep runs in the repo root.
+RESUMABLE_KINDS = ("run", "fix")
+
+
+def is_resumable(root: Path, ticket: str, branch: str | None = None) -> bool:
+    """True when the latest attempt was a claude run or fix session with an id and a recorded worktree outside
+    the repo root, so `discuss --resume` can reopen it. Given the ticket's branch, a folder that still exists
+    at the recorded path must be on it (resume refuses one that isn't)."""
     r = latest_attempt(root, ticket)
-    return bool(r and r.get("session_id") and (r.get("harness") or "claude") == "claude")
+    if not (r and r.get("kind") in RESUMABLE_KINDS and r.get("session_id") and r.get("cwd")
+            and (r.get("harness") or "claude") == "claude" and not _is_repo_root(root, Path(r["cwd"]))):
+        return False
+    cwd = Path(r["cwd"])
+    if branch and cwd.exists():
+        head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+        return head.returncode == 0 and head.stdout.strip() == branch
+    return True
+
+
+def _is_repo_root(root: Path, cwd: Path) -> bool:
+    try:
+        return cwd.resolve() == root.resolve()
+    except OSError:
+        return False
 
 
 def resume_target(root: Path, t) -> tuple:
@@ -2273,6 +2359,8 @@ def resume_target(root: Path, t) -> tuple:
     r = latest_attempt(root, t.id)
     if not r:
         no("no attempt is logged, so there is no session id")
+    if r.get("kind") not in RESUMABLE_KINDS:
+        no(f"the latest attempt was a {r.get('kind')} session, which works in the repo root, not on the ticket's branch")
     harness = r.get("harness") or "claude"
     if harness != "claude":
         no(f"the latest attempt ran on {harness}, and only claude sessions resume")
@@ -2284,8 +2372,14 @@ def resume_target(root: Path, t) -> tuple:
     if not r.get("cwd"):
         no("the attempt did not record where it ran")
     cwd = Path(r["cwd"])
-    if not cwd.exists():
-        branch = f"runway/{t.effort}-{t.slug}"
+    if _is_repo_root(root, cwd):
+        no("the attempt ran in the repo root, not in the ticket's worktree")
+    branch = f"runway/{t.effort}-{t.slug}"
+    if cwd.exists():
+        head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+        if head.returncode != 0 or head.stdout.strip() != branch:
+            no(f"{cwd} is not a worktree on {branch}")
+    else:
         if sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode != 0:
             no(f"the branch {branch} is gone")
         sh(["git", "worktree", "prune"], root)
@@ -2321,6 +2415,11 @@ def _spec_file(root: Path, rel: str) -> str | None:
     return body
 
 
+def _is_intent_note(rel: str) -> bool:
+    """`docs/intent/` holds pm's discovery notes, never a spec."""
+    return os.path.normpath(rel).replace(os.sep, "/").startswith("docs/intent/")
+
+
 def _first_spec_line(text: str) -> str | None:
     """The file a text names when its first non-blank line is a `Spec:` line."""
     first = next((l for l in (text or "").splitlines() if l.strip()), "")
@@ -2349,6 +2448,9 @@ def spec_brief(root: Path, loaded: list, t) -> list:
     notes, heading, body = [], "", None
     specs = ticket_specs([t])
     for rel in specs:
+        if _is_intent_note(rel):
+            notes.append(f"{rel} is a docs/intent/ discovery note, not a spec; not read.")
+            continue
         body = _spec_file(root, rel)
         if body is not None:
             heading = rel
@@ -2359,11 +2461,14 @@ def spec_brief(root: Path, loaded: list, t) -> list:
         notes.append(err)
     if body is None and parent and parent.get("body"):
         rel = _first_spec_line(parent["body"])
-        body = _spec_file(root, rel) if rel else None
+        intent = bool(rel) and _is_intent_note(rel)
+        body = _spec_file(root, rel) if rel and not intent else None
         if body is not None:
             heading = rel
         else:
-            if rel:
+            if intent:
+                notes.append(f"{rel} is a docs/intent/ discovery note, not a spec; not read.")
+            elif rel:
                 notes.append(f"{rel} is named in {parent['id']}'s Spec line but is missing from this checkout.")
             heading, body = f"{parent['id']}: {parent['title']}", parent["body"].strip()
     out = ["", f"## Spec: {heading}" if body is not None else "## Spec", ""]
@@ -2723,7 +2828,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
-    resumable = {t.id: is_resumable(root, t.id) for t in loaded if t.id in steps}
+    resumable = {t.id: is_resumable(root, t.id, f"runway/{t.effort}-{t.slug}") for t in loaded if t.id in steps}
 
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
@@ -2846,9 +2951,13 @@ def main() -> None:
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():
         cfg.update(json.loads(cfg_path.read_text()))
-    if a.cmd == "signin":
-        sys.exit(cmd_signin(cfg, root, a.json))
     tracker = make_tracker(cfg, root)
+    if a.cmd == "signin":
+        try:
+            tickets, load_error = tracker.load(), None
+        except Exception as e:  # fail closed: the queue's harness needs are unknown, so signin can't pass
+            tickets, load_error = [], str(e) or type(e).__name__
+        sys.exit(cmd_signin(cfg, root, a.json, tickets, load_error))
 
     if a.cmd == "status":
         if a.json:

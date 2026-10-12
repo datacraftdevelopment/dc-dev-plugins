@@ -19,9 +19,11 @@ extension StatusSnapshot {
         errored[ticket] != nil || tickets.contains { $0.id == ticket }
     }
 
-    /// A Finished row that ended "needs you" offers the button while its ticket still waits or errored.
+    /// A Finished row that ended "needs you" offers the button only while its ticket still waits on Joe.
+    /// An errored flag alone doesn't count here: it stays until the next merge, so after a `go` it would keep
+    /// the button on a ticket that has been answered.
     public func canTalkThrough(finished: FinishedTicket) -> Bool {
-        finished.result == "needs-human" && canTalkThrough(finished.ticket)
+        finished.result == "needs-human" && tickets.contains { $0.id == finished.ticket }
     }
 
     /// "Resume worker" shows only when the engine says the ticket's latest attempt is a claude session it can reopen.

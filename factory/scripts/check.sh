@@ -13,8 +13,18 @@ trap 'rm -rf "$RUNWAY_HOME"' EXIT
 
 # A Homebrew upgrade can swap python3 for a new version with no packages (2026-10-12: 3.15 took over,
 # every ticket parked on "No module named pytest"). Say so plainly instead of failing inside a suite.
-# PYTHON overrides the interpreter (e.g. PYTHON=/opt/homebrew/bin/python3.14).
+# PYTHON overrides the interpreter (e.g. PYTHON=/opt/homebrew/bin/python3.14) for the whole check: suites and
+# fixtures that call plain `python3` get it too, through a shim put first on PATH.
 PY="${PYTHON:-python3}"
+if [[ -n "${PYTHON:-}" ]]; then
+  PY="$(command -v "$PYTHON" || echo "$PYTHON")"
+  # The shim lives in a temp dir, so a relative PYTHON (.venv/bin/python3) must become absolute first.
+  [[ "$PY" == /* || ! -e "$PY" ]] || PY="$(cd "$(dirname "$PY")" && pwd)/$(basename "$PY")"
+  SHIM="$(mktemp -d)"
+  ln -s "$PY" "$SHIM/python3"
+  export PATH="$SHIM:$PATH"
+  trap 'rm -rf "$RUNWAY_HOME" "$SHIM"' EXIT
+fi
 if ! "$PY" -c 'import pytest' 2>/dev/null; then
   echo "check.sh: ${PY} ($(command -v "$PY" || echo not found); $("$PY" --version 2>&1 || true)) has no pytest." >&2
   echo "  Fix: $PY -m pip install pytest   (or set PYTHON to an interpreter that has it)" >&2

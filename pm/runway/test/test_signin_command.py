@@ -67,6 +67,25 @@ class SignInCommand(unittest.TestCase):
         self.cli(root, "signin")
         self.assertFalse((root / "agent-ran").exists())
 
+    def test_signin_command_checks_the_harness_a_ready_ticket_needs(self):
+        root = self.repo(tickets={"01-thing": "Harness: codex"},
+                         harnesses={"codex": {"agent_cmd": "cx", "prep_cmd": "cx", "review_cmd": "cx", "parser": "codex"}})
+        cfg = json.loads((root / "runway.json").read_text())
+        cfg["signin_cmds"]["codex"] = SIGNED_OUT
+        (root / "runway.json").write_text(json.dumps(cfg))
+        r = self.cli(root, "signin")
+        self.assertNotEqual(r.returncode, 0, r.stdout)
+        names = {c["name"]: c["ok"] for c in self.written(root)["checks"]}
+        self.assertEqual((names.get("claude"), names.get("codex")), (True, False))
+
+    def test_signin_fails_closed_when_tickets_cannot_load(self):
+        root = self.repo()
+        r = runway.cmd_signin(self.cfg(root), root, False, [], load_error="tracker down")
+        self.assertEqual(r, 1)
+        doc = self.written(root)
+        self.assertFalse(doc["ok"])
+        self.assertIn("tracker down", {c["name"]: c for c in doc["checks"]}["tickets"]["detail"])
+
 
 if __name__ == "__main__":
     unittest.main()

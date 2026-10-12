@@ -940,7 +940,11 @@ class PluginShapeTests(unittest.TestCase):
 
     def test_no_skill_or_agent_reference_still_names_sdlc_or_ui_test_as_a_plugin(self):
         pattern = re.compile(r'\b(?:sdlc|ui-test):[a-z][\w-]*')
-        for path in ROOT.rglob('*'):
+        # Committed files only: a live checkout's worktrees, .scratch/ and _pm/ hold old text that never ships.
+        listed = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, capture_output=True, text=True)
+        paths = ([ROOT / p for p in listed.stdout.split('\0') if p] if listed.returncode == 0
+                 else list(ROOT.rglob('*')))
+        for path in paths:
             if (not path.is_file() or path.suffix not in {'.md', '.json', '.py', '.sh'}
                     or {'.git', 'changes', 'reviews', 'intent', 'dist', 'node_modules'} & set(path.parts)
                     or path == Path(__file__).resolve()):

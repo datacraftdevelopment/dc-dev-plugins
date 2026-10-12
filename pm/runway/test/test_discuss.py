@@ -258,6 +258,27 @@ class Resume(DiscussBase):
     def test_no_run_rows_starts_nothing(self):
         self.refuses("session")
 
+    def test_a_prep_session_in_the_repo_root_starts_nothing(self):
+        self.run_row(kind="prep", cwd=str(self.root))
+        self.assertFalse(runway.is_resumable(self.root, "eff/02"))
+        self.refuses("prep")
+
+    def test_a_run_recorded_in_the_repo_root_starts_nothing(self):
+        self.run_row(cwd=str(self.root))
+        self.assertFalse(runway.is_resumable(self.root, "eff/02"))
+        self.refuses("repo root")
+
+    def test_an_existing_folder_on_another_branch_starts_nothing(self):
+        self.run_row()
+        self.git("branch", "other")
+        self.git("worktree", "add", str(self.wt), "other")
+        with self.assertRaises(SystemExit) as e:
+            runway.cmd_discuss(self.cfg, self.root, self.tracker, "eff/02", resume=True)
+        self.assertIn("not a worktree on " + self.branch, str(e.exception.code))
+        self.assertEqual(self.resume_fake.calls, [])
+        self.assertFalse(runway.is_resumable(self.root, "eff/02", self.branch))
+        self.assertTrue(runway.is_resumable(self.root, "eff/02"))  # without a branch, only the log is read
+
     def test_transcript_not_found_starts_nothing(self):
         self.run_row(session_id="nope")
         self.refuses("transcript")

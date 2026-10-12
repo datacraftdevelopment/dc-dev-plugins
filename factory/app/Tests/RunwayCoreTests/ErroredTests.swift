@@ -91,7 +91,7 @@ final class ErroredTests: XCTestCase {
             return t
         }
         XCTAssertTrue(s.canTalkThrough(finished: try finished("W", "needs-human")))
-        XCTAssertTrue(s.canTalkThrough(finished: try finished("E", "needs-human")))
+        XCTAssertFalse(s.canTalkThrough(finished: try finished("E", "needs-human")))  // answered: only the stale flag is left
         XCTAssertFalse(s.canTalkThrough(finished: try finished("D", "needs-human")))   // answered or closed since
         XCTAssertFalse(s.canTalkThrough(finished: try finished("W", "done")))          // only needs-human rows
         XCTAssertFalse(s.canTalkThrough(finished: try finished("W", "stopped")))

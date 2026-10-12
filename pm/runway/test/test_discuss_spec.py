@@ -59,6 +59,19 @@ class DiscussSpec(unittest.TestCase):
         self.assertIn("The whole plan.", self.spec_section(text))
         self.assertIn("docs/specs/thing.md", self.spec_section(text))
 
+    def test_ticket_spec_line_naming_an_intent_note_is_not_read(self):
+        text = self.brief([issue("#1", body="Do it.\nSpec: docs/intent/thing.md", labels=HUMAN)], "#1")
+        self.assertNotIn("DISCOVERY NOTES", text)
+        self.assertIn("No spec found.", self.spec_section(text))
+        self.assertIn("discovery note", self.spec_section(text))
+
+    def test_parent_spec_line_naming_an_intent_note_is_not_read(self):
+        text = self.brief([issue("#9", body="Spec: docs/intent/thing.md\nParent plan text."),
+                           issue("#1", labels=HUMAN, parent="#9")], "#1")
+        self.assertNotIn("DISCOVERY NOTES", text)
+        self.assertIn("Parent plan text.", self.spec_section(text))
+        self.assertIn("discovery note", self.spec_section(text))
+
     def test_part_of_line_finds_the_issue(self):
         text = self.brief([issue("#7", body="Seven is the spec."),
                            issue("#1", body="Part of #7\nwork", labels=HUMAN)], "#1")
