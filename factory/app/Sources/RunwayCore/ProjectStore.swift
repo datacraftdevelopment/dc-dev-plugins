@@ -218,6 +218,17 @@ public final class ProjectStore {
         await launch(tools.discuss(ticket: ticket, repo: repo), key: Self.talkKey(project, ticket))
     }
 
+    /// Opens the ticket's own worker conversation (`runway discuss <ticket> --resume`), in the pane or Terminal.
+    public func resumeWorker(ticket: String, in project: Project) async {
+        guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: ticket, resume: true,
+                          spec: tools.discussResumeSession(ticket: ticket, repo: repo))
+            return
+        }
+        await launch(tools.discussResume(ticket: ticket, repo: repo), key: Self.talkKey(project, ticket, resume: true))
+    }
+
     /// Opens Terminal on `runway discuss --loop` for the project.
     public func talkThroughLoop(_ project: Project) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
@@ -233,15 +244,21 @@ public final class ProjectStore {
         guard let session = sessions.sessions.first(where: { $0.id == id }), let tools = requireTools() else { return }
         let repo = session.spec.workingDirectory
         sessions.close(id)
-        let command = session.ticket.map { tools.discuss(ticket: $0, repo: repo) } ?? tools.discussLoop(repo: repo)
+        let command = session.ticket.map {
+            session.resume ? tools.discussResume(ticket: $0, repo: repo) : tools.discuss(ticket: $0, repo: repo)
+        } ?? tools.discussLoop(repo: repo)
         let result = await run(command)
         if !result.succeeded { lastError = result.failureMessage }
     }
 
     /// Why the last launch for this ticket (or the loop, with nil) failed; nil after a launch that worked.
-    public func talkError(project: Project, ticket: String?) -> String? { talkErrors[Self.talkKey(project, ticket)] }
+    public func talkError(project: Project, ticket: String?, resume: Bool = false) -> String? {
+        talkErrors[Self.talkKey(project, ticket, resume: resume)]
+    }
 
-    private static func talkKey(_ project: Project, _ ticket: String?) -> String { project.label + "/" + (ticket ?? "") }
+    private static func talkKey(_ project: Project, _ ticket: String?, resume: Bool = false) -> String {
+        project.label + "/" + (ticket ?? "") + (resume ? "#resume" : "")
+    }
 
     private func launch(_ command: Command, key: String) async {
         let result = await run(command)

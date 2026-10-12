@@ -23,6 +23,9 @@ extension StatusSnapshot {
     public func canTalkThrough(finished: FinishedTicket) -> Bool {
         finished.result == "needs-human" && canTalkThrough(finished.ticket)
     }
+
+    /// "Resume worker" shows only when the engine says the ticket's latest attempt is a claude session it can reopen.
+    public func canResumeWorker(_ ticket: String) -> Bool { resumable.contains(ticket) }
 }
 
 /// The Terminal commands behind the "Talk it through" button. The engine owns the brief and the prompt;
@@ -30,6 +33,11 @@ extension StatusSnapshot {
 extension RunwayTools {
     public func discuss(ticket: String, repo: String) -> Command {
         terminal(repo: repo, discussTail(ticket: ticket))
+    }
+
+    /// `runway discuss <ticket> --resume`: the worker's own conversation, in Terminal.
+    public func discussResume(ticket: String, repo: String) -> Command {
+        terminal(repo: repo, discussTail(ticket: ticket, resume: true))
     }
 
     public func discussLoop(repo: String) -> Command {
@@ -49,7 +57,9 @@ extension RunwayTools {
             "-e", "tell application \"Terminal\" to do script \"\(literal)\""])
     }
 
-    func discussTail(ticket: String) -> String { "discuss " + Self.shellQuote(ticket) }
+    func discussTail(ticket: String, resume: Bool = false) -> String {
+        "discuss " + Self.shellQuote(ticket) + (resume ? " --resume" : "")
+    }
 
     /// Always single-quoted, so a space, a quote or a `$` in a path stays one word.
     static func shellQuote(_ word: String) -> String {

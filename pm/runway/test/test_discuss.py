@@ -34,7 +34,7 @@ class FakeClaude:
         raise SystemExit(0)  # the real one replaces the process and never returns
 
 
-class Discuss(unittest.TestCase):
+class DiscussBase(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp()).resolve()
         d = self.root / ".scratch" / "eff" / "issues"
@@ -70,6 +70,8 @@ class Discuss(unittest.TestCase):
     def brief(self, name):
         return (self.root / "_pm" / "discuss" / name).read_text()
 
+
+class Discuss(DiscussBase):
     def test_waiting_packet_ticket_writes_brief_and_starts_claude_in_the_repo(self):
         self.assertEqual(self.discuss("eff/01"), 0)
         text = self.brief("eff-01.md")
@@ -165,6 +167,117 @@ class Discuss(unittest.TestCase):
     def test_discuss_dir_is_under_the_gitignored_pm(self):
         gi = Path(__file__).resolve().parents[3] / ".gitignore"
         self.assertIn("/_pm/", gi.read_text())
+
+
+class FakeResume:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, cwd, session_id, prompt):
+        self.calls.append((cwd, session_id, prompt))
+        raise SystemExit(0)
+
+
+class Resume(DiscussBase):
+    """`discuss --resume`: recreate the parked worktree on the kept branch, then claude --resume there."""
+
+    def setUp(self):
+        super().setUp()
+        git = lambda *a, cwd=self.root: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True, text=True)
+        git("init", "-q", "-b", "main")
+        git("-c", "user.email=a@b", "-c", "user.name=n", "commit", "-q", "--allow-empty", "-m", "init")
+        self.git = git
+        self.branch = "runway/eff-02-parked"
+        git("branch", self.branch)
+        self.wt = self.root.parent / (self.root.name + "-wt") / "eff-02-parked"
+        self.resume_fake = FakeResume()
+        self._old_resume = runway.exec_claude_resume
+        runway.exec_claude_resume = self.resume_fake
+        self.sid = "sess-1"
+        proj = Path(self.home) / "projects" / "x"
+        proj.mkdir(parents=True)
+        (proj / f"{self.sid}.jsonl").write_text("{}")
+
+    def tearDown(self):
+        runway.exec_claude_resume = self._old_resume
+        super().tearDown()
+
+    def run_row(self, **kw):
+        row = {"kind": "run", "ticket": "eff/02", "attempt": 1, "exit": 1, "cwd": str(self.wt),
+               "harness": "claude", "session_id": self.sid}
+        self.runs({**row, **kw})
+
+    def resume(self, ticket="eff/02"):
+        with self.assertRaises(SystemExit) as e:
+            runway.cmd_discuss(self.cfg, self.root, self.tracker, ticket, resume=True)
+        return e.exception.code
+
+    def test_recreates_the_worktree_at_the_recorded_path_and_resumes_there(self):
+        self.run_row()
+        self.assertEqual(self.resume(), 0)
+        self.assertEqual(self.git("rev-parse", "--abbrev-ref", "HEAD", cwd=self.wt).stdout.strip(), self.branch)
+        (cwd, sid, prompt), = self.resume_fake.calls
+        self.assertEqual((Path(cwd).resolve(), sid), (self.wt.resolve(), self.sid))
+        self.assertIn("_pm/discuss/eff-02.md", prompt)
+        self.assertIn("Talk a ticket through", prompt)
+        self.assertIn("Joe", prompt)
+        self.assertEqual(self.fake.calls, [])  # not the fresh session
+
+    def test_an_existing_worktree_is_reused(self):
+        self.run_row()
+        self.git("worktree", "add", str(self.wt), self.branch)
+        (self.wt / "mine.txt").write_text("keep")
+        self.assertEqual(self.resume(), 0)
+        self.assertEqual((self.wt / "mine.txt").read_text(), "keep")
+        self.assertEqual(len(self.resume_fake.calls), 1)
+
+    def test_the_latest_attempt_decides(self):
+        self.run_row(session_id="old")
+        self.run_row(session_id=self.sid, attempt=2)
+        self.resume()
+        self.assertEqual(self.resume_fake.calls[0][1], self.sid)
+
+    def refuses(self, *needles):
+        with self.assertRaises(SystemExit) as e:
+            runway.cmd_discuss(self.cfg, self.root, self.tracker, "eff/02", resume=True)
+        self.assertNotEqual(e.exception.code, 0)
+        self.assertIn("Talk it through", str(e.exception.code))
+        for n in needles:
+            self.assertIn(n, str(e.exception.code))
+        self.assertEqual(self.resume_fake.calls, [])
+        self.assertFalse(self.wt.exists())
+
+    def test_no_session_id_starts_nothing(self):
+        self.run_row(session_id=None)
+        self.refuses("session")
+
+    def test_a_codex_attempt_starts_nothing(self):
+        self.run_row(harness="codex")
+        self.refuses("codex")
+
+    def test_no_run_rows_starts_nothing(self):
+        self.refuses("session")
+
+    def test_transcript_not_found_starts_nothing(self):
+        self.run_row(session_id="nope")
+        self.refuses("transcript")
+
+    def test_branch_gone_starts_nothing(self):
+        self.git("branch", "-D", self.branch)
+        self.run_row()
+        self.refuses("branch")
+
+    def test_resumable_in_status_json(self):
+        def flags():
+            d = runway.status_json(self.cfg, self.root, self.tracker)
+            return {t["id"]: t["resumable"] for t in d["tickets"]}
+        self.assertFalse(any(flags().values()))
+        self.run_row()
+        self.assertTrue(flags()["eff/02"])
+        self.run_row(harness="codex", attempt=2)
+        self.assertFalse(flags()["eff/02"])
+        self.run_row(attempt=3, session_id=None)
+        self.assertFalse(flags()["eff/02"])
 
 
 class DiscussLoop(unittest.TestCase):

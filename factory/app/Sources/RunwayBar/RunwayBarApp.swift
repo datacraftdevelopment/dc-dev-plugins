@@ -109,7 +109,8 @@ struct RunwayMenu: View {
             Text("Decisions waiting")
             ForEach(waiting, id: \.1.id) { entry, ticket in
                 let kind = store.snapshot(for: entry.project.label)?.errored[ticket.id]
-                ticketMenu(entry.project, id: ticket.id, title: ticket.title, errored: kind, tab: .decisions)
+                ticketMenu(entry.project, id: ticket.id, title: ticket.title, errored: kind,
+                           resumable: store.snapshot(for: entry.project.label)?.canResumeWorker(ticket.id) == true, tab: .decisions)
             }
         }
         // Errored tickets that aren't waiting come under the waiting ones.
@@ -120,7 +121,7 @@ struct RunwayMenu: View {
             Divider()
             Text("Errored tickets")
             ForEach(errored, id: \.1.id) { entry, row in
-                ticketMenu(entry.project, id: row.id, title: row.title, errored: row.errored, tab: .queue)
+                ticketMenu(entry.project, id: row.id, title: row.title, errored: row.errored, resumable: row.resumable, tab: .queue)
             }
         }
         Divider()
@@ -157,12 +158,16 @@ struct RunwayMenu: View {
 
     /// One waiting or errored ticket: a submenu with where it lives and the "Talk it through" button.
     @ViewBuilder private func ticketMenu(_ project: Project, id: String, title: String, errored: String?,
-                                         tab: NotificationTab) -> some View {
+                                         resumable: Bool, tab: NotificationTab) -> some View {
         let flag = errored.map { "  ⚑ \(ErroredKind.words($0))" } ?? ""
         Menu("\(id) \(title)\(flag)") {
             Button(tab == .decisions ? "Open decision" : "Open in queue") { show(project.label, ticket: id, tab: tab) }
             Button("Talk it through") { Task { await store.talkThrough(ticket: id, in: project); showSession() } }
             if let failure = store.talkError(project: project, ticket: id) { Text("⚠︎ \(String(failure.prefix(200)))") }
+            if resumable {
+                Button("Resume worker") { Task { await store.resumeWorker(ticket: id, in: project); showSession() } }
+                if let failure = store.talkError(project: project, ticket: id, resume: true) { Text("⚠︎ \(String(failure.prefix(200)))") }
+            }
         }
     }
 

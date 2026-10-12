@@ -290,7 +290,15 @@ failed tick, a failed sign-in check, a failed finish), and the way out: restart
 the job, sign in again, clear a stale lock. Installing or removing LaunchAgents
 is Joe's step: give him the command, don't run it.
 
-Rules for all three:
+**Resumed worker.** `RUNWAY discuss <ticket> --resume` puts you inside the
+worker's own session, in the worktree it ran in (recreated from the kept
+branch if settle had removed it). You are talking with Joe now, interactively,
+with his permissions. The brief names what happened since you stopped. Anything
+you commit stays on the ticket's branch, and when Joe says go the next tick
+starts from a fresh worktree off the integration branch, so say whether you
+committed anything he wants kept, and merge it or note it on the ticket.
+
+Rules for all three (and the resumed worker):
 
 - Post `RUNWAY go|no <ticket> "<note>"` only after Joe says go or no on this
   ticket in this session, with his own words as the note. Never on a

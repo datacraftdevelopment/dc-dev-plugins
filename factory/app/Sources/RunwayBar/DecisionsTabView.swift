@@ -108,7 +108,7 @@ private struct DecisionCardView: View {
                     Button("Go") { send(go: true) }.keyboardShortcut(.defaultAction).disabled(!canSend)
                     Button("No") { send(go: false) }.disabled(!canSend)
                     if feed.isAnswering(ticket.id) { ProgressView().controlSize(.small) }
-                    TalkButton(store: store, project: project, ticket: ticket.id)
+                    TalkButton(store: store, project: project, ticket: ticket.id, resumable: ticket.resumable)
                 }
             }
             if let error = feed.errors[ticket.id] {

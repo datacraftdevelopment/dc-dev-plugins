@@ -59,7 +59,7 @@ class StatusJson(unittest.TestCase):
         w = by["eff/03"]
         self.assertEqual(set(w), {"id", "title", "url", "status", "gate", "blocked_by",
                                   "waiting_on", "packet", "harness", "claimed_by", "errored",
-                                  "next_step", "reason"})
+                                  "next_step", "reason", "resumable"})
         self.assertEqual(w["status"], "needs-human")
         self.assertEqual(w["gate"], "human")
         self.assertEqual(w["waiting_on"], "Joe, go/no-go")

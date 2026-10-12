@@ -75,7 +75,7 @@ struct QueueTab: View {
             if let errored = ticket.errored {
                 HStack(spacing: 10) {
                     ErroredFlag(kind: errored)
-                    TalkButton(store: store, project: entry.project, ticket: ticket.id)
+                    TalkButton(store: store, project: entry.project, ticket: ticket.id, resumable: ticket.resumable)
                 }
                 .padding(.leading, number == nil ? 0 : 22)
             }

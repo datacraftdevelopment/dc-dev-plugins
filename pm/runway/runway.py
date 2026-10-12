@@ -43,7 +43,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               "ready_prep": [...], "blocked": [...], "done": [...]},
    "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null,
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
-                "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason"}]}
+                "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason", "resumable"}]}
 
   machine     This Mac's name (`scutil --get LocalHostName`, else the hostname), what `runway whoami`
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
@@ -78,6 +78,8 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   harness  The ticket's effective harness name (its override, else the project default).
   errored  The kind of the ticket's latest attempt that didn't merge, from _pm/runway-runs.jsonl
            (agent-failed, no-commits, check-failed, merge-conflict, signed-out), or null. A merge clears it.
+  resumable  true when the ticket's latest attempt was a claude session with a session id, so
+           `runway discuss <ticket> --resume` can reopen it; false otherwise.
 
 `runway discuss <ticket>` writes _pm/discuss/<id>.md (ticket text, packet, Runway's park comment, blockers,
 attempts with kind, check exit and transcript path, the ticket's log lines) and replaces the process with an
@@ -86,6 +88,11 @@ takes a waiting ticket or an errored one (a ticket still being retried counts); 
 and starts nothing. `runway discuss --loop` is for the loop itself and always runs: _pm/discuss/loop.md holds
 the heartbeat, `launchctl print` for the job, the pause, the last sign-in check, log tails and the last runs.
 Always the claude harness. A GitHub brief carries trusted authors' comments only.
+`runway discuss <ticket> --resume` instead reopens the worker's own conversation: the latest attempt's session
+id from _pm/runway-runs.jsonl (claude only), the worktree recreated at the path the attempt recorded from the
+kept branch (`git worktree add <cwd> <branch>`; an existing path is reused), then `claude --resume <id>` there
+with a first message pointing at the brief. No session id, a codex attempt, no transcript or a gone branch
+exits non-zero with the reason and "use Talk it through instead".
 
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
@@ -2240,6 +2247,55 @@ def exec_claude(root: Path, prompt: str) -> None:
     os.execvp("claude", ["claude", prompt])
 
 
+def exec_claude_resume(cwd: Path, session_id: str, prompt: str) -> None:
+    """Hand Terminal to `claude --resume <id>` in the folder the worker ran in. Never returns."""
+    os.chdir(cwd)
+    os.execvp("claude", ["claude", "--resume", session_id, prompt])
+
+
+def latest_attempt(root: Path, ticket: str) -> dict | None:
+    """The ticket's latest agent row (run, prep or fix) in _pm/runway-runs.jsonl, or None."""
+    rows = [r for r in read_runs(root) if r.get("ticket") == ticket and r.get("kind") in ("run", "prep", "fix")]
+    return rows[-1] if rows else None
+
+
+def is_resumable(root: Path, ticket: str) -> bool:
+    """True when the latest attempt was a claude session with an id, so `discuss --resume` can reopen it."""
+    r = latest_attempt(root, ticket)
+    return bool(r and r.get("session_id") and (r.get("harness") or "claude") == "claude")
+
+
+def resume_target(root: Path, t) -> tuple:
+    """(cwd, session_id) to resume for the ticket, recreating its parked worktree from the kept branch.
+    Exits with the reason (and "use Talk it through instead") when it can't be done; creates nothing then."""
+    def no(why: str):
+        sys.exit(f"Can't resume {t.id}: {why}; use Talk it through instead.")
+    r = latest_attempt(root, t.id)
+    if not r:
+        no("no attempt is logged, so there is no session id")
+    harness = r.get("harness") or "claude"
+    if harness != "claude":
+        no(f"the latest attempt ran on {harness}, and only claude sessions resume")
+    sid = r.get("session_id")
+    if not sid:
+        no("the latest attempt has no session id")
+    if not transcript(sid):
+        no(f"the transcript for session {sid} was not found on this machine")
+    if not r.get("cwd"):
+        no("the attempt did not record where it ran")
+    cwd = Path(r["cwd"])
+    if not cwd.exists():
+        branch = f"runway/{t.effort}-{t.slug}"
+        if sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode != 0:
+            no(f"the branch {branch} is gone")
+        sh(["git", "worktree", "prune"], root)
+        cwd.parent.mkdir(parents=True, exist_ok=True)
+        made = sh(["git", "worktree", "add", str(cwd), branch], root)
+        if made.returncode != 0:
+            no(f"git could not recreate the worktree on {branch}: {(made.stderr or '').strip()}")
+    return cwd, sid
+
+
 def launchctl_print(label: str) -> str:
     try:
         r = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{label}"], capture_output=True, text=True, timeout=15)
@@ -2378,11 +2434,20 @@ def write_brief(root: Path, name: str, text: str) -> str:
     return f"_pm/discuss/{name}"
 
 
-def cmd_discuss(cfg: dict, root: Path, tracker, num: str) -> None:
+def cmd_discuss(cfg: dict, root: Path, tracker, num: str, resume: bool = False) -> None:
     loaded = tracker.load()
     t = find(type("Loaded", (), {"load": lambda self: loaded})(), num)
     if t.id not in {x.id for x in group_tickets(loaded, cfg)["waiting"]} and t.id not in errored_kinds(root):
         sys.exit(f"{t.id} is not waiting on Joe and has no attempt that failed to merge; nothing to discuss.")
+    if resume:
+        cwd, sid = resume_target(root, t)
+        rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
+        exec_claude_resume(cwd, sid, (
+            f"You're now talking with Joe, interactively, with his permissions, no longer headless. Read {root / rel} "
+            f"for what happened since you stopped (ticket {t.id}), and follow the runway skill's \"Talk a ticket "
+            f"through\" section: post go or no only on Joe's own words. Anything you commit here stays on this "
+            f"ticket's branch. When Joe says go, the next tick starts from a fresh worktree off the integration "
+            f"branch, so say whether you committed anything he wants kept, and merge it or note it on the ticket."))
     rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
     exec_claude(root, f"Read {rel}, the brief for ticket {t.id}, and follow the runway skill's "
                       f"\"Talk a ticket through\" section. Wait for Joe before posting anything.")
@@ -2658,6 +2723,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
+    resumable = {t.id: is_resumable(root, t.id) for t in loaded if t.id in grouped}
 
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
@@ -2665,7 +2731,8 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
                 "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by,
-                "errored": errored.get(t.id), "next_step": steps[t.id].kind, "reason": steps[t.id].reason}
+                "errored": errored.get(t.id), "next_step": steps[t.id].kind, "reason": steps[t.id].reason,
+                "resumable": resumable[t.id]}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
@@ -2749,6 +2816,7 @@ def main() -> None:
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
     ds = sub.add_parser("discuss", help="open a claude session to talk a waiting or errored ticket (or --loop) through")
     ds.add_argument("ticket", nargs="?")
+    ds.add_argument("--resume", action="store_true", help="reopen the ticket's own worker session (claude only), not a fresh one")
     ds.add_argument("--loop", action="store_true", help="the loop itself (stale heartbeat, failed tick, sign-in), not a ticket")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
@@ -2768,6 +2836,8 @@ def main() -> None:
         print(describe_machine(root))
         return
     if a.cmd == "discuss":
+        if a.resume and a.loop:
+            sys.exit("--resume is for a ticket's worker session, not the loop.")
         if a.loop == bool(a.ticket):
             sys.exit("Give a ticket to discuss, or --loop for the loop itself (not both).")
         if a.loop:
@@ -2792,7 +2862,7 @@ def main() -> None:
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
     elif a.cmd == "discuss":
-        cmd_discuss(cfg, root, tracker, a.ticket)
+        cmd_discuss(cfg, root, tracker, a.ticket, resume=a.resume)
     elif a.cmd in ("tick", "loop", "finish"):
         ensure_app()
         lock = locked(root)

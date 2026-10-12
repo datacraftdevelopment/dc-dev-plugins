@@ -15,6 +15,8 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public let packet: String?
     /// Kind of the ticket's latest attempt that didn't merge (`check-failed`…); nil when not errored or the engine is older.
     public var errored: String?
+    /// The latest attempt was a claude session the engine can reopen (`discuss --resume`); false from an older engine.
+    public var resumable = false
 }
 
 public struct QueueSections: Equatable, Sendable {
@@ -43,7 +45,8 @@ public struct QueueStatus: Equatable, Sendable {
                                blockedBy: raw["blocked_by"] as? [String] ?? [],
                                waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String,
                                packet: raw["packet"] as? String,
-                               errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 })
+                               errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                               resumable: raw["resumable"] as? Bool ?? false)
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }

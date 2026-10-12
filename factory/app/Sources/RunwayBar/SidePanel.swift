@@ -386,7 +386,7 @@ private struct NeedsYouRowView: View {
                 Button("Details", action: details)
             }
             .buttonStyle(.borderless).font(.caption)
-            TalkButton(store: store, project: project, ticket: row.id).buttonStyle(.borderless).font(.caption)
+            TalkButton(store: store, project: project, ticket: row.id, resumable: row.resumable).buttonStyle(.borderless).font(.caption)
             if !row.waiting {
                 EmptyView()  // errored only: nothing to go or no on
             } else if let answer {
