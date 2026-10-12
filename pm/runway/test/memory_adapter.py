@@ -6,6 +6,8 @@ in the order they happened. Configure it as GitHub or Linear by passing that tra
     t.mark_claimed("b", "Mini-One")
     tr.ops   # [("comment", "🛫 runway · Claimed-by: ..."), ("claim",)]
 """
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -17,7 +19,7 @@ LABELS = {"agent_label": "ready-for-agent", "human_label": "ready-for-human", "a
 
 
 def issue(id, title="A ticket", body="", url=None, labels=(), comments=(), closed=False, held=False,
-          children=False, blocked_by=()):
+          children=False, blocked_by=(), parent=None, trusted=True):
     """`comments` are (body, trusted) pairs, or (body, trusted, who, assoc[, createdAt]). Oldest first."""
     out = []
     for i, c in enumerate(comments):
@@ -26,7 +28,7 @@ def issue(id, title="A ticket", body="", url=None, labels=(), comments=(), close
         out.append({"body": body_, "createdAt": at, "trusted": trusted,
                     "who": who, "assoc": assoc})
     return {"id": id, "title": title, "body": body, "url": url, "labels": list(labels), "comments": out,
-            "closed": closed, "held": held, "children": children, "blocked_by": list(blocked_by)}
+            "closed": closed, "held": held, "children": children, "blocked_by": list(blocked_by), "parent": parent, "trusted": trusted}
 
 
 class MemoryTicket(ticket_protocol.Ticket):
@@ -56,6 +58,9 @@ class MemoryTicket(ticket_protocol.Ticket):
     held = property(lambda self: self.data["held"])
     has_children = property(lambda self: self.data["children"])
     blocked_by = property(lambda self: list(self.data["blocked_by"]))
+
+    def parent_issue(self):
+        return self.tr.spec_issue(self.data.get("parent"))
 
     # -- writes --
 
@@ -133,6 +138,15 @@ class MemoryTracker(ticket_protocol.Tracker):
         tickets = [MemoryTicket(d, self) for d in self.issues]
         self._log_spec_skips(tickets)
         return tickets
+
+    def spec_issue(self, ref):
+        """The issue `ref` as a spec fact (its body only when its author is trusted), or None."""
+        d = next((x for x in self.issues if x["id"] == ref), None) if ref else None
+        if d is None:
+            return None
+        kids = [{"id": x["id"], "title": x["title"], "closed": x["closed"]} for x in self.issues if x.get("parent") == ref]
+        return {"id": d["id"], "title": d["title"], "url": d["url"], "closed": d["closed"],
+                "body": d["body"] if d.get("trusted", True) else None, "children": kids}
 
     def reload(self, t: MemoryTicket) -> MemoryTicket:
         return MemoryTicket(t.data, self)

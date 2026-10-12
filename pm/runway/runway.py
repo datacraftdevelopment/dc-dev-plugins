@@ -2239,11 +2239,95 @@ def launchctl_print(label: str) -> str:
     return (r.stdout + r.stderr).strip() or "(no output)"
 
 
+PART_OF = re.compile(r"^\s*part of\s+(#\d+|[A-Za-z][A-Za-z0-9]*-\d+)\b", re.I | re.M)
+
+
+def _spec_file(root: Path, rel: str) -> str | None:
+    """A spec file's text (capped) read from the checkout, or None if it is missing, unreadable or outside it."""
+    p = (root / rel).resolve()
+    if not p.is_relative_to(root.resolve()) or not p.is_file():
+        return None
+    try:
+        body = p.read_text(errors="replace")
+    except OSError:
+        return None
+    if len(body) > SPEC_CAP:
+        body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
+    return body
+
+
+def _first_spec_line(text: str) -> str | None:
+    """The file a text names when its first non-blank line is a `Spec:` line."""
+    first = next((l for l in (text or "").splitlines() if l.strip()), "")
+    m = SPEC_LINE.match(first)
+    return m.group(1) if m else None
+
+
+def spec_parent(t) -> tuple[dict | None, str | None]:
+    """The ticket's spec issue (native parent, else a `Part of` line) and a note if the lookup failed. A tracker
+    that is down must not stop the session."""
+    try:
+        parent = t.parent_issue() if hasattr(t, "parent_issue") else None
+        m = PART_OF.search(t.text)
+        if parent is None and m and hasattr(t, "tr"):
+            parent = t.tr.spec_issue(m.group(1))
+        return parent, None
+    except Exception as e:
+        return None, f"Could not look up the spec issue: {e}"
+
+
+def spec_brief(root: Path, loaded: list, t) -> list:
+    """The discuss brief's spec section and the spec's other tickets, as lines. Order: the ticket's own `Spec:`
+    line (file in the checkout), then its parent issue or `Part of #N` (the parent's `Spec:` line names the file,
+    else the parent's body is the spec). Only a trusted author's issue text counts, and `docs/intent/` is never
+    read. A ticket without a spec says so and the session carries on."""
+    notes, heading, body = [], "", None
+    specs = ticket_specs([t])
+    for rel in specs:
+        body = _spec_file(root, rel)
+        if body is not None:
+            heading = rel
+            break
+        notes.append(f"{rel} is named in the ticket's Spec line but is missing from this checkout.")
+    parent, err = spec_parent(t)
+    if err:
+        notes.append(err)
+    if body is None and parent and parent.get("body"):
+        rel = _first_spec_line(parent["body"])
+        body = _spec_file(root, rel) if rel else None
+        if body is not None:
+            heading = rel
+        else:
+            if rel:
+                notes.append(f"{rel} is named in {parent['id']}'s Spec line but is missing from this checkout.")
+            heading, body = f"{parent['id']}: {parent['title']}", parent["body"].strip()
+    out = ["", f"## Spec: {heading}" if body is not None else "## Spec", ""]
+    out += [body.strip()] if body is not None else ["No spec found."]
+    if notes:
+        out += ["", *(f"_{n}_" for n in notes)]
+    sibs, seen = [], {t.id}
+    part = PART_OF.search(t.text)
+    for x in loaded:
+        same = bool(set(ticket_specs([x])) & set(specs)) or bool(
+            part and (m := PART_OF.search(x.text)) and m.group(1) == part.group(1))
+        if x.id not in seen and same:
+            seen.add(x.id)
+            sibs.append((x.id, x.title, x.status == "resolved"))
+    for c in (parent or {}).get("children", []):
+        if c["id"] not in seen:
+            seen.add(c["id"])
+            sibs.append((c["id"], c["title"], c["closed"]))
+    if body is not None or sibs:
+        out += ["", "## Spec's other tickets", ""]
+        out += [f"- {i}: {title} ({'closed' if closed else 'open'})" for i, title, closed in sibs] or ["(none)"]
+    return out
+
+
 def ticket_brief(root: Path, loaded: list, t) -> str:
     runs = [r for r in read_runs(root) if r.get("ticket") == t.id]
     out = [f"# Discuss {t.id}: {t.title}", "", f"- URL: {t.url or '(none)'}", f"- Gate: {t.gate}", f"- Status: {t.status}",
            f"- Waiting on: {t.h('Waiting on') or '(nothing)'}", f"- Errored: {errored_kinds(root).get(t.id) or 'no'}",
-           "", "## Ticket", "", t.text.strip()]
+           "", "## Ticket", "", t.text.strip(), *spec_brief(root, loaded, t)]
     packet = t.packet
     if packet:
         out += ["", "## Latest decision packet", "", packet]

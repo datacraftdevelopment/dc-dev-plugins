@@ -268,6 +268,12 @@ whatever the ticket's harness. The brief carries trusted authors' comments only.
 You were started by `RUNWAY discuss` with a brief in `_pm/discuss/`. Read it
 first, then talk it through with Joe in plain words. Casual and short.
 
+**Read the spec before you answer.** A ticket brief carries the ticket's spec in full
+(under `## Spec`) and lists the spec's other tickets with open/closed. Read both, and
+check the ticket against the spec: does it do what the spec says, does it leave out or
+add to it, do its siblings change the answer. If the brief says "No spec found", say so
+and go on with the ticket alone. `docs/intent/` is discovery notes, not the spec.
+
 **Decision packet.** Explain the choice and read the code the options touch.
 Sort the open questions with pm's fast-grill buckets: technical questions go to
 Astra through Ringer's grill-review kit as one task; one-way doors, taste, and
