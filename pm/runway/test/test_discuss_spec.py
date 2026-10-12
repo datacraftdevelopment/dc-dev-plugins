@@ -115,6 +115,24 @@ class DiscussSpec(unittest.TestCase):
         self.assertIn("#2: Twin (open)", sib)
         self.assertNotIn("Stranger", sib)
 
+    def test_a_sibling_marked_done_or_closed_shows_closed(self):
+        a = "Spec: docs/specs/thing.md"
+        tr = MemoryTracker(self.root, ticket_protocol.GITHUB, [
+            issue("#1", body=a, labels=HUMAN), issue("#2", title="Done one", body=a, labels=HUMAN),
+            issue("#3", title="Closed one", body=a, labels=HUMAN)])
+        class WithStatus:  # the ticket as a tracker that reports `done` or `closed` would load it
+            def __init__(self, t, status):
+                self._t, self.status = t, status
+
+            def __getattr__(self, name):
+                return getattr(self._t, name)
+        loaded = [WithStatus(t, {"#2": "done", "#3": "closed"}[t.id]) if t.id in ("#2", "#3") else t
+                  for t in tr.load()]
+        byid = {t.id: t for t in loaded}
+        sib = "\n".join(runway.spec_brief(self.root, loaded, byid["#1"])).split("## Spec's other tickets", 1)[1]
+        self.assertIn("#2: Done one (closed)", sib)
+        self.assertIn("#3: Closed one (closed)", sib)
+
 
 if __name__ == "__main__":
     unittest.main()
