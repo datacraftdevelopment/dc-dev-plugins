@@ -58,6 +58,16 @@ class WorkflowTests(unittest.TestCase):
             (matt/'skills/engineering/tdd/SKILL.md').write_text('live source edit')
             self.assertIn(str(matt/'skills/engineering/tdd/SKILL.md'),(output/'skills/tdd/SKILL.md').read_text())
 
+    def test_version_changes_when_a_skill_changes(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);library,registry,matt=self.fixture(root)
+            version=lambda out:json.loads((out/'.codex-plugin/plugin.json').read_text())['version']
+            first=version(build(library,registry,root/'a'))
+            self.assertRegex(first,r'^0\.1\.0\+codex\.[0-9a-f]{12}$')
+            self.assertEqual(first,version(build(library,registry,root/'b')))
+            (matt/'skills/engineering/tdd/SKILL.md').write_text('---\nname: tdd\ndescription: changed\n---\nchanged\n')
+            self.assertNotEqual(first,version(build(library,registry,root/'c')))
+
     def test_missing_active_or_mismatched_version_fails(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);library,registry,matt=self.fixture(root)
