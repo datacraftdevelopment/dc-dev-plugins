@@ -156,7 +156,7 @@ struct BoardTab: View {
         .padding(10)
         .frame(width: width, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(tint(column).opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+        .background(columnTint(column).opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.quaternary, lineWidth: 1))
     }
 
@@ -171,7 +171,7 @@ struct BoardTab: View {
     }
 }
 
-func tint(_ column: BoardColumn) -> Color {
+func columnTint(_ column: BoardColumn) -> Color {
     switch column {
     case .blocked: return .gray
     case .needsYou: return .orange
@@ -188,7 +188,7 @@ private struct ColumnHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                Circle().fill(tint(column)).frame(width: 8, height: 8)
+                Circle().fill(columnTint(column)).frame(width: 8, height: 8)
                 Text(column.title).font(.headline)
                 Text("\(count)").font(.callout).foregroundStyle(.secondary)
             }
@@ -359,7 +359,7 @@ private struct CardDetails: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Text(card.id).font(.callout.monospaced()).foregroundStyle(.secondary)
-                    chip(card.column.title, tint(card.column))
+                    chip(card.column.title, columnTint(card.column))
                     if let errored = card.errored { ErroredFlag(kind: errored) }
                     Spacer()
                     Button(action: close) { Image(systemName: "xmark") }
