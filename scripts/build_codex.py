@@ -324,37 +324,92 @@ def build_one(name, parent):
     return dest
 
 
-def install(packages, creator):
-    helpers = creator / 'scripts'
-    for filename in ('create_basic_plugin.py', 'validate_plugin.py', 'read_marketplace_name.py',
-                     'update_plugin_cachebuster.py'):
-        if not (helpers / filename).is_file():
-            raise ValueError(f'Missing Codex plugin-creator helper: {helpers / filename}')
-    marketplace = Path.home() / '.agents/plugins/marketplace.json'
-    if marketplace.exists():
-        run('python3', str(helpers / 'read_marketplace_name.py'))
+def _frontmatter(skill_md):
+    match = re.match(r'---\n(.*?)^---[ \t]*$', skill_md.read_text(), re.S | re.M)
+    if not match:
+        return None
+    import yaml  # scripts/requirements-codex.txt
+    try:
+        data = yaml.safe_load(match.group(1))
+    except yaml.YAMLError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def validate_package(package):
+    """What Codex needs to load a local plugin, checked before anything is replaced: a manifest
+    named for its folder with a version, every path the manifest declares present, a readable MCP
+    config, and frontmatter (name, description) on every skill. Codex 0.159 dropped the
+    plugin-creator helper scripts that used to check this, so the check lives here."""
+    manifest = package / '.codex-plugin/plugin.json'
+    if not manifest.is_file():
+        raise ValueError(f'{package.name}: missing {manifest}')
+    try:
+        data = json.loads(manifest.read_text())
+    except ValueError as e:
+        raise ValueError(f'{package.name}: unreadable manifest: {e}')
+    if data.get('name') != package.name:
+        raise ValueError(f'{package.name}: manifest name is {data.get("name")!r}')
+    if not isinstance(data.get('version'), str) or not data['version']:
+        raise ValueError(f'{package.name}: manifest has no version')
+    declared = [(k, v) for k, v in data.items() if isinstance(v, str) and v.startswith('./')]
+    declared += [(k, v) for k, v in (data.get('interface') or {}).items() if isinstance(v, str) and v.startswith('./')]
+    for key, rel in declared:
+        if not (package / rel).exists():
+            raise ValueError(f'{package.name}: declared {key} {rel} is missing')
+    mcp = data.get('mcpServers')
+    if isinstance(mcp, str):
+        try:
+            servers = json.loads((package / mcp).read_text()).get('mcpServers')
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f'{package.name}: unreadable MCP config {mcp}: {e}')
+        if not isinstance(servers, dict):
+            raise ValueError(f'{package.name}: MCP config {mcp} has no mcpServers object')
+    skills = data.get('skills')
+    if skills:
+        if not (package / skills).is_dir():
+            raise ValueError(f'{package.name}: declared skills folder {skills} is missing')
+        for folder in sorted(p for p in (package / skills).iterdir() if p.is_dir()):
+            meta = _frontmatter(folder / 'SKILL.md') if (folder / 'SKILL.md').is_file() else None
+            if not meta or not all(isinstance(meta.get(k), str) and meta[k].strip() for k in ('name', 'description')):
+                raise ValueError(f'{package.name}: skill {folder.name} has no valid frontmatter (name, description)')
+
+
+def register(packages, marketplace):
+    """Add each package to the personal marketplace (~/.agents/plugins/marketplace.json), keeping
+    existing entries, their order and metadata as they are. The whole catalog is checked before
+    anything is written. Returns the marketplace name."""
+    data = json.loads(marketplace.read_text()) if marketplace.exists() else {'name': 'personal', 'plugins': []}
+    name = data.get('name') if isinstance(data, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f'{marketplace}: marketplace has no name')
+    plugins = data.get('plugins')
+    if not isinstance(plugins, list) or not all(isinstance(e, dict) for e in plugins):
+        raise ValueError(f'{marketplace}: plugins is not a list of entries')
+    added = []
     for package in packages:
-        run('python3', str(helpers / 'validate_plugin.py'), str(package))
-    existing = json.loads(marketplace.read_text())['plugins'] if marketplace.exists() else []
+        expected = {'source': 'local', 'path': f'./plugins/{package.name}'}
+        entry = next((e for e in plugins if e.get('name') == package.name), None)
+        if entry is None:
+            added.append({'name': package.name, 'source': expected})
+        elif entry.get('source') != expected:
+            raise ValueError(f'{package.name}: personal entry points at another source')
+    if added or not marketplace.exists():
+        plugins.extend(added)
+        marketplace.parent.mkdir(parents=True, exist_ok=True)
+        tmp = marketplace.with_name(marketplace.name + '.tmp')
+        tmp.write_text(json.dumps(data, indent=2) + '\n')
+        tmp.replace(marketplace)
+    return name
+
+
+def install(packages, marketplace=None):
+    """Register built packages (already in ~/plugins) and (re)install them in Codex. The build's
+    version carries a content hash, so a changed package always installs as a new version."""
     for package in packages:
-        entry = next((e for e in existing if e.get('name') == package.name), None)
-        if entry:
-            expected = {'source': 'local', 'path': f'./plugins/{package.name}'}
-            if entry.get('source') != expected:
-                raise ValueError(f'{package.name}: personal entry points at another source')
-            # Preserve the existing catalog policy, ordering, and display metadata.
-            run('python3', str(helpers / 'update_plugin_cachebuster.py'), str(package))
-        else:
-            # Scaffold handles personal catalog creation; restore our richer manifest.
-            manifest = package / '.codex-plugin/plugin.json'
-            content = manifest.read_bytes()
-            try:
-                run('python3', str(helpers / 'create_basic_plugin.py'), package.name,
-                    '--path', str(package.parent), '--with-marketplace', '--force')
-            finally:
-                manifest.write_bytes(content)
-        market_name = run('python3', str(helpers / 'read_marketplace_name.py'),
-                          capture_output=True).stdout.strip()
+        validate_package(package)
+    market_name = register(packages, marketplace or Path.home() / '.agents/plugins/marketplace.json')
+    for package in packages:
         run('codex', 'plugin', 'add', f'{package.name}@{market_name}')
 
 
@@ -364,8 +419,6 @@ def main():
     parser.add_argument('--install', action='store_true', help='Build into ~/plugins and install in Codex')
     parser.add_argument('--plugin', action='append', choices=list(PLUGINS),
                         help='Build only this plugin (repeat to select several)')
-    parser.add_argument('--plugin-creator-dir', type=Path,
-                        default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install uses ~/plugins; do not combine it with --output')
@@ -379,7 +432,7 @@ def main():
             raise ValueError(f'Refusing to replace unowned destination: {target}')
     packages = [build_one(name, parent) for name in selected]
     if args.install:
-        install(packages, args.plugin_creator_dir.expanduser())
+        install(packages)
 
 
 if __name__ == '__main__':
