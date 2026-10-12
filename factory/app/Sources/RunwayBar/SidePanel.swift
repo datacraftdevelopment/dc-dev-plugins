@@ -27,7 +27,7 @@ struct SidePanel: View {
                         }
                     }
                     if !store.entries.isEmpty {
-                        FinishedList(store: store, model: finished, now: context.date)
+                        FinishedList(store: store, model: finished, now: context.date, scroll: proxy)
                     }
                 }
                 .padding(10)
@@ -514,6 +514,7 @@ private struct FinishedList: View {
     let store: ProjectStore
     let model: FinishedModel
     let now: Date
+    let scroll: ScrollViewProxy
     @State private var expanded: Set<String> = []
 
     var body: some View {
@@ -530,7 +531,8 @@ private struct FinishedList: View {
                              trailing: "\(PanelHistory.doneCount(rows)) done · \(PanelHistory.cost(PanelHistory.cost(of: rows)))")
                     .padding(.top, 4)
                 ForEach(day.rows) { tagged in
-                    FinishedRowView(tagged: tagged, snapshot: store.snapshot(for: tagged.projectLabel),
+                    FinishedRowView(tagged: tagged, store: store, scroll: scroll,
+                                    snapshot: store.snapshot(for: tagged.projectLabel),
                                     tracker: store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project.tracker,
                                     showProject: multiProject, isExpanded: expanded.contains(tagged.id)) {
                         if expanded.contains(tagged.id) { expanded.remove(tagged.id) } else { expanded.insert(tagged.id) }
@@ -543,6 +545,8 @@ private struct FinishedList: View {
 
 private struct FinishedRowView: View {
     let tagged: TaggedRow
+    let store: ProjectStore
+    let scroll: ScrollViewProxy
     let snapshot: StatusSnapshot?
     let tracker: String?
     let showProject: Bool
@@ -555,6 +559,7 @@ private struct FinishedRowView: View {
             Button(action: toggle) { summary.contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityHint(isExpanded ? "Hide details" : "Show details")
+            talkRow
             if isExpanded {
                 details
                     .padding(8)
@@ -565,6 +570,19 @@ private struct FinishedRowView: View {
         }
         .padding(.horizontal, 4).padding(.vertical, 4)
         .overlay(alignment: .top) { Divider().opacity(0.5) }
+    }
+
+    /// A row that ended "needs you" can be talked through from here while its ticket still waits.
+    @ViewBuilder private var talkRow: some View {
+        if case .ticket(let t) = tagged.row, snapshot?.canTalkThrough(finished: t) == true,
+           let project = store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project {
+            HStack(spacing: 10) {
+                TalkButton(store: store, project: project, ticket: t.ticket)
+                Button("Go") { withAnimation { scroll.scrollTo(NeedsYouSection.anchor(tagged.projectLabel), anchor: .top) } }
+                    .help("Scroll to this ticket's Needs you row")
+            }
+            .buttonStyle(.borderless).font(.caption).padding(.leading, 20)
+        }
     }
 
     // MARK: summary

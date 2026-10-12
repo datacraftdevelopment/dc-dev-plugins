@@ -18,6 +18,11 @@ extension StatusSnapshot {
     public func canTalkThrough(_ ticket: String) -> Bool {
         errored[ticket] != nil || tickets.contains { $0.id == ticket }
     }
+
+    /// A Finished row that ended "needs you" offers the button while its ticket still waits or errored.
+    public func canTalkThrough(finished: FinishedTicket) -> Bool {
+        finished.result == "needs-human" && canTalkThrough(finished.ticket)
+    }
 }
 
 /// The Terminal commands behind the "Talk it through" button. The engine owns the brief and the prompt;
