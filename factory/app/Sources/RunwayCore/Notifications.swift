@@ -79,7 +79,7 @@ public struct StatusSnapshot: Equatable, Sendable {
     /// Tickets the loop could pick up: `ready_auto` plus `ready_prep`.
     public let readyCount: Int
 
-    /// Every ticket's title by id, so the Now tab can name what the loop is working on.
+    /// Every ticket's title by id, so the board can name what the loop is working on.
     public let titles: [String: String]
     /// Each ticket's tracker link (a Linear issue URL) by id, when the tracker gives one.
     public let urls: [String: URL]

@@ -1,0 +1,140 @@
+import XCTest
+@testable import RunwayCore
+
+final class BoardTests: XCTestCase {
+    private func queue() throws -> QueueStatus {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle.module.url(forResource: "status", withExtension: "json", subdirectory: "Fixtures")))
+        return try XCTUnwrap(QueueStatus.parse(data))
+    }
+
+    private func runs(_ lines: [String]) -> [RunRecord] { RunsLog.parse(Data(lines.joined(separator: "\n").utf8)) }
+
+    private func status(_ json: String) throws -> QueueStatus { try XCTUnwrap(QueueStatus.parse(Data(json.utf8))) }
+
+    // MARK: columns
+
+    func testEachGroupLandsInItsColumn() throws {
+        let board = Board.build(queue: try queue())
+        XCTAssertEqual(board.cards(.running).map(\.id), ["DAT-21"])
+        XCTAssertEqual(board.cards(.needsYou).map(\.id), ["DAT-30"])
+        XCTAssertEqual(board.cards(.upNext).map(\.id), ["DAT-22", "DAT-23", "DAT-31"])
+        XCTAssertEqual(board.cards(.blocked).map(\.id), ["DAT-24"])
+        XCTAssertEqual(board.cards(.done).map(\.id), [])  // status's done group is all-time; the board shows this round
+    }
+
+    func testNotesSayWhyACardIsWhereItIs() throws {
+        let board = Board.build(queue: try queue())
+        XCTAssertEqual(board.card("DAT-30")?.note, "Joe")
+        XCTAssertEqual(board.card("DAT-30")?.waiting, true)
+        XCTAssertEqual(board.card("DAT-22")?.note, "Next in line")
+        XCTAssertNil(board.card("DAT-23")?.note)
+        XCTAssertEqual(board.card("DAT-31")?.needsPrep, true)
+        XCTAssertEqual(board.card("DAT-31")?.note, "A prep pass runs first")
+        XCTAssertEqual(board.card("DAT-24")?.note, "Waits on DAT-22, DAT-23")
+    }
+
+    func testReasonWinsOverWaitingOn() throws {
+        let q = try status(#"""
+        {"version": 1, "groups": {"waiting": ["A"]},
+         "tickets": [{"id": "A", "title": "a", "status": "needs-human", "gate": "human", "waiting_on": "Joe", "reason": "pick a theme"}]}
+        """#)
+        XCTAssertEqual(Board.build(queue: q).card("A")?.note, "pick a theme")
+    }
+
+    func testOnlyPrepReadyTicketIsNextAfterPrep() throws {
+        let q = try status(#"""
+        {"version": 1, "groups": {"ready_prep": ["P1", "P2"]},
+         "tickets": [{"id": "P1", "title": "one", "gate": "human"}, {"id": "P2", "title": "two", "gate": "human"}]}
+        """#)
+        let board = Board.build(queue: q)
+        XCTAssertEqual(board.card("P1")?.note, "Next in line, after a prep pass")
+        XCTAssertEqual(board.card("P2")?.note, "A prep pass runs first")
+    }
+
+    func testErroredTicketsJoinNeedsYouAfterTheWaitingOnes() throws {
+        let q = try status(#"""
+        {"version": 1, "groups": {"waiting": ["W"], "running": ["R"], "blocked": ["E"], "done": ["D"]},
+         "tickets": [{"id": "W", "title": "w", "status": "needs-human"},
+                     {"id": "R", "title": "r", "status": "claimed", "errored": "check-failed"},
+                     {"id": "E", "title": "e", "errored": "merge-conflict"},
+                     {"id": "D", "title": "d", "status": "resolved", "errored": "agent-failed"}]}
+        """#)
+        let board = Board.build(queue: q)
+        XCTAssertEqual(board.cards(.needsYou).map(\.id), ["W", "E"])  // running and done errored tickets stay put
+        XCTAssertEqual(board.card("E")?.note, "merge conflict")
+        XCTAssertEqual(board.card("E")?.waiting, false)
+        XCTAssertEqual(board.cards(.running).map(\.id), ["R"])
+        XCTAssertEqual(board.cards(.blocked).map(\.id), [])
+    }
+
+    func testLiveTicketMovesToRunningEvenBeforeStatusCatchesUp() throws {
+        let board = Board.build(queue: try queue(), liveTicket: "DAT-22")
+        XCTAssertEqual(board.cards(.running).map(\.id), ["DAT-22", "DAT-21"])
+        XCTAssertEqual(board.cards(.upNext).map(\.id), ["DAT-23", "DAT-31"])
+    }
+
+    func testNoStatusIsAnEmptyBoard() {
+        let board = Board.build(queue: nil)
+        for column in BoardColumn.allCases { XCTAssertTrue(board.cards(column).isEmpty) }
+    }
+
+    // MARK: this round
+
+    func testDoneThisRoundComesFromOutcomesSinceTheLastFinish() throws {
+        let log = runs([
+            #"{"at": "2026-10-12T09:00:00Z", "kind": "outcome", "ticket": "DAT-20", "result": "done"}"#,
+            #"{"at": "2026-10-12T10:00:00Z", "kind": "finish", "ticket": "finish", "check_exit": 0}"#,
+            #"{"at": "2026-10-12T11:00:00Z", "kind": "run", "ticket": "DAT-22", "attempt": 1, "exit": 1, "secs": 300, "cost_usd": 0.5}"#,
+            #"{"at": "2026-10-12T11:10:00Z", "kind": "run", "ticket": "DAT-22", "attempt": 2, "exit": 0, "secs": 540, "cost_usd": 0.75}"#,
+            #"{"at": "2026-10-12T11:20:00Z", "kind": "outcome", "ticket": "DAT-22", "result": "done"}"#,
+            #"{"at": "2026-10-12T11:30:00Z", "kind": "outcome", "ticket": "DAT-23", "result": "needs-human"}"#,
+            #"{"at": "2026-10-12T11:40:00Z", "kind": "outcome", "ticket": "X-9", "result": "done"}"#,
+        ])
+        let board = Board.build(queue: try queue(), runs: log)
+        XCTAssertEqual(board.cards(.done).map(\.id), ["X-9"])  // DAT-22 is already placed in Up next by status
+        let merged = RoundLog.merged(log)
+        XCTAssertEqual(merged.map(\.ticket), ["X-9", "DAT-22"])
+        XCTAssertEqual(merged[1].note, "14 min · $1.25")
+        XCTAssertNil(merged[0].note)
+        XCTAssertEqual(board.card("X-9")?.title, "")  // status no longer lists it; the view shows the id
+    }
+
+    func testHistoryIsOneTicketsStepsOldestFirst() {
+        let log = runs([
+            #"{"at": "1", "kind": "prep", "ticket": "A", "exit": 0}"#,
+            #"{"at": "2", "kind": "run", "ticket": "A", "attempt": 1, "exit": 0}"#,
+            #"{"at": "3", "kind": "check", "ticket": "A", "attempt": 1, "exit": 1}"#,
+            #"{"at": "4", "kind": "review", "ticket": "finish", "exit": 0}"#,
+            #"{"at": "5", "kind": "run", "ticket": "B", "attempt": 1, "exit": 0}"#,
+            #"{"at": "6", "kind": "outcome", "ticket": "A", "result": "needs-human"}"#,
+        ])
+        XCTAssertEqual(RoundLog.history("A", in: log).map(\.at), ["1", "2", "3", "6"])
+        XCTAssertEqual(RoundLog.history("A", in: log, limit: 2).map(\.at), ["3", "6"])
+    }
+
+    // MARK: stats
+
+    func testStatsCountTodayOnly() throws {
+        let log = runs([
+            #"{"at": "2026-10-11T23:00:00Z", "kind": "run", "ticket": "A", "exit": 0, "cost_usd": 9.0, "usage": {"input_tokens": 1000, "output_tokens": 0}}"#,
+            #"{"at": "2026-10-12T08:00:00Z", "kind": "run", "ticket": "A", "exit": 0, "cost_usd": 1.5, "usage": {"input_tokens": 1200, "output_tokens": 300}}"#,
+            #"{"at": "2026-10-12T09:00:00.250Z", "kind": "prep", "ticket": "B", "exit": 0, "cost_usd": 0.25}"#,
+            #"{"at": "2026-10-12T09:30:00Z", "kind": "outcome", "ticket": "A", "result": "done"}"#,
+        ])
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        let now = ISO8601DateFormatter().date(from: "2026-10-12T12:00:00Z")!
+        let board = Board.build(queue: try queue(), runs: log)
+        let stats = BoardStats.make(board: board, runs: log, now: now, calendar: utc)
+        XCTAssertEqual(stats.spendToday, 1.75, accuracy: 0.001)
+        XCTAssertEqual(stats.tokensToday, 1500)
+        XCTAssertEqual(stats.mergedThisRound, 1)  // A merged this round
+        XCTAssertEqual(stats.needsYou, 1)
+    }
+
+    func testTokenText() {
+        XCTAssertEqual(BoardStats.tokens(512), "512")
+        XCTAssertEqual(BoardStats.tokens(820_400), "820k")
+        XCTAssertEqual(BoardStats.tokens(1_940_000), "1.9M")
+    }
+}

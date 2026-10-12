@@ -160,7 +160,7 @@ struct RunwayMenu: View {
                                          tab: NotificationTab) -> some View {
         let flag = errored.map { "  ⚑ \(ErroredKind.words($0))" } ?? ""
         Menu("\(id) \(title)\(flag)") {
-            Button(tab == .decisions ? "Open decision" : "Open in queue") { show(project.label, ticket: id, tab: tab) }
+            Button(tab == .decisions ? "Open decision" : "Show details") { show(project.label, ticket: id, tab: tab) }
             Button("Talk it through") { Task { await store.talkThrough(ticket: id, in: project); showSession() } }
             if let failure = store.talkError(project: project, ticket: id) { Text("⚠︎ \(String(failure.prefix(200)))") }
         }
