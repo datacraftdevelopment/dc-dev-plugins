@@ -26,6 +26,18 @@ extension StatusSnapshot {
         finished.result == "needs-human" && tickets.contains { $0.id == finished.ticket }
     }
 
+    /// What a Finished row shows now. The row is history from the runs log, so a ticket that ended "needs you"
+    /// keeps that result there for good; once the ticket no longer waits on Joe (answered with a go, or closed in
+    /// the tracker, which drops it from status) and has no errored flag, the row reads `answered` instead.
+    /// Without a snapshot the logged result stands.
+    public func shownResult(_ finished: FinishedTicket) -> String {
+        guard finished.result == "needs-human",
+              !tickets.contains(where: { $0.id == finished.ticket }), errored[finished.ticket] == nil else {
+            return finished.result
+        }
+        return "answered"
+    }
+
     /// "Resume worker" shows only when the engine says the ticket's latest attempt is a claude session it can reopen.
     public func canResumeWorker(_ ticket: String) -> Bool { resumable.contains(ticket) }
 }
