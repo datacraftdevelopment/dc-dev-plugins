@@ -139,6 +139,49 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.overall, .allOff)
     }
 
+    func testFailedStartShowsErrorUnderThatProjectAndDismisses() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "launchctl said no")
+
+        await store.startLoop(project)
+
+        XCTAssertTrue(try XCTUnwrap(store.loopError(for: project)).contains("launchctl said no"))
+        XCTAssertNotNil(store.lastError, "the menu bar still shows it")
+        store.dismissLoopError(for: project)
+        XCTAssertNil(store.loopError(for: project))
+    }
+
+    func testFailedStopShowsErrorAndNextSuccessClearsIt() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "boom")
+        await store.stopLoop(project)
+        XCTAssertTrue(try XCTUnwrap(store.loopError(for: project)).contains("boom"))
+
+        nextResult = CommandResult(status: 0, stdout: "", stderr: "")
+        await store.stopLoop(project)
+        XCTAssertNil(store.loopError(for: project))
+    }
+
+    func testLoopIsBusyWhileItsCommandRunsAndSecondPressIsIgnored() async throws {
+        try installPlist()
+        let store = makeStore()
+        store.refresh()
+        let project = try XCTUnwrap(store.projects.first)
+        var busyDuring: Bool?
+        afterRun = { _ in busyDuring = store.isLoopBusy(project) }
+
+        await store.stopLoop(project)
+
+        XCTAssertEqual(busyDuring, true)
+        XCTAssertFalse(store.isLoopBusy(project), "released after the command")
+    }
+
     func testRunNowKickstartsTheLabel() async throws {
         try installPlist()
         let store = makeStore()

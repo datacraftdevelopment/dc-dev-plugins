@@ -26,8 +26,9 @@ public final class ProjectStore {
     public private(set) var lastError: String?
     /// Failed "Talk it through" launches, by project and ticket, so the error sits beside its button.
     private var talkErrors: [String: String] = [:]
-    /// Failed Start attempts by project label, so the window can show the error beside its Start button.
-    private var startErrors: [String: String] = [:]
+    /// Failed Start/Stop commands by project label (shown in the window and the side panel), and the projects whose command is running now.
+    private var loopErrors: [String: String] = [:]
+    private var loopBusy: Set<String> = []
     /// The dc-dev-plugins checkout holding `schedule.sh` and `runway.py`; nil means the one the plists point at.
     public private(set) var checkout: String?
     /// Labels of projects hidden from the app. Hiding touches nothing on disk; the loop, plist and repo stay as they are.
@@ -158,22 +159,34 @@ public final class ProjectStore {
     // MARK: commands
 
     public func startLoop(_ project: Project) async {
-        guard let repo = project.repoPath else { return }
-        guard let tools = requireTools() else {
-            startErrors[project.label] = lastError
-            return
-        }
+        guard let repo = project.repoPath, !loopBusy.contains(project.label) else { return }
+        guard let tools = requireTools() else { loopErrors[project.label] = lastError; return }
         let minutes = max(1, (project.interval ?? 600) / 60)
-        await perform(tools.start(repo: repo, minutes: minutes), "Start \(project.name)")
-        startErrors[project.label] = lastError
+        await performLoop(project, tools.start(repo: repo, minutes: minutes), "Start \(project.name)")
     }
 
-    /// Why the last Start for this project failed; nil after one that worked.
-    public func startError(project: Project) -> String? { startErrors[project.label] }
+    /// Why the last Start (or Stop) for this project failed; nil after one that worked. Same store as `loopError(for:)`.
+    public func startError(project: Project) -> String? { loopErrors[project.label] }
 
     public func stopLoop(_ project: Project) async {
-        guard let repo = project.repoPath, let tools = requireTools() else { return }
-        await perform(tools.stop(repo: repo), "Stop \(project.name)")
+        guard let repo = project.repoPath, !loopBusy.contains(project.label) else { return }
+        guard let tools = requireTools() else { loopErrors[project.label] = lastError; return }
+        await performLoop(project, tools.stop(repo: repo), "Stop \(project.name)")
+    }
+
+    /// True while this project's Start or Stop command runs, so the panel can show a spinner and ignore a second press.
+    public func isLoopBusy(_ project: Project) -> Bool { loopBusy.contains(project.label) }
+
+    /// Why this project's last Start or Stop failed; nil after one that worked or after `dismissLoopError`.
+    public func loopError(for project: Project) -> String? { loopErrors[project.label] }
+
+    public func dismissLoopError(for project: Project) { loopErrors[project.label] = nil }
+
+    private func performLoop(_ project: Project, _ command: Command, _ what: String) async {
+        loopBusy.insert(project.label)
+        defer { loopBusy.remove(project.label) }
+        await perform(command, what)
+        loopErrors[project.label] = lastError
     }
 
     public func runNow(_ project: Project) async {
