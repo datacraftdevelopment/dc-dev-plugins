@@ -41,8 +41,9 @@ Version 1 (additive changes keep the version; renames or removals bump it):
    "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
+   "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null,
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
-                "waiting_on", "packet", "harness", "claimed_by", "errored"}]}
+                "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason"}]}
 
   machine     This Mac's name (`scutil --get LocalHostName`, else the hostname), what `runway whoami`
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
@@ -55,6 +56,13 @@ Version 1 (additive changes keep the version; renames or removals bump it):
               signs in ("claude auth login"), null for a check with no command (the Linear key);
               detail is the sentence to show.
   claimed_by  The machine that holds the ticket's claim, or null.
+  next_step   What the queue plan (queue_plan.py) does with the ticket: run, queued, prep, park, waiting,
+              running_here, running_elsewhere, claimed_unknown_owner, blocked or done. `reason` is why, in a
+              line ("blocked by #7, waiting on you"). A ready ticket with an unknown harness label is `park`.
+  run_now     The id the next tick would run if nothing stops it (pause, machine rules, base sync), or null.
+  finish      The tracker half of finish's gate: verdict finish, wait or off, with its reason.
+  idle_reason When run_now is null, one line on what is stuck behind what ("nothing can run: 19 tickets wait
+              on #7 (waiting on you)"); otherwise null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
            text output: waiting = "Waiting on you", ready_prep = "Ready (needs prep)".
@@ -169,8 +177,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import transient  # noqa: E402
 
 HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by|Harness):\s*(.*)$", re.M)
-DONE = {"resolved", "done", "closed"}
-RUNNABLE_GATES = ("auto", "approved")
+import queue_plan  # noqa: E402
+from queue_plan import DONE, RUNNABLE_GATES  # noqa: E402
 DEFAULT_CONFIG = {
     # "markdown", "linear" or "github". Linear settings live under the "linear" key.
     "tracker": "markdown",
@@ -851,28 +859,9 @@ def make_tracker(cfg: dict, root: Path):
 
 # ---------- frontier ----------
 
-def by_num(tickets: list, t) -> dict:
-    return {x.num: x for x in tickets if x.effort == t.effort}
-
-
-def unblocked(t, tickets: list) -> bool:
-    peers = by_num(tickets, t)
-    return all(peers.get(b) is None or peers[b].status in DONE for b in t.blocked_by)
-
-
-def will_unblock_without_joe(t, tickets: list, seen=None) -> bool:
-    """True if every open blocker is auto work the loop can finish on its own."""
-    seen = seen or set()
-    peers = by_num(tickets, t)
-    for b in t.blocked_by:
-        p = peers.get(b)
-        if p is None or p.status in DONE:
-            continue
-        if p.id in seen or p.gate not in RUNNABLE_GATES or p.status == "needs-human":
-            return False
-        if not will_unblock_without_joe(p, tickets, seen | {p.id}):
-            return False
-    return True
+# The blocker rules live in queue_plan; the tick and the sign-in check still call them from here until they move over.
+unblocked = queue_plan.unblocked
+will_unblock_without_joe = queue_plan.will_unblock_without_joe
 
 
 def notify(cfg: dict, root: Path, msg: str) -> None:
@@ -1018,36 +1007,10 @@ def record(root: Path, rec: dict) -> None:
         f.write(json.dumps({"at": now(), **rec}) + "\n")
 
 
-def harness_profiles(cfg: dict) -> dict:
-    """The usable named profiles: dict values only, and no key starting with `_` (notes live there)."""
-    return {k.lower(): v for k, v in (cfg.get("harnesses") or {}).items()
-            if isinstance(v, dict) and not str(k).startswith("_")}
-
-
-def harness_error(cfg: dict, t) -> str | None:
-    """A message when the ticket's harness override names no known harness, else None."""
-    name = getattr(t, "harness", None)
-    if name and name.lower() != "claude" and name.lower() not in harness_profiles(cfg):
-        known = ", ".join(["claude", *sorted(harness_profiles(cfg))])
-        return f"unknown harness '{name}' (known: {known})"
-    return None
-
-
-def resolve_harness(cfg: dict, t=None) -> dict:
-    """The effective profile for a ticket (the project default when t is None): the ticket's
-    override, else cfg["harness"]. Top-level commands are the base; the named profile overlays them.
-    An unknown override falls back to the project default (tick parks such tickets first)."""
-    profiles = harness_profiles(cfg)
-    default = (cfg.get("harness") or "claude").lower()
-    name = (getattr(t, "harness", None) or default).lower()
-    if name != "claude" and name not in profiles:
-        name = default
-    prof = {k: cfg.get(k, "") for k in ("agent_cmd", "prep_cmd", "review_cmd", "fix_cmd", "pr_cmd")}
-    prof["parser"] = "claude"
-    override = profiles.get(name)
-    prof.update({k: v for k, v in (override if isinstance(override, dict) else {}).items() if v})
-    prof["name"] = name
-    return prof
+# The harness rules (profiles, unknown labels, the top-level-commands fallback) live in queue_plan.
+harness_profiles = queue_plan.harness_profiles
+harness_error = queue_plan.harness_error
+resolve_harness = queue_plan.resolve_harness
 
 
 def answering_model(model_usage) -> str | None:
@@ -2418,7 +2381,7 @@ def write_brief(root: Path, name: str, text: str) -> str:
 def cmd_discuss(cfg: dict, root: Path, tracker, num: str) -> None:
     loaded = tracker.load()
     t = find(type("Loaded", (), {"load": lambda self: loaded})(), num)
-    if t.id not in {x.id for x in group_tickets(loaded)["waiting"]} and t.id not in errored_kinds(root):
+    if t.id not in {x.id for x in group_tickets(loaded, cfg)["waiting"]} and t.id not in errored_kinds(root):
         sys.exit(f"{t.id} is not waiting on Joe and has no attempt that failed to merge; nothing to discuss.")
     rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
     exec_claude(root, f"Read {rel}, the brief for ticket {t.id}, and follow the runway skill's "
@@ -2647,42 +2610,49 @@ GROUPS = [("waiting", "Waiting on you"), ("running", "Running"), ("ready_auto", 
           ("ready_prep", "Ready (needs prep)"), ("blocked", "Blocked"), ("done", "Done")]
 
 
-def group_tickets(tickets: list) -> dict:
-    """Runway's tickets by group key, each in tracker (queue) order."""
+STEP_GROUP = {"waiting": "waiting", "park": "waiting",
+              "running_here": "running", "running_elsewhere": "running", "claimed_unknown_owner": "running",
+              "run": "ready_auto", "queued": "ready_auto", "prep": "ready_prep",
+              "blocked": "blocked", "done": "done"}
+
+
+def queue_plan_for(cfg: dict, tickets: list) -> queue_plan.QueuePlan:
+    return queue_plan.plan(tickets, machine_name(), cfg.get("finish", "all_done"), cfg)
+
+
+def group_tickets(tickets: list, cfg: dict, qp: queue_plan.QueuePlan | None = None) -> dict:
+    """Runway's tickets by group key, each in tracker (queue) order: the queue plan's steps, grouped."""
+    qp = qp or queue_plan_for(cfg, tickets)
     groups = {key: [] for key, _ in GROUPS}
-    for t in tickets:
-        if t.gate not in RUNNABLE_GATES + ("human",):
-            continue  # not Runway's (e.g. a wayfinder decision ticket)
-        if t.status == "needs-human":
-            groups["waiting"].append(t)
-        elif t.status == "claimed":
-            groups["running"].append(t)
-        elif t.status in DONE:
-            groups["done"].append(t)
-        elif not unblocked(t, tickets) and t.gate != "human":
-            groups["blocked"].append(t)
-        elif t.gate == "human":
-            groups["ready_prep"].append(t)
-        else:
-            groups["ready_auto"].append(t)
+    for s in qp.steps:
+        groups[STEP_GROUP[s.kind]].append(s.ticket)
     return groups
 
 
-def cmd_status(tracker) -> None:
-    groups = group_tickets(tracker.load())
+def cmd_status(cfg: dict, tracker) -> None:
+    loaded = tracker.load()
+    qp = queue_plan_for(cfg, loaded)
+    groups = group_tickets(loaded, cfg, qp)
+    parked = {s.id: s.reason for s in qp.park}
     for key, name in GROUPS:
         ts = groups[key]
         print(f"\n{name} ({len(ts)})")
         for t in ts:
-            extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
+            if t.id in parked:
+                extra = f"  [{parked[t.id]}]"
+            else:
+                extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
             print(f"  {t.id:<24} {t.title}{extra}")
+    if qp.idle_reason:
+        print(f"\n{qp.idle_reason}")
 
 
 def status_json(cfg: dict, root: Path, tracker) -> dict:
     """The `status --json` document. Shape is documented in the module docstring."""
     loaded = tracker.load()
-    groups = group_tickets(loaded)
-    grouped = {t.id for ts in groups.values() for t in ts}
+    qp = queue_plan_for(cfg, loaded)
+    groups = group_tickets(loaded, cfg, qp)
+    steps = {s.id: s for s in qp.steps}
 
     def full_id(t, b: str) -> str:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
@@ -2695,14 +2665,17 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
                 "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by,
-                "errored": errored.get(t.id)}
+                "errored": errored.get(t.id), "next_step": steps[t.id].kind, "reason": steps[t.id].reason}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
             "signin": read_signin(root),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
-            "tickets": [entry(t) for t in loaded if t.id in grouped]}
+            "run_now": qp.run_now.id if qp.run_now else None,
+            "finish": {"verdict": qp.finish.verdict, "reason": qp.finish.reason},
+            "idle_reason": qp.idle_reason,
+            "tickets": [entry(t) for t in loaded if t.id in steps]}
 
 
 def find(tracker, num: str):
@@ -2811,7 +2784,7 @@ def main() -> None:
         if a.json:
             print(json.dumps(status_json(cfg, root, tracker), indent=2))
         else:
-            cmd_status(tracker)
+            cmd_status(cfg, tracker)
     elif a.cmd == "setup":
         if not hasattr(tracker, "setup"):
             sys.exit("setup is only needed for the linear and github trackers.")
@@ -2842,7 +2815,7 @@ def main() -> None:
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
-                cmd_status(tracker)
+                cmd_status(cfg, tracker)
         except KeyboardInterrupt:
             beat(root, "stopped")
             raise
