@@ -43,6 +43,8 @@ public struct BoardCard: Equatable, Sendable, Identifiable {
     /// Up next: a prep pass runs before the build.
     public let needsPrep: Bool
     public let harness: String?
+    /// The engine's `run_now` ticket: the one the next tick would run. False for every card when nothing can run.
+    public var runsNext = false
 }
 
 /// Status's groups plus the runs log, laid out as columns. Pure, so the rules are tested here and the view only draws.
@@ -77,9 +79,10 @@ public struct Board: Equatable, Sendable {
             placed.insert(card.id)
             columns[column, default: []].append(card)
         }
+        let runNow = queue?.runNow
         func card(_ t: QueueTicket, _ column: BoardColumn, note: String?, waiting: Bool = false, prep: Bool = false) -> BoardCard {
             BoardCard(id: t.id, title: t.title, column: column, note: note, ticket: t, errored: t.errored,
-                      waiting: waiting, needsPrep: prep, harness: t.harness)
+                      waiting: waiting, needsPrep: prep, harness: t.harness, runsNext: t.id == runNow)
         }
         func group(_ key: String) -> [QueueTicket] { (queue?.group(key) ?? []).compactMap { byID[$0] } }
 
@@ -107,15 +110,18 @@ public struct Board: Equatable, Sendable {
         // "Next in line" goes on whichever card ends up first, after Running and Needs you took theirs.
         let auto = group("ready_auto").filter { !placed.contains($0.id) }
         let prep = group("ready_prep").filter { !placed.contains($0.id) }
+        // With the plan, "next" is the engine's word (`run_now`); without it, the first ready ticket as before.
+        let planned = queue?.hasPlan == true
         for (index, t) in auto.enumerated() {
-            add(.upNext, card(t, .upNext, note: index == 0 ? "Next in line" : nil))
+            add(.upNext, card(t, .upNext, note: t.reason ?? (!planned && index == 0 ? "Next in line" : nil)))
         }
         for (index, t) in prep.enumerated() {
-            add(.upNext, card(t, .upNext, note: auto.isEmpty && index == 0 ? "Next in line, after a prep pass" : "A prep pass runs first", prep: true))
+            let old = auto.isEmpty && index == 0 ? "Next in line, after a prep pass" : "A prep pass runs first"
+            add(.upNext, card(t, .upNext, note: t.reason ?? (planned ? nil : old), prep: true))
         }
 
         for t in group("blocked") {
-            add(.blocked, card(t, .blocked, note: t.blockedBy.isEmpty ? nil : "Waits on " + t.blockedBy.joined(separator: ", ")))
+            add(.blocked, card(t, .blocked, note: t.reason ?? (t.blockedBy.isEmpty ? nil : "Waits on " + t.blockedBy.joined(separator: ", "))))
         }
 
         for merged in RoundLog.merged(runs) {

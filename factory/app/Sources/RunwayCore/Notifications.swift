@@ -85,6 +85,15 @@ public struct StatusSnapshot: Equatable, Sendable {
     public let urls: [String: URL]
     /// What the loop takes after the running ticket, nearest first: ready, then needing prep, then blocked.
     public let upNext: [UpNext]
+    /// The ticket the engine says runs next (`run_now`); nil when nothing can run.
+    public let runNow: String?
+    /// Why nothing runs, when `runNow` is nil and the engine said so.
+    public let idleReason: String?
+    /// The engine sent the queue plan. False from an older engine, which keeps the old "first queued is next".
+    public let hasPlan: Bool
+
+    /// The one ticket to mark "next": the engine's `run_now`, or from an older engine the first queued ticket.
+    public var nextID: String? { hasPlan ? runNow : upNext.first?.id }
 
     /// One queued ticket and why it is where it is.
     public struct UpNext: Equatable, Sendable, Identifiable {
@@ -93,12 +102,15 @@ public struct StatusSnapshot: Equatable, Sendable {
         public let title: String
         public let kind: Kind
         public let blockedBy: [String]
+        /// Why it is where it is, from the engine's queue plan; nil from an older engine.
+        public let reason: String?
 
-        public init(id: String, title: String, kind: Kind, blockedBy: [String] = []) {
+        public init(id: String, title: String, kind: Kind, blockedBy: [String] = [], reason: String? = nil) {
             self.id = id
             self.title = title
             self.kind = kind
             self.blockedBy = blockedBy
+            self.reason = reason
         }
     }
 
@@ -118,7 +130,11 @@ public struct StatusSnapshot: Equatable, Sendable {
 
     public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
                 upNext: [UpNext] = [], needsYou: [NeedsYouRow] = [], errored: [String: String] = [:],
-                resumable: Set<String> = [], signin: [SignInCheck] = [], generatedAt: Date? = nil) {
+                resumable: Set<String> = [], signin: [SignInCheck] = [], generatedAt: Date? = nil,
+                runNow: String? = nil, idleReason: String? = nil, hasPlan: Bool = false) {
+        self.runNow = runNow
+        self.idleReason = idleReason
+        self.hasPlan = hasPlan
         self.generatedAt = generatedAt
         self.signin = signin
         self.errored = errored
@@ -150,11 +166,14 @@ public struct StatusSnapshot: Equatable, Sendable {
             if let link = entry["url"] as? String, link.hasPrefix("https://"), let url = URL(string: link) { urls[id] = url }
         }
         let byID = Dictionary(all.compactMap { e in (e["id"] as? String).map { ($0, e) } }, uniquingKeysWith: { a, _ in a })
-        let kinds: [(String, UpNext.Kind)] = [("ready_auto", .ready), ("ready_prep", .prep), ("blocked", .blocked)]
+        let hasPlan = json.keys.contains("run_now")
+        // With the plan, blocked tickets aren't "up next": the engine says what runs, and `idle_reason` says why nothing does.
+        let kinds: [(String, UpNext.Kind)] = [("ready_auto", .ready), ("ready_prep", .prep)] + (hasPlan ? [] : [("blocked", .blocked)])
         let upNext = kinds.flatMap { key, kind in
             ((groups[key] as? [String]) ?? []).map { id in
                 UpNext(id: id, title: titles[id] ?? "", kind: kind,
-                       blockedBy: (byID[id]?["blocked_by"] as? [String]) ?? [])
+                       blockedBy: (byID[id]?["blocked_by"] as? [String]) ?? [],
+                       reason: (byID[id]?["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 })
             }
         }
         let waitingIDs = (groups["waiting"] as? [String]) ?? []
@@ -174,7 +193,9 @@ public struct StatusSnapshot: Equatable, Sendable {
                               urls: urls, upNext: upNext, needsYou: needsYou, errored: errored,
                               resumable: Set(all.compactMap { e in (e["resumable"] as? Bool) == true ? e["id"] as? String : nil }),
                               signin: SignInCheck.parse(json["signin"]),
-                              generatedAt: (json["generated_at"] as? String).flatMap(ISO8601DateFormatter().date(from:)))
+                              generatedAt: (json["generated_at"] as? String).flatMap(ISO8601DateFormatter().date(from:)),
+                              runNow: json["run_now"] as? String,
+                              idleReason: (json["idle_reason"] as? String).flatMap { $0.isEmpty ? nil : $0 }, hasPlan: hasPlan)
     }
 }
 
