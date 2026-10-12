@@ -18,7 +18,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         super.init()
         guard let center else { return }
         center.delegate = self
-        // A decision or parked ticket gets a "Talk it through" action; the plain click still opens the Decisions tab.
+        // A decision or parked ticket gets a "Talk it through" action; the plain click opens the board on that ticket.
         center.setNotificationCategories([UNNotificationCategory(
             identifier: Self.talkCategory, actions: [UNNotificationAction(identifier: Self.talkAction, title: "Talk it through")],
             intentIdentifiers: [])])

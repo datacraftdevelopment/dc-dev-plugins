@@ -2331,16 +2331,21 @@ RESUMABLE_KINDS = ("run", "fix")
 
 def is_resumable(root: Path, ticket: str, branch: str | None = None) -> bool:
     """True when the latest attempt was a claude run or fix session with an id and a recorded worktree outside
-    the repo root, so `discuss --resume` can reopen it. Given the ticket's branch, a folder that still exists
-    at the recorded path must be on it (resume refuses one that isn't)."""
+    the repo root and its transcript on this machine, so `discuss --resume` can reopen it. Given the ticket's
+    branch, a folder that still exists at the recorded path must be on it, and a missing one needs the branch
+    to recreate it from (resume refuses otherwise)."""
     r = latest_attempt(root, ticket)
     if not (r and r.get("kind") in RESUMABLE_KINDS and r.get("session_id") and r.get("cwd")
             and (r.get("harness") or "claude") == "claude" and not _is_repo_root(root, Path(r["cwd"]))):
         return False
+    if not transcript(r["session_id"]):
+        return False  # resume needs the transcript on this machine
     cwd = Path(r["cwd"])
     if branch and cwd.exists():
         head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
         return head.returncode == 0 and head.stdout.strip() == branch
+    if branch:  # a missing worktree can only be recreated from the kept branch
+        return sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode == 0
     return True
 
 
@@ -2482,7 +2487,7 @@ def spec_brief(root: Path, loaded: list, t) -> list:
             part and (m := PART_OF.search(x.text)) and m.group(1) == part.group(1))
         if x.id not in seen and same:
             seen.add(x.id)
-            sibs.append((x.id, x.title, x.status == "resolved"))
+            sibs.append((x.id, x.title, x.status in queue_plan.DONE))
     for c in (parent or {}).get("children", []):
         if c["id"] not in seen:
             seen.add(c["id"])

@@ -51,8 +51,7 @@ python3 scripts/build_codex.py --install
 
 This installs all five plugins into your personal Codex marketplace. Start a new
 Codex task to load them. Use the same command after updating the source plugins.
-The installer uses Codex's bundled `plugin-creator` helpers; see the guide if your
-installation stores them elsewhere. For a build without installation, omit `--install`.
+For a build without installation, omit `--install`.
 
 Add/update the **Ringer** and **cross-review-gate** skills from the canonical
 shared library, using the existing Ringer clone and its configured workers:

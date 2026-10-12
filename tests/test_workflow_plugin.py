@@ -58,6 +58,16 @@ class WorkflowTests(unittest.TestCase):
             (matt/'skills/engineering/tdd/SKILL.md').write_text('live source edit')
             self.assertIn(str(matt/'skills/engineering/tdd/SKILL.md'),(output/'skills/tdd/SKILL.md').read_text())
 
+    def test_version_changes_when_a_skill_changes(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);library,registry,matt=self.fixture(root)
+            version=lambda out:json.loads((out/'.codex-plugin/plugin.json').read_text())['version']
+            first=version(build(library,registry,root/'a'))
+            self.assertRegex(first,r'^0\.1\.0\+codex\.[0-9a-f]{12}$')
+            self.assertEqual(first,version(build(library,registry,root/'b')))
+            (matt/'skills/engineering/tdd/SKILL.md').write_text('---\nname: tdd\ndescription: changed\n---\nchanged\n')
+            self.assertNotEqual(first,version(build(library,registry,root/'c')))
+
     def test_missing_active_or_mismatched_version_fails(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);library,registry,matt=self.fixture(root)
@@ -130,15 +140,22 @@ class ConnectionRegressionTests(unittest.TestCase):
             self.assertIn('Ringer clone:',out.getvalue())
 
     def test_batch_validation_failure_leaves_live_packages_untouched(self):
-        from unittest.mock import patch
+        for bad in ('no frontmatter\n', '---\nname: one\ndescription: d\n---not-a-fence\n'):
+            with self.subTest(bad=bad):
+                self._batch_with_bad_skill(bad)
+
+    def _batch_with_bad_skill(self, bad):
         from refresh_codex import promote
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);stage=root/'staged';live=root/'live';packages=[]
             for name in ['pm','fm-dc']:
                 package=stage/name;package.mkdir(parents=True);(package/'new').write_text('new');packages.append(package)
                 dest=live/name;dest.mkdir(parents=True);(dest/'.dc-codex-build.json').write_text('{}');(dest/'old').write_text(name)
-            with patch('refresh_codex.subprocess.run',side_effect=[subprocess.CompletedProcess([],0),subprocess.CalledProcessError(1,[]) ]):
-                with self.assertRaises(subprocess.CalledProcessError):promote(packages,live,root)
+            for package in packages:
+                (package/'.codex-plugin').mkdir();(package/'.codex-plugin/plugin.json').write_text(json.dumps({'name':package.name,'version':'1','skills':'./skills/'}))
+                (package/'skills/one').mkdir(parents=True);(package/'skills/one/SKILL.md').write_text('---\nname: one\ndescription: d\n---\n')
+            (packages[1]/'skills/one/SKILL.md').write_text(bad)  # the later package is the bad one
+            with self.assertRaisesRegex(ValueError,'frontmatter'):promote(packages,live)
             for name in ['pm','fm-dc']:
                 self.assertEqual((live/name/'old').read_text(),name)
                 self.assertFalse((live/name/'new').exists())

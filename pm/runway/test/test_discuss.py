@@ -281,11 +281,13 @@ class Resume(DiscussBase):
 
     def test_transcript_not_found_starts_nothing(self):
         self.run_row(session_id="nope")
+        self.assertFalse(runway.is_resumable(self.root, "eff/02", self.branch))
         self.refuses("transcript")
 
     def test_branch_gone_starts_nothing(self):
         self.git("branch", "-D", self.branch)
         self.run_row()
+        self.assertFalse(runway.is_resumable(self.root, "eff/02", self.branch))
         self.refuses("branch")
 
     def test_resumable_in_status_json(self):
