@@ -182,8 +182,6 @@ def main():
     parser.add_argument('--registry', type=Path, default=Path.home() / '.claude/plugins/installed_plugins.json')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--install', action='store_true')
-    parser.add_argument('--plugin-creator-dir', type=Path,
-                        default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install uses ~/plugins; do not combine with --output')
@@ -194,7 +192,7 @@ def main():
         check_destination(output / name)
     packages = [build(name, *sources[name], output) for name in NAMES]
     if args.install:
-        install(packages, args.plugin_creator_dir.expanduser())
+        install(packages)
 
 
 if __name__ == '__main__':

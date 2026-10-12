@@ -324,37 +324,52 @@ def build_one(name, parent):
     return dest
 
 
-def install(packages, creator):
-    helpers = creator / 'scripts'
-    for filename in ('create_basic_plugin.py', 'validate_plugin.py', 'read_marketplace_name.py',
-                     'update_plugin_cachebuster.py'):
-        if not (helpers / filename).is_file():
-            raise ValueError(f'Missing Codex plugin-creator helper: {helpers / filename}')
-    marketplace = Path.home() / '.agents/plugins/marketplace.json'
-    if marketplace.exists():
-        run('python3', str(helpers / 'read_marketplace_name.py'))
+def validate_package(package):
+    """What Codex needs to load a local plugin: a manifest named for its folder, with a version,
+    and the skills folder it declares. Codex 0.159 dropped the plugin-creator helper scripts that
+    used to check this, so the check lives here."""
+    manifest = package / '.codex-plugin/plugin.json'
+    if not manifest.is_file():
+        raise ValueError(f'{package.name}: missing {manifest}')
+    data = json.loads(manifest.read_text())
+    if data.get('name') != package.name:
+        raise ValueError(f'{package.name}: manifest name is {data.get("name")!r}')
+    if not isinstance(data.get('version'), str) or not data['version']:
+        raise ValueError(f'{package.name}: manifest has no version')
+    skills = data.get('skills')
+    if skills and not (package / skills).is_dir():
+        raise ValueError(f'{package.name}: declared skills folder {skills} is missing')
+
+
+def register(packages, marketplace):
+    """Add each package to the personal marketplace (~/.agents/plugins/marketplace.json), keeping
+    existing entries, their order and metadata as they are. Returns the marketplace name."""
+    data = json.loads(marketplace.read_text()) if marketplace.exists() else {'name': 'personal', 'plugins': []}
+    plugins = data.setdefault('plugins', [])
+    changed = not marketplace.exists()
     for package in packages:
-        run('python3', str(helpers / 'validate_plugin.py'), str(package))
-    existing = json.loads(marketplace.read_text())['plugins'] if marketplace.exists() else []
+        expected = {'source': 'local', 'path': f'./plugins/{package.name}'}
+        entry = next((e for e in plugins if e.get('name') == package.name), None)
+        if entry is None:
+            plugins.append({'name': package.name, 'source': expected})
+            changed = True
+        elif entry.get('source') != expected:
+            raise ValueError(f'{package.name}: personal entry points at another source')
+    if changed:
+        marketplace.parent.mkdir(parents=True, exist_ok=True)
+        tmp = marketplace.with_name(marketplace.name + '.tmp')
+        tmp.write_text(json.dumps(data, indent=2) + '\n')
+        tmp.replace(marketplace)
+    return data['name']
+
+
+def install(packages, marketplace=None):
+    """Register built packages (already in ~/plugins) and (re)install them in Codex. The build's
+    version carries a content hash, so a changed package always installs as a new version."""
     for package in packages:
-        entry = next((e for e in existing if e.get('name') == package.name), None)
-        if entry:
-            expected = {'source': 'local', 'path': f'./plugins/{package.name}'}
-            if entry.get('source') != expected:
-                raise ValueError(f'{package.name}: personal entry points at another source')
-            # Preserve the existing catalog policy, ordering, and display metadata.
-            run('python3', str(helpers / 'update_plugin_cachebuster.py'), str(package))
-        else:
-            # Scaffold handles personal catalog creation; restore our richer manifest.
-            manifest = package / '.codex-plugin/plugin.json'
-            content = manifest.read_bytes()
-            try:
-                run('python3', str(helpers / 'create_basic_plugin.py'), package.name,
-                    '--path', str(package.parent), '--with-marketplace', '--force')
-            finally:
-                manifest.write_bytes(content)
-        market_name = run('python3', str(helpers / 'read_marketplace_name.py'),
-                          capture_output=True).stdout.strip()
+        validate_package(package)
+    market_name = register(packages, marketplace or Path.home() / '.agents/plugins/marketplace.json')
+    for package in packages:
         run('codex', 'plugin', 'add', f'{package.name}@{market_name}')
 
 
@@ -364,8 +379,6 @@ def main():
     parser.add_argument('--install', action='store_true', help='Build into ~/plugins and install in Codex')
     parser.add_argument('--plugin', action='append', choices=list(PLUGINS),
                         help='Build only this plugin (repeat to select several)')
-    parser.add_argument('--plugin-creator-dir', type=Path,
-                        default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install uses ~/plugins; do not combine it with --output')
@@ -379,7 +392,7 @@ def main():
             raise ValueError(f'Refusing to replace unowned destination: {target}')
     packages = [build_one(name, parent) for name in selected]
     if args.install:
-        install(packages, args.plugin_creator_dir.expanduser())
+        install(packages)
 
 
 if __name__ == '__main__':

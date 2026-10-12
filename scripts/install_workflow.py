@@ -245,14 +245,13 @@ def main():
     parser.add_argument('--registry', type=Path, default=Path.home() / '.claude/plugins/installed_plugins.json')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--install', action='store_true')
-    parser.add_argument('--plugin-creator-dir', type=Path, default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install and --output cannot be combined')
     output = Path.home() / 'plugins' if args.install else args.output or ROOT / '.codex-build'
     package = build(args.library, args.registry, output.resolve())
     if args.install:
-        install([package], args.plugin_creator_dir)
+        install([package])
         connect_agents(args.library.expanduser().resolve())
 
 

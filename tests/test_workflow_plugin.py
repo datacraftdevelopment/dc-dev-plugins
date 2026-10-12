@@ -137,8 +137,8 @@ class ConnectionRegressionTests(unittest.TestCase):
             for name in ['pm','fm-dc']:
                 package=stage/name;package.mkdir(parents=True);(package/'new').write_text('new');packages.append(package)
                 dest=live/name;dest.mkdir(parents=True);(dest/'.dc-codex-build.json').write_text('{}');(dest/'old').write_text(name)
-            with patch('refresh_codex.subprocess.run',side_effect=[subprocess.CompletedProcess([],0),subprocess.CalledProcessError(1,[]) ]):
-                with self.assertRaises(subprocess.CalledProcessError):promote(packages,live,root)
+            with patch('refresh_codex.validate_package',side_effect=[None,ValueError('fm-dc: bad manifest')]):
+                with self.assertRaises(ValueError):promote(packages,live)
             for name in ['pm','fm-dc']:
                 self.assertEqual((live/name/'old').read_text(),name)
                 self.assertFalse((live/name/'new').exists())
