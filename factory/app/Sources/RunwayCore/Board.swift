@@ -84,7 +84,9 @@ public struct Board: Equatable, Sendable {
         func group(_ key: String) -> [QueueTicket] { (queue?.group(key) ?? []).compactMap { byID[$0] } }
 
         var running = group("running")
-        if let live = liveTicket, !running.contains(where: { $0.id == live }) {
+        // The live ticket always leads, so the big card is the one the heartbeat's clock and phases belong to.
+        if let live = liveTicket {
+            running.removeAll { $0.id == live }
             if let t = byID[live] {
                 running.insert(t, at: 0)
             } else {
@@ -102,12 +104,14 @@ public struct Board: Equatable, Sendable {
             add(.needsYou, card(t, .needsYou, note: t.errored.map(ErroredKind.words)))
         }
 
-        let auto = group("ready_auto"), prep = group("ready_prep")
+        // "Next in line" goes on whichever card ends up first, after Running and Needs you took theirs.
+        let auto = group("ready_auto").filter { !placed.contains($0.id) }
+        let prep = group("ready_prep").filter { !placed.contains($0.id) }
         for (index, t) in auto.enumerated() {
             add(.upNext, card(t, .upNext, note: index == 0 ? "Next in line" : nil))
         }
-        for t in prep {
-            add(.upNext, card(t, .upNext, note: auto.isEmpty && t.id == prep.first?.id ? "Next in line, after a prep pass" : "A prep pass runs first", prep: true))
+        for (index, t) in prep.enumerated() {
+            add(.upNext, card(t, .upNext, note: auto.isEmpty && index == 0 ? "Next in line, after a prep pass" : "A prep pass runs first", prep: true))
         }
 
         for t in group("blocked") {

@@ -71,6 +71,15 @@ final class BoardTests: XCTestCase {
         let board = Board.build(queue: try queue(), liveTicket: "DAT-22")
         XCTAssertEqual(board.cards(.running).map(\.id), ["DAT-22", "DAT-21"])
         XCTAssertEqual(board.cards(.upNext).map(\.id), ["DAT-23", "DAT-31"])
+        XCTAssertEqual(board.card("DAT-23")?.note, "Next in line")  // the first card left in Up next, not DAT-22's old slot
+    }
+
+    func testLiveTicketLeadsRunningWhenStatusListsItSecond() throws {
+        let q = try status(#"""
+        {"version": 1, "groups": {"running": ["R1", "R2"]},
+         "tickets": [{"id": "R1", "title": "one", "status": "claimed"}, {"id": "R2", "title": "two", "status": "claimed"}]}
+        """#)
+        XCTAssertEqual(Board.build(queue: q, liveTicket: "R2").cards(.running).map(\.id), ["R2", "R1"])
     }
 
     func testLiveTicketStatusDoesNotKnowStillShowsAsRunning() throws {
