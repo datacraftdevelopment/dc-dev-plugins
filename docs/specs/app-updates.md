@@ -1,6 +1,6 @@
 # Spec: the Runway app updates itself and keeps every Mac on the same Runway
 
-Tracker entry: the `spec` issue that links here (tickets are its sub-issues).
+Tracker entry: #66 (tickets #67-#71, its sub-issues).
 
 ## Problem
 
@@ -97,21 +97,21 @@ this Mac is running and says when it's behind.
 
 ## Tickets
 
-1. **Signing and keys (Joe only, no Runway label).** Developer ID Application
+1. #67 **Signing and keys (Joe only, no Runway label).** Developer ID Application
    certificate on the personal Mac, a `notarytool` keychain profile, and Sparkle's
    `generate_keys`, with the public key committed to `factory/app/sparkle-public-key`.
    Gates ticket 4's first real release, not its build.
-2. **Sparkle in the app** (`ready-for-agent`). Package dependency, updater
+2. #68 **Sparkle in the app** (`ready-for-agent`). Package dependency, updater
    controller, "Check for Updates…", feed URL and public key in `Info.plist` via
    `make-app.sh`, `VERSION` file, build number, and the updater turned off when
    there's no key.
-3. **Update Runway and the parity line** (`ready-for-agent`, `harness:opus`). The
+3. #69 **Update Runway and the parity line** (`ready-for-agent`, `harness:opus`). The
    bring-the-rest-along steps, the version-change trigger, the menu item, the
    status line and the Behind badge. Command builders and state logic live in
    `RunwayCore` with unit tests. The views only display them.
-4. **Release command** (`ready-for-agent`). `make-app.sh --release` and
+4. #70 **Release command** (`ready-for-agent`). `make-app.sh --release` and
    `--dry-run` as described above. Acceptance runs the dry run only.
-5. **Setup sheet for a new Mac** (`ready-for-agent`, `harness:opus`, blocked by 3).
+5. #71 **Setup sheet for a new Mac** (`ready-for-agent`, `harness:opus`, blocked by 3).
    The new checks, the per-repo keychain item, and writing `park_authority` only
    when none is set.
 
