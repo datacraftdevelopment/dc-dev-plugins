@@ -428,4 +428,36 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(delivered.count, 1, "a restart with the saved ledger must not notify again")
         second.stop()
     }
+
+    private func pulls() -> Int { ran.filter { $0.arguments.contains("--ff-only") }.count }
+
+    func testNewBuildUpdatesOnceAfterTheTickInFlight() async throws {
+        try installPlist()
+        afterRun = { [unowned self] command in
+            let line = command.arguments.joined(separator: " ")
+            self.nextResult = CommandResult(status: 0, stdout: line.contains("--abbrev-ref") ? "main" : "", stderr: "")
+        }
+        let state = repo.appendingPathComponent("_pm/runway-state.json")
+        try Data(#"{"phase": "agent", "pid": 42}"#.utf8).write(to: state)
+        let store = makeStore()
+        store.setCheckout("/co")
+        store.refresh()
+        store.updateOnLaunch(build: "7")
+        for _ in 0..<50 where store.updateResult == nil { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(store.updateResult, .waiting)
+        XCTAssertEqual(pulls(), 0, "no pull while a tick is in flight")
+
+        try Data(#"{"phase": "idle"}"#.utf8).write(to: state)
+        for _ in 0..<100 where store.updatePending {
+            store.refresh()
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        guard case .done = store.updateResult else { return XCTFail("\(String(describing: store.updateResult))") }
+        XCTAssertEqual(pulls(), 1)
+        XCTAssertEqual(defaults.string(forKey: LaunchTrigger.key), "7")
+
+        let relaunched = makeStore()
+        relaunched.updateOnLaunch(build: "7")
+        XCTAssertFalse(relaunched.updatePending, "the same build doesn't run it again")
+    }
 }

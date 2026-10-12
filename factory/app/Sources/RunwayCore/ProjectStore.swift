@@ -44,6 +44,16 @@ public final class ProjectStore {
     public private(set) var hidden: Set<String>
     /// Projects found but hidden, so the menu can offer them back.
     public private(set) var hiddenProjects: [Project] = []
+    /// What this Mac runs (app, engine checkout, pm) and what it's behind on; filled by `refreshParity`.
+    public private(set) var parity = Parity(app: nil, feed: nil, engineSHA: nil, engineBranch: nil, commitsBehind: nil,
+                                            installedPm: nil, checkoutPm: nil)
+    /// "Update Runway" was asked for (menu, Behind badge or a new app version) and hasn't run yet: it waits out a tick.
+    public private(set) var updatePending = false
+    public private(set) var updating = false
+    /// The last update's result (or "Waiting…"), shown in the menu until the next run.
+    public private(set) var updateResult: UpdateOutcome?
+    /// The app's `CFBundleShortVersionString`, set by the app; nil in a dev build.
+    public var appVersion: String?
 
     public static let checkoutKey = "dcDevPluginsCheckout"
     public static let knownReposKey = "knownRepos"
@@ -71,6 +81,12 @@ public final class ProjectStore {
     @ObservationIgnored private let deliver: (([NotificationEvent]) -> Void)?
     @ObservationIgnored private var waitingFetchedAt: Date = .distantPast
     @ObservationIgnored private var fetchingWaiting = false
+    @ObservationIgnored private var parityCheckedAt: Date = .distantPast
+    @ObservationIgnored private var fetchedAt: Date?
+    @ObservationIgnored private var checkingParity = false
+    @ObservationIgnored private let feed: () async -> Data?
+    /// Recorded once the launch-triggered update ends, so it runs once per new build.
+    @ObservationIgnored private var launchBuild: String?
 
     /// The heartbeat if its tick is really running (active phase, pid alive), else nil.
     public func live(_ heartbeat: Heartbeat?) -> Heartbeat? {
@@ -87,8 +103,10 @@ public final class ProjectStore {
                 run: @escaping (Command) async -> CommandResult = { await CommandRunner.run($0) },
                 pidAlive: @escaping (Int) -> Bool = StatusResolver.systemPidAlive,
                 ledgerURL: URL = NotificationLedger.defaultURL, machineURL: URL = QuietHours.defaultURL,
-                deliver: (([NotificationEvent]) -> Void)? = nil) {
+                deliver: (([NotificationEvent]) -> Void)? = nil,
+                feed: @escaping () async -> Data? = { try? await URLSession.shared.data(from: Appcast.feedURL).0 }) {
         self.discovery = discovery
+        self.feed = feed
         self.interval = interval
         self.defaults = defaults
         self.pauseURL = pauseURL
@@ -171,6 +189,79 @@ public final class ProjectStore {
         notify(planned, now: now)
         updateWatchers(for: found)
         if now.timeIntervalSince(waitingFetchedAt) > 60 { refreshWaiting() }
+        if updatePending { Task { await runUpdate() } }
+        if now.timeIntervalSince(parityCheckedAt) > 60 { Task { await refreshParity() } }
+    }
+
+    // MARK: update Runway
+
+    /// Asks for "Update Runway". It runs now, or after the tick in flight ends (retried on each refresh).
+    public func requestUpdate() {
+        updatePending = true
+        Task { await runUpdate() }
+    }
+
+    /// On launch: when this build is newer than the one recorded, run the update once.
+    public func updateOnLaunch(build: String?) {
+        guard LaunchTrigger(defaults: defaults).isDue(build: build) else { return }
+        launchBuild = build
+        requestUpdate()
+    }
+
+    private func runUpdate() async {
+        guard updatePending, !updating else { return }
+        guard let engineCheckout else {
+            updatePending = false
+            updateResult = .failed(step: "Update Runway", output: "Can't find the engine checkout. Choose it under Scripts.")
+            return
+        }
+        let heartbeats = projects.compactMap(\.repoPath).map { Heartbeat.load(repoPath: $0) }
+        updating = true
+        let outcome = await RunwayUpdate.run(commands: UpdateCommands(checkout: engineCheckout),
+                                             midTick: RunwayUpdate.midTick(heartbeats, pidAlive: pidAlive),
+                                             installedPm: { PluginVersions.installedPm() }, run: run)
+        updating = false
+        updateResult = outcome
+        guard outcome != .waiting else { return }
+        updatePending = false
+        if let launchBuild { LaunchTrigger(defaults: defaults).record(build: launchBuild) }
+        launchBuild = nil
+        fetchedAt = nil
+        await refreshParity()
+    }
+
+    public func dismissUpdateResult() { updateResult = nil }
+
+    /// The status line's facts: checkout SHA and branch, installed and checkout pm, and (at most hourly) the
+    /// `git fetch` for commits behind `origin/main` and the release feed's latest version.
+    public func refreshParity() async {
+        guard !checkingParity else { return }
+        checkingParity = true
+        defer { checkingParity = false }
+        parityCheckedAt = Date()
+        var next = parity
+        next.app = appVersion
+        next.installedPm = PluginVersions.installedPm()
+        guard let engineCheckout else {
+            next.engineSHA = nil; next.engineBranch = nil; next.commitsBehind = nil; next.checkoutPm = nil
+            parity = next
+            return
+        }
+        let commands = UpdateCommands(checkout: engineCheckout)
+        func line(_ command: Command) async -> String? {
+            let result = await run(command)
+            return result.succeeded && !result.stdout.isEmpty ? result.stdout : nil
+        }
+        next.engineSHA = await line(commands.shortSHA)
+        next.engineBranch = await line(commands.branch)
+        next.checkoutPm = (try? Data(contentsOf: commands.pmManifest)).flatMap(PluginVersions.manifestVersion)
+        if FetchThrottle.isDue(last: fetchedAt) {
+            fetchedAt = Date()
+            _ = await run(commands.fetch)
+            if appVersion != nil { next.feed = await feed().flatMap(Appcast.latestVersion) }
+        }
+        next.commitsBehind = await line(commands.commitsBehind).flatMap { Int($0) }
+        if next != parity { parity = next }
     }
 
     // MARK: commands
