@@ -577,7 +577,8 @@ private struct FinishedRowView: View {
         if case .ticket(let t) = tagged.row, snapshot?.canTalkThrough(finished: t) == true,
            let project = store.entries.first(where: { $0.project.label == tagged.projectLabel })?.project {
             HStack(spacing: 10) {
-                TalkButton(store: store, project: project, ticket: t.ticket)
+                TalkButton(store: store, project: project, ticket: t.ticket,
+                           resumable: snapshot?.canResumeWorker(t.ticket) == true)
                 Button("Go") { withAnimation { scroll.scrollTo(NeedsYouSection.anchor(tagged.projectLabel), anchor: .top) } }
                     .help("Scroll to this ticket's Needs you row")
             }

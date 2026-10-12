@@ -2723,7 +2723,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
-    resumable = {t.id: is_resumable(root, t.id) for t in loaded if t.id in grouped}
+    resumable = {t.id: is_resumable(root, t.id) for t in loaded if t.id in steps}
 
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
