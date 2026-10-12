@@ -41,17 +41,28 @@ Version 1 (additive changes keep the version; renames or removals bump it):
    "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
+   "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null,
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
-                "waiting_on", "packet", "harness", "claimed_by", "errored"}]}
+                "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason", "resumable"}]}
 
   machine     This Mac's name (`scutil --get LocalHostName`, else the hostname), what `runway whoami`
               prints. It is stamped on every claim (markdown `Claimed-by:` header, Linear claim
               comment). A ready ticket claimed by another machine is skipped and logged
               `skip <id> claimed by <machine>`.
-  paused      The pause in force (the ~/.runway/pause contents), or null.
+  paused      The pause in force (the ~/.runway/pause contents, "reason" included), or null.
   signin      The last sign-in check, or null before any ran: {"at", "ok", "notified": [name...],
-              "checks": [{"name", "ok", "detail"}]} (the _pm/runway-signin.json file).
+              "checks": [{"name", "label", "fix", "ok", "detail"}]} (the _pm/runway-signin.json file).
+              label is the name Joe knows the tool by ("Claude Code"); fix is the command line that
+              signs in ("claude auth login"), null for a check with no command (the Linear key);
+              detail is the sentence to show.
   claimed_by  The machine that holds the ticket's claim, or null.
+  next_step   What the queue plan (queue_plan.py) does with the ticket: run, queued, prep, park, waiting,
+              running_here, running_elsewhere, claimed_unknown_owner, blocked or done. `reason` is why, in a
+              line ("blocked by #7, waiting on you"). A ready ticket with an unknown harness label is `park`.
+  run_now     The id the next tick would run if nothing stops it (pause, machine rules, base sync), or null.
+  finish      The tracker half of finish's gate: verdict finish, wait or off, with its reason.
+  idle_reason When run_now is null, one line on what is stuck behind what ("nothing can run: 19 tickets wait
+              on #7 (waiting on you)"); otherwise null.
 
   groups   Ticket ids in queue order (the order `tick` would take them), same grouping as the
            text output: waiting = "Waiting on you", ready_prep = "Ready (needs prep)".
@@ -67,6 +78,8 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   harness  The ticket's effective harness name (its override, else the project default).
   errored  The kind of the ticket's latest attempt that didn't merge, from _pm/runway-runs.jsonl
            (agent-failed, no-commits, check-failed, merge-conflict, signed-out), or null. A merge clears it.
+  resumable  true when the ticket's latest attempt was a claude session with a session id, so
+           `runway discuss <ticket> --resume` can reopen it; false otherwise.
 
 `runway discuss <ticket>` writes _pm/discuss/<id>.md (ticket text, packet, Runway's park comment, blockers,
 attempts with kind, check exit and transcript path, the ticket's log lines) and replaces the process with an
@@ -75,13 +88,24 @@ takes a waiting ticket or an errored one (a ticket still being retried counts); 
 and starts nothing. `runway discuss --loop` is for the loop itself and always runs: _pm/discuss/loop.md holds
 the heartbeat, `launchctl print` for the job, the pause, the last sign-in check, log tails and the last runs.
 Always the claude harness. A GitHub brief carries trusted authors' comments only.
+`runway discuss <ticket> --resume` instead reopens the worker's own conversation: the latest attempt's session
+id from _pm/runway-runs.jsonl (claude only), the worktree recreated at the path the attempt recorded from the
+kept branch (`git worktree add <cwd> <branch>`; an existing path is reused), then `claude --resume <id>` there
+with a first message pointing at the brief. No session id, a codex attempt, no transcript or a gone branch
+exits non-zero with the reason and "use Talk it through instead".
 
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
 
-  {"until": "ISO-8601 or null", "mode": "finish|stop", "at": "ISO-8601"}
+  {"until": "ISO-8601 or null", "mode": "finish|stop", "at": "ISO-8601", "reason": "signed-out"}
 
-`runway resume` deletes it. While the file exists and `until` hasn't passed, `tick` logs
+reason is there only when Runway set the pause itself: "signed-out" when an agent call failed on auth
+(pause_for_auth). `runway pause` writes none. `runway resume` deletes the pause. `runway resume --if-reason
+signed-out` deletes it only when its reason matches (a pause set by hand stays) and prints what it did either way.
+
+`runway signin [--json]` runs the sign-in checks a tick with work waiting would run (the finish step's too: gh
+when a draft PR will be opened, both seats for a review panel), writes `_pm/runway-signin.json`, and exits 0
+when all pass. It claims and preps nothing, makes no model call and sends no notification. While the file exists and `until` hasn't passed, `tick` logs
 `paused until ...`, writes heartbeat phase `paused` and exits 0; `loop` stops between ticks the same
 way (no finish step). An expired pause file is removed. Mode finish (default): a running ticket
 finishes, nothing new starts. Mode stop (`--stop-now`): also SIGTERMs the running agent (agent_pid from
@@ -160,8 +184,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import transient  # noqa: E402
 
 HEADER_RE = re.compile(r"^(Status|Blocked by|Waiting on|Gate|Type|Branch|Claimed-by|Harness):\s*(.*)$", re.M)
-DONE = {"resolved", "done", "closed"}
-RUNNABLE_GATES = ("auto", "approved")
+import queue_plan  # noqa: E402
+from queue_plan import DONE, RUNNABLE_GATES  # noqa: E402
 DEFAULT_CONFIG = {
     # "markdown", "linear" or "github". Linear settings live under the "linear" key.
     "tracker": "markdown",
@@ -257,16 +281,21 @@ def active_pause(clean: bool = True) -> dict | None:
         return None
     except (OSError, ValueError):
         data = {"until": None, "mode": "finish", "at": None}  # unreadable: stay paused, never run on a guess
-    until = data.get("until")
-    try:
-        expired = bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
-    except ValueError:
-        expired = False
-    if expired:
-        if clean:
-            p.unlink(missing_ok=True)
+    if pause_expired(data):
+        # Under the pause lock, and only if the pause there now is still expired. When a fresh pause replaced it
+        # meanwhile, that one is in force: report it, not None.
+        if clean and not remove_pause_if(pause_expired):
+            return active_pause(clean=False)
         return None
     return data
+
+
+def pause_expired(data: dict) -> bool:
+    until = data.get("until")
+    try:
+        return bool(until) and parse_when(until) <= dt.datetime.now().astimezone()
+    except ValueError:
+        return False
 
 
 def stop_requested() -> bool:
@@ -284,13 +313,17 @@ def paused_now(root: Path) -> bool:
     return True
 
 
-def write_pause(end: dt.datetime | None, mode: str) -> None:
+def write_pause(end: dt.datetime | None, mode: str, reason: str | None = None) -> None:
     p = pause_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps({"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
-                               "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}) + "\n")
-    os.replace(tmp, p)
+    data = {"until": end.isoformat(timespec="seconds") if end else None, "mode": mode,
+            "at": dt.datetime.now().astimezone().isoformat(timespec="seconds")}
+    if reason:
+        data["reason"] = reason
+    with pause_lock():
+        tmp.write_text(json.dumps(data) + "\n")
+        os.replace(tmp, p)
 
 
 def pause_for_auth(cfg: dict, root: Path) -> None:
@@ -298,7 +331,7 @@ def pause_for_auth(cfg: dict, root: Path) -> None:
     A pause already in force is left as it is, and so is its notification."""
     if active_pause():
         return
-    write_pause(None, "finish")
+    write_pause(None, "finish", reason="signed-out")
     notify(cfg, root, "Runway: Claude Code needs signing in")
 
 
@@ -346,9 +379,65 @@ def cmd_pause(root: Path, until: str | None, span: str | None, stop_now: bool) -
                 print(f"agent {pid} already gone")
 
 
-def cmd_resume() -> None:
-    pause_path().unlink(missing_ok=True)
+def cmd_resume(if_reason: str | None = None) -> None:
+    """Delete the pause. With if_reason, only a pause that carries that reason: a pause Joe set stays."""
+    if if_reason:
+        pause = active_pause()
+        if not pause:
+            print("no pause in force; nothing to resume")
+            return
+        if pause.get("reason") != if_reason:
+            print(f"pause left in place: its reason is {pause.get('reason') or 'none'}, not {if_reason}")
+            return
+        if not remove_pause_if(lambda p: p.get("reason") == if_reason):
+            print("pause left in place: it changed while resuming")
+            return
+        print("resumed")
+        return
+    with pause_lock():
+        pause_path().unlink(missing_ok=True)
     print("resumed")
+
+
+def remove_pause_if(matches) -> bool:
+    """Delete the pause only if the one in force now is one `matches` accepts. Under the pause lock (every
+    pause write takes it), the file is re-read and removed only if it is still that same file, so a pause
+    written meanwhile is never the one deleted, and the pause never leaves its place before it is accepted.
+    True when a matching pause was removed or none was there."""
+    p = pause_path()
+    with pause_lock():
+        try:
+            before = os.stat(p)
+            data = json.loads(p.read_text())
+        except FileNotFoundError:
+            return True
+        except (OSError, ValueError):
+            return False
+        if not (isinstance(data, dict) and matches(data)):
+            return False
+        try:
+            if os.stat(p).st_ino != before.st_ino:
+                return False
+            p.unlink()
+        except FileNotFoundError:
+            pass
+        return True
+
+
+class pause_lock:
+    """Serializes pause writes and removals across processes: an exclusive flock on ~/.runway/pause.lock.
+    The lock file is never deleted, so every holder locks the same inode."""
+    def __enter__(self):
+        import fcntl
+        p = pause_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self.fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        os.close(self.fd)  # closing releases the flock
+        return False
 
 
 # ---------- quiet-time rules: ~/.runway/machine.json ----------
@@ -830,28 +919,9 @@ def make_tracker(cfg: dict, root: Path):
 
 # ---------- frontier ----------
 
-def by_num(tickets: list, t) -> dict:
-    return {x.num: x for x in tickets if x.effort == t.effort}
-
-
-def unblocked(t, tickets: list) -> bool:
-    peers = by_num(tickets, t)
-    return all(peers.get(b) is None or peers[b].status in DONE for b in t.blocked_by)
-
-
-def will_unblock_without_joe(t, tickets: list, seen=None) -> bool:
-    """True if every open blocker is auto work the loop can finish on its own."""
-    seen = seen or set()
-    peers = by_num(tickets, t)
-    for b in t.blocked_by:
-        p = peers.get(b)
-        if p is None or p.status in DONE:
-            continue
-        if p.id in seen or p.gate not in RUNNABLE_GATES or p.status == "needs-human":
-            return False
-        if not will_unblock_without_joe(p, tickets, seen | {p.id}):
-            return False
-    return True
+# The blocker rules live in queue_plan; the tick and the sign-in check still call them from here until they move over.
+unblocked = queue_plan.unblocked
+will_unblock_without_joe = queue_plan.will_unblock_without_joe
 
 
 def notify(cfg: dict, root: Path, msg: str) -> None:
@@ -889,19 +959,20 @@ def tool_signin(cfg: dict, root: Path, key: str) -> dict:
     refresh is already dead, so the first agent call that fails on auth still pauses the loop."""
     label, default, fix = SIGNIN_TOOLS[key]
     cmd = (cfg.get("signin_cmds") or {}).get(key) or default
+    who = {"name": key, "label": label, "fix": fix}
     try:
         r = sh(cmd, root, timeout=30)
     except subprocess.TimeoutExpired:
-        return {"name": key, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
+        return {**who, "ok": False, "detail": f"{label} did not answer its status check (`{default}`)"}
     if r.returncode == 127:
-        return {"name": key, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
+        return {**who, "ok": False, "detail": f"{label} is not installed (`{fix.split()[0]}` not found)"}
     try:
         out = json.loads(r.stdout)
     except ValueError:
         out = None
     if r.returncode != 0 or (isinstance(out, dict) and out.get("loggedIn") is False):
-        return {"name": key, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
-    return {"name": key, "ok": True, "detail": f"{label} signed in"}
+        return {**who, "ok": False, "detail": f"{label} needs signing in (`{fix}`)"}
+    return {**who, "ok": True, "detail": f"{label} signed in"}
 
 
 def harness_signin_key(cfg: dict, name: str) -> str | None:
@@ -922,25 +993,56 @@ def signin_checks(cfg: dict, root: Path, harnesses, panel: bool = False, finish:
     if finish and cfg.get("pr") == "draft":
         keys.append("gh")  # the engine opens the draft PR, whatever the tracker
     results = [tool_signin(cfg, root, k) for k in dict.fromkeys(k for k in keys if k)]
-    results += [n(cfg) for n in needs if callable(n)]
+    for n in needs:
+        if callable(n):  # a tracker's own check has no command line to run, so its fix is null
+            c = n(cfg)
+            results.append({"label": c["name"].capitalize(), "fix": None, **c})
     return results
+
+
+def record_signin(root: Path, results: list, notify_new: bool = True) -> tuple:
+    """Write _pm/runway-signin.json for these results. Returns (failing checks, the newly failing ones).
+    notify_new False leaves new failures out of `notified` (`runway signin` never sends a notification)."""
+    failing = [c for c in results if not c["ok"]]
+    prev = read_signin(root) or {}
+    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
+    new = [c for c in failing if c["name"] not in notified]
+    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
+           "checks": results, "notified": notified + ([c["name"] for c in new] if notify_new else [])}
+    p = signin_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(out) + "\n")
+    os.replace(tmp, p)
+    return failing, new
+
+
+def cmd_signin(cfg: dict, root: Path, as_json: bool, tickets: list | None = None,
+               load_error: str | None = None) -> int:
+    """The checks the next tick would run with work waiting (the finish step's too), recorded in
+    _pm/runway-signin.json: the harness of every ticket it could run or prep (a codex ticket needs codex), plus
+    the project's default harness. When the tickets couldn't be loaded, a failing `tickets` check says so: the
+    harnesses the queue needs are unknown, so signin never reports all clear. Claims and preps nothing, makes
+    no model call, sends no notification. Exit status 0 when every check passes."""
+    names = list(dict.fromkeys([resolve_harness(cfg)["name"], *work_harnesses(cfg, tickets or [])]))
+    results = signin_checks(cfg, root, names, panel=cfg.get("review") == "panel", finish=True)
+    if load_error:
+        results.append({"name": "tickets", "ok": False, "label": "Tickets", "fix": "runway status",
+                        "detail": f"Tickets could not be loaded, so the harnesses they need are unknown ({load_error})"})
+    failing, _ = record_signin(root, results, notify_new=False)
+    if as_json:
+        print(json.dumps(read_signin(root), indent=2))
+    else:
+        for c in results:
+            print(("ok   " if c["ok"] else "FAIL ") + c["detail"])
+    return 1 if failing else 0
 
 
 def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish: bool = False) -> bool:
     """Check sign-ins before work starts. True (after logging, heartbeat `waiting` with the reason, and
     one notification until it clears) when any check fails; the caller then starts nothing."""
     results = signin_checks(cfg, root, harnesses, panel, finish)
-    failing = [c for c in results if not c["ok"]]
-    prev = read_signin(root) or {}
-    notified = [n for n in prev.get("notified", []) if any(c["name"] == n for c in failing)]
-    new = [c for c in failing if c["name"] not in notified]
-    out = {"at": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "ok": not failing,
-           "checks": results, "notified": notified + [c["name"] for c in new]}
-    p = signin_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(out) + "\n")
-    os.replace(tmp, p)
+    failing, new = record_signin(root, results)
     if not failing:
         return False
     reason = "; ".join(c["detail"] for c in failing)
@@ -951,8 +1053,8 @@ def signin_waiting(cfg: dict, root: Path, harnesses, panel: bool = False, finish
     return True
 
 
-def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
-    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+def work_harnesses(cfg: dict, tickets: list) -> list:
+    """The harnesses the next tick needs: one per ready ticket it could run or prep, in queue order, no repeats."""
     me = machine_name()
     names = []
     for t in tickets:
@@ -962,7 +1064,13 @@ def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
         run_it = t.gate in RUNNABLE_GATES and unblocked(t, tickets) and (not t.claimed_by or t.claimed_by == me)
         if prep_it or run_it:
             names.append(resolve_harness(cfg, t)["name"])
-    return bool(names) and signin_waiting(cfg, root, list(dict.fromkeys(names)))
+    return list(dict.fromkeys(names))
+
+
+def signin_waiting_for_work(cfg: dict, root: Path, tickets: list) -> bool:
+    """Only a tick with work to start checks sign-ins: a ready ticket to run, or a decision to prep."""
+    names = work_harnesses(cfg, tickets)
+    return bool(names) and signin_waiting(cfg, root, names)
 
 
 def record(root: Path, rec: dict) -> None:
@@ -972,36 +1080,10 @@ def record(root: Path, rec: dict) -> None:
         f.write(json.dumps({"at": now(), **rec}) + "\n")
 
 
-def harness_profiles(cfg: dict) -> dict:
-    """The usable named profiles: dict values only, and no key starting with `_` (notes live there)."""
-    return {k.lower(): v for k, v in (cfg.get("harnesses") or {}).items()
-            if isinstance(v, dict) and not str(k).startswith("_")}
-
-
-def harness_error(cfg: dict, t) -> str | None:
-    """A message when the ticket's harness override names no known harness, else None."""
-    name = getattr(t, "harness", None)
-    if name and name.lower() != "claude" and name.lower() not in harness_profiles(cfg):
-        known = ", ".join(["claude", *sorted(harness_profiles(cfg))])
-        return f"unknown harness '{name}' (known: {known})"
-    return None
-
-
-def resolve_harness(cfg: dict, t=None) -> dict:
-    """The effective profile for a ticket (the project default when t is None): the ticket's
-    override, else cfg["harness"]. Top-level commands are the base; the named profile overlays them.
-    An unknown override falls back to the project default (tick parks such tickets first)."""
-    profiles = harness_profiles(cfg)
-    default = (cfg.get("harness") or "claude").lower()
-    name = (getattr(t, "harness", None) or default).lower()
-    if name != "claude" and name not in profiles:
-        name = default
-    prof = {k: cfg.get(k, "") for k in ("agent_cmd", "prep_cmd", "review_cmd", "fix_cmd", "pr_cmd")}
-    prof["parser"] = "claude"
-    override = profiles.get(name)
-    prof.update({k: v for k, v in (override if isinstance(override, dict) else {}).items() if v})
-    prof["name"] = name
-    return prof
+# The harness rules (profiles, unknown labels, the top-level-commands fallback) live in queue_plan.
+harness_profiles = queue_plan.harness_profiles
+harness_error = queue_plan.harness_error
+resolve_harness = queue_plan.resolve_harness
 
 
 def answering_model(model_usage) -> str | None:
@@ -2231,6 +2313,88 @@ def exec_claude(root: Path, prompt: str) -> None:
     os.execvp("claude", ["claude", prompt])
 
 
+def exec_claude_resume(cwd: Path, session_id: str, prompt: str) -> None:
+    """Hand Terminal to `claude --resume <id>` in the folder the worker ran in. Never returns."""
+    os.chdir(cwd)
+    os.execvp("claude", ["claude", "--resume", session_id, prompt])
+
+
+def latest_attempt(root: Path, ticket: str) -> dict | None:
+    """The ticket's latest agent row (run, prep or fix) in _pm/runway-runs.jsonl, or None."""
+    rows = [r for r in read_runs(root) if r.get("ticket") == ticket and r.get("kind") in ("run", "prep", "fix")]
+    return rows[-1] if rows else None
+
+
+# Only a run or fix attempt works in the ticket's own worktree; a decision prep runs in the repo root.
+RESUMABLE_KINDS = ("run", "fix")
+
+
+def is_resumable(root: Path, ticket: str, branch: str | None = None) -> bool:
+    """True when the latest attempt was a claude run or fix session with an id and a recorded worktree outside
+    the repo root and its transcript on this machine, so `discuss --resume` can reopen it. Given the ticket's
+    branch, a folder that still exists at the recorded path must be on it, and a missing one needs the branch
+    to recreate it from (resume refuses otherwise)."""
+    r = latest_attempt(root, ticket)
+    if not (r and r.get("kind") in RESUMABLE_KINDS and r.get("session_id") and r.get("cwd")
+            and (r.get("harness") or "claude") == "claude" and not _is_repo_root(root, Path(r["cwd"]))):
+        return False
+    if not transcript(r["session_id"]):
+        return False  # resume needs the transcript on this machine
+    cwd = Path(r["cwd"])
+    if branch and cwd.exists():
+        head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+        return head.returncode == 0 and head.stdout.strip() == branch
+    if branch:  # a missing worktree can only be recreated from the kept branch
+        return sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode == 0
+    return True
+
+
+def _is_repo_root(root: Path, cwd: Path) -> bool:
+    try:
+        return cwd.resolve() == root.resolve()
+    except OSError:
+        return False
+
+
+def resume_target(root: Path, t) -> tuple:
+    """(cwd, session_id) to resume for the ticket, recreating its parked worktree from the kept branch.
+    Exits with the reason (and "use Talk it through instead") when it can't be done; creates nothing then."""
+    def no(why: str):
+        sys.exit(f"Can't resume {t.id}: {why}; use Talk it through instead.")
+    r = latest_attempt(root, t.id)
+    if not r:
+        no("no attempt is logged, so there is no session id")
+    if r.get("kind") not in RESUMABLE_KINDS:
+        no(f"the latest attempt was a {r.get('kind')} session, which works in the repo root, not on the ticket's branch")
+    harness = r.get("harness") or "claude"
+    if harness != "claude":
+        no(f"the latest attempt ran on {harness}, and only claude sessions resume")
+    sid = r.get("session_id")
+    if not sid:
+        no("the latest attempt has no session id")
+    if not transcript(sid):
+        no(f"the transcript for session {sid} was not found on this machine")
+    if not r.get("cwd"):
+        no("the attempt did not record where it ran")
+    cwd = Path(r["cwd"])
+    if _is_repo_root(root, cwd):
+        no("the attempt ran in the repo root, not in the ticket's worktree")
+    branch = f"runway/{t.effort}-{t.slug}"
+    if cwd.exists():
+        head = sh(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+        if head.returncode != 0 or head.stdout.strip() != branch:
+            no(f"{cwd} is not a worktree on {branch}")
+    else:
+        if sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], root).returncode != 0:
+            no(f"the branch {branch} is gone")
+        sh(["git", "worktree", "prune"], root)
+        cwd.parent.mkdir(parents=True, exist_ok=True)
+        made = sh(["git", "worktree", "add", str(cwd), branch], root)
+        if made.returncode != 0:
+            no(f"git could not recreate the worktree on {branch}: {(made.stderr or '').strip()}")
+    return cwd, sid
+
+
 def launchctl_print(label: str) -> str:
     try:
         r = subprocess.run(["launchctl", "print", f"gui/{os.getuid()}/{label}"], capture_output=True, text=True, timeout=15)
@@ -2239,11 +2403,106 @@ def launchctl_print(label: str) -> str:
     return (r.stdout + r.stderr).strip() or "(no output)"
 
 
+PART_OF = re.compile(r"^\s*part of\s+(#\d+|[A-Za-z][A-Za-z0-9]*-\d+)\b", re.I | re.M)
+
+
+def _spec_file(root: Path, rel: str) -> str | None:
+    """A spec file's text (capped) read from the checkout, or None if it is missing, unreadable or outside it."""
+    p = (root / rel).resolve()
+    if not p.is_relative_to(root.resolve()) or not p.is_file():
+        return None
+    try:
+        body = p.read_text(errors="replace")
+    except OSError:
+        return None
+    if len(body) > SPEC_CAP:
+        body = body[:SPEC_CAP] + f"\n\n[cut at {SPEC_CAP} characters; read the rest in {rel}]"
+    return body
+
+
+def _is_intent_note(rel: str) -> bool:
+    """`docs/intent/` holds pm's discovery notes, never a spec."""
+    return os.path.normpath(rel).replace(os.sep, "/").startswith("docs/intent/")
+
+
+def _first_spec_line(text: str) -> str | None:
+    """The file a text names when its first non-blank line is a `Spec:` line."""
+    first = next((l for l in (text or "").splitlines() if l.strip()), "")
+    m = SPEC_LINE.match(first)
+    return m.group(1) if m else None
+
+
+def spec_parent(t) -> tuple[dict | None, str | None]:
+    """The ticket's spec issue (native parent, else a `Part of` line) and a note if the lookup failed. A tracker
+    that is down must not stop the session."""
+    try:
+        parent = t.parent_issue() if hasattr(t, "parent_issue") else None
+        m = PART_OF.search(t.text)
+        if parent is None and m and hasattr(t, "tr"):
+            parent = t.tr.spec_issue(m.group(1))
+        return parent, None
+    except Exception as e:
+        return None, f"Could not look up the spec issue: {e}"
+
+
+def spec_brief(root: Path, loaded: list, t) -> list:
+    """The discuss brief's spec section and the spec's other tickets, as lines. Order: the ticket's own `Spec:`
+    line (file in the checkout), then its parent issue or `Part of #N` (the parent's `Spec:` line names the file,
+    else the parent's body is the spec). Only a trusted author's issue text counts, and `docs/intent/` is never
+    read. A ticket without a spec says so and the session carries on."""
+    notes, heading, body = [], "", None
+    specs = ticket_specs([t])
+    for rel in specs:
+        if _is_intent_note(rel):
+            notes.append(f"{rel} is a docs/intent/ discovery note, not a spec; not read.")
+            continue
+        body = _spec_file(root, rel)
+        if body is not None:
+            heading = rel
+            break
+        notes.append(f"{rel} is named in the ticket's Spec line but is missing from this checkout.")
+    parent, err = spec_parent(t)
+    if err:
+        notes.append(err)
+    if body is None and parent and parent.get("body"):
+        rel = _first_spec_line(parent["body"])
+        intent = bool(rel) and _is_intent_note(rel)
+        body = _spec_file(root, rel) if rel and not intent else None
+        if body is not None:
+            heading = rel
+        else:
+            if intent:
+                notes.append(f"{rel} is a docs/intent/ discovery note, not a spec; not read.")
+            elif rel:
+                notes.append(f"{rel} is named in {parent['id']}'s Spec line but is missing from this checkout.")
+            heading, body = f"{parent['id']}: {parent['title']}", parent["body"].strip()
+    out = ["", f"## Spec: {heading}" if body is not None else "## Spec", ""]
+    out += [body.strip()] if body is not None else ["No spec found."]
+    if notes:
+        out += ["", *(f"_{n}_" for n in notes)]
+    sibs, seen = [], {t.id}
+    part = PART_OF.search(t.text)
+    for x in loaded:
+        same = bool(set(ticket_specs([x])) & set(specs)) or bool(
+            part and (m := PART_OF.search(x.text)) and m.group(1) == part.group(1))
+        if x.id not in seen and same:
+            seen.add(x.id)
+            sibs.append((x.id, x.title, x.status in queue_plan.DONE))
+    for c in (parent or {}).get("children", []):
+        if c["id"] not in seen:
+            seen.add(c["id"])
+            sibs.append((c["id"], c["title"], c["closed"]))
+    if body is not None or sibs:
+        out += ["", "## Spec's other tickets", ""]
+        out += [f"- {i}: {title} ({'closed' if closed else 'open'})" for i, title, closed in sibs] or ["(none)"]
+    return out
+
+
 def ticket_brief(root: Path, loaded: list, t) -> str:
     runs = [r for r in read_runs(root) if r.get("ticket") == t.id]
     out = [f"# Discuss {t.id}: {t.title}", "", f"- URL: {t.url or '(none)'}", f"- Gate: {t.gate}", f"- Status: {t.status}",
            f"- Waiting on: {t.h('Waiting on') or '(nothing)'}", f"- Errored: {errored_kinds(root).get(t.id) or 'no'}",
-           "", "## Ticket", "", t.text.strip()]
+           "", "## Ticket", "", t.text.strip(), *spec_brief(root, loaded, t)]
     packet = t.packet
     if packet:
         out += ["", "## Latest decision packet", "", packet]
@@ -2285,11 +2544,20 @@ def write_brief(root: Path, name: str, text: str) -> str:
     return f"_pm/discuss/{name}"
 
 
-def cmd_discuss(cfg: dict, root: Path, tracker, num: str) -> None:
+def cmd_discuss(cfg: dict, root: Path, tracker, num: str, resume: bool = False) -> None:
     loaded = tracker.load()
     t = find(type("Loaded", (), {"load": lambda self: loaded})(), num)
-    if t.id not in {x.id for x in group_tickets(loaded)["waiting"]} and t.id not in errored_kinds(root):
+    if t.id not in {x.id for x in group_tickets(loaded, cfg)["waiting"]} and t.id not in errored_kinds(root):
         sys.exit(f"{t.id} is not waiting on Joe and has no attempt that failed to merge; nothing to discuss.")
+    if resume:
+        cwd, sid = resume_target(root, t)
+        rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
+        exec_claude_resume(cwd, sid, (
+            f"You're now talking with Joe, interactively, with his permissions, no longer headless. Read {root / rel} "
+            f"for what happened since you stopped (ticket {t.id}), and follow the runway skill's \"Talk a ticket "
+            f"through\" section: post go or no only on Joe's own words. Anything you commit here stays on this "
+            f"ticket's branch. When Joe says go, the next tick starts from a fresh worktree off the integration "
+            f"branch, so say whether you committed anything he wants kept, and merge it or note it on the ticket."))
     rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
     exec_claude(root, f"Read {rel}, the brief for ticket {t.id}, and follow the runway skill's "
                       f"\"Talk a ticket through\" section. Wait for Joe before posting anything.")
@@ -2517,47 +2785,55 @@ GROUPS = [("waiting", "Waiting on you"), ("running", "Running"), ("ready_auto", 
           ("ready_prep", "Ready (needs prep)"), ("blocked", "Blocked"), ("done", "Done")]
 
 
-def group_tickets(tickets: list) -> dict:
-    """Runway's tickets by group key, each in tracker (queue) order."""
+STEP_GROUP = {"waiting": "waiting", "park": "waiting",
+              "running_here": "running", "running_elsewhere": "running", "claimed_unknown_owner": "running",
+              "run": "ready_auto", "queued": "ready_auto", "prep": "ready_prep",
+              "blocked": "blocked", "done": "done"}
+
+
+def queue_plan_for(cfg: dict, tickets: list) -> queue_plan.QueuePlan:
+    return queue_plan.plan(tickets, machine_name(), cfg.get("finish", "all_done"), cfg)
+
+
+def group_tickets(tickets: list, cfg: dict, qp: queue_plan.QueuePlan | None = None) -> dict:
+    """Runway's tickets by group key, each in tracker (queue) order: the queue plan's steps, grouped."""
+    qp = qp or queue_plan_for(cfg, tickets)
     groups = {key: [] for key, _ in GROUPS}
-    for t in tickets:
-        if t.gate not in RUNNABLE_GATES + ("human",):
-            continue  # not Runway's (e.g. a wayfinder decision ticket)
-        if t.status == "needs-human":
-            groups["waiting"].append(t)
-        elif t.status == "claimed":
-            groups["running"].append(t)
-        elif t.status in DONE:
-            groups["done"].append(t)
-        elif not unblocked(t, tickets) and t.gate != "human":
-            groups["blocked"].append(t)
-        elif t.gate == "human":
-            groups["ready_prep"].append(t)
-        else:
-            groups["ready_auto"].append(t)
+    for s in qp.steps:
+        groups[STEP_GROUP[s.kind]].append(s.ticket)
     return groups
 
 
-def cmd_status(tracker) -> None:
-    groups = group_tickets(tracker.load())
+def cmd_status(cfg: dict, tracker) -> None:
+    loaded = tracker.load()
+    qp = queue_plan_for(cfg, loaded)
+    groups = group_tickets(loaded, cfg, qp)
+    parked = {s.id: s.reason for s in qp.park}
     for key, name in GROUPS:
         ts = groups[key]
         print(f"\n{name} ({len(ts)})")
         for t in ts:
-            extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
+            if t.id in parked:
+                extra = f"  [{parked[t.id]}]"
+            else:
+                extra = f"  [{t.h('Waiting on')}]" if key == "waiting" and t.h("Waiting on") else ""
             print(f"  {t.id:<24} {t.title}{extra}")
+    if qp.idle_reason:
+        print(f"\n{qp.idle_reason}")
 
 
 def status_json(cfg: dict, root: Path, tracker) -> dict:
     """The `status --json` document. Shape is documented in the module docstring."""
     loaded = tracker.load()
-    groups = group_tickets(loaded)
-    grouped = {t.id for ts in groups.values() for t in ts}
+    qp = queue_plan_for(cfg, loaded)
+    groups = group_tickets(loaded, cfg, qp)
+    steps = {s.id: s for s in qp.steps}
 
     def full_id(t, b: str) -> str:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
+    resumable = {t.id: is_resumable(root, t.id, f"runway/{t.effort}-{t.slug}") for t in loaded if t.id in steps}
 
     def entry(t) -> dict:
         waiting = t.status == "needs-human"
@@ -2565,14 +2841,18 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
                 "blocked_by": [full_id(t, b) for b in t.blocked_by],
                 "waiting_on": (t.h("Waiting on") or None) if waiting else None,
                 "packet": t.packet if waiting else None, "harness": resolve_harness(cfg, t)["name"], "claimed_by": t.claimed_by,
-                "errored": errored.get(t.id)}
+                "errored": errored.get(t.id), "next_step": steps[t.id].kind, "reason": steps[t.id].reason,
+                "resumable": resumable[t.id]}
 
     return {"version": 1, "repo": str(root), "tracker": cfg.get("tracker", "markdown"),
             "machine": machine_name(), "paused": active_pause(clean=False),
             "signin": read_signin(root),
             "generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
-            "tickets": [entry(t) for t in loaded if t.id in grouped]}
+            "run_now": qp.run_now.id if qp.run_now else None,
+            "finish": {"verdict": qp.finish.verdict, "reason": qp.finish.reason},
+            "idle_reason": qp.idle_reason,
+            "tickets": [entry(t) for t in loaded if t.id in steps]}
 
 
 def find(tracker, num: str):
@@ -2633,7 +2913,10 @@ def main() -> None:
     pz.add_argument("--until", help="resume at this ISO-8601 time")
     pz.add_argument("--for", dest="span", help="resume after this long, e.g. 30m, 1h, 2d")
     pz.add_argument("--stop-now", action="store_true", help="also stop the running agent and return its ticket to ready")
-    sub.add_parser("resume", help="delete the pause")
+    rs = sub.add_parser("resume", help="delete the pause")
+    rs.add_argument("--if-reason", help="only when the pause carries this reason (signed-out: set by a failed sign-in)")
+    sg = sub.add_parser("signin", help="run the sign-in checks the next tick would run; exit 0 when all pass")
+    sg.add_argument("--json", action="store_true", help="print _pm/runway-signin.json")
     sub.add_parser("machine", help="print this Mac's quiet-time rules and whether a tick would run now")
     lp = sub.add_parser("loop")
     lp.add_argument("--max-ticks", type=int, default=50)
@@ -2643,6 +2926,7 @@ def main() -> None:
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
     ds = sub.add_parser("discuss", help="open a claude session to talk a waiting or errored ticket (or --loop) through")
     ds.add_argument("ticket", nargs="?")
+    ds.add_argument("--resume", action="store_true", help="reopen the ticket's own worker session (claude only), not a fresh one")
     ds.add_argument("--loop", action="store_true", help="the loop itself (stale heartbeat, failed tick, sign-in), not a ticket")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
@@ -2656,12 +2940,14 @@ def main() -> None:
         cmd_pause(root, a.until, a.span, a.stop_now)
         return
     if a.cmd == "resume":
-        cmd_resume()
+        cmd_resume(a.if_reason)
         return
     if a.cmd == "machine":
         print(describe_machine(root))
         return
     if a.cmd == "discuss":
+        if a.resume and a.loop:
+            sys.exit("--resume is for a ticket's worker session, not the loop.")
         if a.loop == bool(a.ticket):
             sys.exit("Give a ticket to discuss, or --loop for the loop itself (not both).")
         if a.loop:
@@ -2671,12 +2957,18 @@ def main() -> None:
     if cfg_path.exists():
         cfg.update(json.loads(cfg_path.read_text()))
     tracker = make_tracker(cfg, root)
+    if a.cmd == "signin":
+        try:
+            tickets, load_error = tracker.load(), None
+        except Exception as e:  # fail closed: the queue's harness needs are unknown, so signin can't pass
+            tickets, load_error = [], str(e) or type(e).__name__
+        sys.exit(cmd_signin(cfg, root, a.json, tickets, load_error))
 
     if a.cmd == "status":
         if a.json:
             print(json.dumps(status_json(cfg, root, tracker), indent=2))
         else:
-            cmd_status(tracker)
+            cmd_status(cfg, tracker)
     elif a.cmd == "setup":
         if not hasattr(tracker, "setup"):
             sys.exit("setup is only needed for the linear and github trackers.")
@@ -2684,7 +2976,7 @@ def main() -> None:
     elif a.cmd == "retro":
         cmd_retro(root, a.last)
     elif a.cmd == "discuss":
-        cmd_discuss(cfg, root, tracker, a.ticket)
+        cmd_discuss(cfg, root, tracker, a.ticket, resume=a.resume)
     elif a.cmd in ("tick", "loop", "finish"):
         ensure_app()
         lock = locked(root)
@@ -2707,7 +2999,7 @@ def main() -> None:
                         log(root, "idle  nothing ready without Joe")
                         finish(cfg, root, tracker)
                         break
-                cmd_status(tracker)
+                cmd_status(cfg, tracker)
         except KeyboardInterrupt:
             beat(root, "stopped")
             raise

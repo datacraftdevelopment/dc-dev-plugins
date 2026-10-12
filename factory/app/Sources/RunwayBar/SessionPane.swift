@@ -49,7 +49,7 @@ final class ExitWatcher: NSObject, LocalProcessTerminalViewDelegate {
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         Task { @MainActor in
-            if !silenced { registry.markExited(id) }
+            if !silenced { registry.markExited(id, exitCode: exitCode) }
         }
     }
 }

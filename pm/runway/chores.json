@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "chores": [
+    {
+      "id": "codex-refresh",
+      "title": "Refresh Codex plugins",
+      "why": "Rebuilds the Codex edition of these plugins, installs it into Codex (~/.codex), rewrites the shared library AGENTS.md and ~/.codex/AGENTS.md, then checks it",
+      "run": "python3 scripts/refresh_codex.py --install && python3 scripts/refresh_codex.py --check",
+      "cwd": "checkout",
+      "show_if": "command -v codex",
+      "confirm": true
+    },
+    {
+      "id": "retired-plugins",
+      "title": "Remove retired plugins",
+      "why": "sdlc, ui-test and factory now live in pm; an old copy still installed loads twice",
+      "run": "for p in sdlc ui-test factory; do claude plugin uninstall \"$p@dc-dev-plugins\" || true; done; claude plugin list",
+      "cwd": "checkout",
+      "show_if": "list=$(claude plugin list 2>/dev/null) || exit 2; printf '%s\\n' \"$list\" | grep -Eq '(sdlc|ui-test|factory)@dc-dev-plugins'",
+      "confirm": true
+    },
+    {
+      "id": "tracker-setup",
+      "title": "Check tracker setup",
+      "why": "Checks the tracker sign-in and repo, and creates any of Runway's labels that are missing",
+      "run": "python3 {runway} --root {repo} setup",
+      "cwd": "repo"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ import tempfile
 import subprocess
 import sys
 
-from build_codex import ROOT, PLUGINS, MARKER, build_one, install, source_metadata
+from build_codex import ROOT, PLUGINS, MARKER, build_one, install, source_metadata, validate_package
 from install_ringer import build as build_ringer
 from install_claris import resolve_sources, build as build_claris
 from install_workflow import build as build_workflow, sources as workflow_sources, connect_agents
@@ -101,7 +101,7 @@ def installed_source_issues(item, library, matt, selected, claris):
     return issues
 
 
-def promote(packages, output, creator):
+def promote(packages, output):
     """Validate the whole batch before touching live package folders."""
     ownership = {**dict.fromkeys(PLUGINS, MARKER), 'ringer': '.dc-ringer-build.json',
                  'filemaker-agentic-development': '.dc-claris-build.json',
@@ -116,7 +116,7 @@ def promote(packages, output, creator):
             data = json.loads(mcp.read_text())
             data['mcpServers']['adt-mcp']['command'] = str(dest / 'bin/adt')
             mcp.write_text(json.dumps(data, indent=2) + '\n')
-        subprocess.run([sys.executable, str(creator / 'scripts/validate_plugin.py'), str(package)], check=True)
+        validate_package(package)
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.dc-previous-', dir=output) as temp:
         backup = Path(temp)
@@ -148,7 +148,6 @@ def main():
     parser.add_argument('--registry', type=Path, default=Path.home() / '.claude/plugins/installed_plugins.json')
     parser.add_argument('--claris-cache', type=Path, default=Path.home() / '.claude/plugins/cache/claris')
     parser.add_argument('--output', type=Path, help='Preview output, default .codex-build; incompatible with --install')
-    parser.add_argument('--plugin-creator-dir', type=Path, default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install and --output cannot be combined')
@@ -166,9 +165,9 @@ def main():
         packages.append(build_ringer(library / 'skills/agent-operations', staging))
         packages.extend(build_claris(name, source, manifest, staging) for name, (source, manifest) in claris.items())
         packages.append(build_workflow(library, args.registry, staging))
-        packages = promote(packages, output, args.plugin_creator_dir.expanduser())
+        packages = promote(packages, output)
     if args.install:
-        install(packages, args.plugin_creator_dir.expanduser())
+        install(packages)
         connect_agents(library)
         print('Refresh complete. Start a new Codex task to load the updated skills and tools.')
     else:

@@ -268,6 +268,12 @@ whatever the ticket's harness. The brief carries trusted authors' comments only.
 You were started by `RUNWAY discuss` with a brief in `_pm/discuss/`. Read it
 first, then talk it through with Joe in plain words. Casual and short.
 
+**Read the spec before you answer.** A ticket brief carries the ticket's spec in full
+(under `## Spec`) and lists the spec's other tickets with open/closed. Read both, and
+check the ticket against the spec: does it do what the spec says, does it leave out or
+add to it, do its siblings change the answer. If the brief says "No spec found", say so
+and go on with the ticket alone. `docs/intent/` is discovery notes, not the spec.
+
 **Decision packet.** Explain the choice and read the code the options touch.
 Sort the open questions with pm's fast-grill buckets: technical questions go to
 Astra through Ringer's grill-review kit as one task; one-way doors, taste, and
@@ -284,7 +290,15 @@ failed tick, a failed sign-in check, a failed finish), and the way out: restart
 the job, sign in again, clear a stale lock. Installing or removing LaunchAgents
 is Joe's step: give him the command, don't run it.
 
-Rules for all three:
+**Resumed worker.** `RUNWAY discuss <ticket> --resume` puts you inside the
+worker's own session, in the worktree it ran in (recreated from the kept
+branch if settle had removed it). You are talking with Joe now, interactively,
+with his permissions. The brief names what happened since you stopped. Anything
+you commit stays on the ticket's branch, and when Joe says go the next tick
+starts from a fresh worktree off the integration branch, so say whether you
+committed anything he wants kept, and merge it or note it on the ticket.
+
+Rules for all three (and the resumed worker):
 
 - Post `RUNWAY go|no <ticket> "<note>"` only after Joe says go or no on this
   ticket in this session, with his own words as the note. Never on a

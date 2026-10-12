@@ -79,6 +79,24 @@ final class ErroredTests: XCTestCase {
         XCTAssertFalse(s.canTalkThrough("unknown"))
     }
 
+    func testFinishedNeedsHumanRowOffersTalkOnlyWhileTheTicketStillWaits() throws {
+        let s = try XCTUnwrap(StatusSnapshot.parse(Data("""
+        {"groups":{"waiting":["W"],"ready_auto":["E"],"done":["D"]},
+         "tickets":[{"id":"E","errored":"check-failed"},{"id":"W","status":"needs-human"},{"id":"D"}]}
+        """.utf8)))
+        func finished(_ ticket: String, _ result: String) throws -> FinishedTicket {
+            let line = #"{"at":"2026-10-12 10:00 CEST","kind":"outcome","ticket":"\#(ticket)","attempts":1,"result":"\#(result)","detail":"q"}"#
+            let rows = PanelHistory.rows(Data(line.utf8))
+            guard case .ticket(let t)? = rows.first else { throw XCTSkip("no ticket row") }
+            return t
+        }
+        XCTAssertTrue(s.canTalkThrough(finished: try finished("W", "needs-human")))
+        XCTAssertFalse(s.canTalkThrough(finished: try finished("E", "needs-human")))  // answered: only the stale flag is left
+        XCTAssertFalse(s.canTalkThrough(finished: try finished("D", "needs-human")))   // answered or closed since
+        XCTAssertFalse(s.canTalkThrough(finished: try finished("W", "done")))          // only needs-human rows
+        XCTAssertFalse(s.canTalkThrough(finished: try finished("W", "stopped")))
+    }
+
     func testBadgeCountsErroredTickets() {
         let a = ProjectStatus(label: "a", name: "a", state: .idle, detail: "", waiting: 2, errored: 1)
         let b = ProjectStatus(label: "b", name: "b", state: .idle, detail: "", waiting: 0)

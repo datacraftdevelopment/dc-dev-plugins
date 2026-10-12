@@ -130,7 +130,8 @@ struct RunsTab: View {
                         .buttonStyle(.link)
                 }
                 if let kind = errored(record.ticket) { ErroredFlag(kind: kind) }
-                if canTalk(record) { TalkButton(store: store, project: entry.project, ticket: record.ticket) }
+                if canTalk(record) { TalkButton(store: store, project: entry.project, ticket: record.ticket,
+                                          resumable: store.snapshot(for: entry.project.label)?.canResumeWorker(record.ticket) == true) }
                 Button { selected = nil } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless).foregroundStyle(.secondary).help("Close details")
             }

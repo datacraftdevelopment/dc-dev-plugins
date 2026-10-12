@@ -196,15 +196,13 @@ def main():
                         default=ROOT.parents[2] / '_Core/library/skills/agent-operations')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--install', action='store_true')
-    parser.add_argument('--plugin-creator-dir', type=Path,
-                        default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install uses ~/plugins; do not combine with --output')
     output = Path.home() / 'plugins' if args.install else args.output or ROOT / '.codex-build'
     package = build(args.source.expanduser().resolve(), output.expanduser().resolve())
     if args.install:
-        install([package], args.plugin_creator_dir.expanduser())
+        install([package])
 
 
 if __name__ == '__main__':

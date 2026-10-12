@@ -15,6 +15,10 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public let packet: String?
     /// Kind of the ticket's latest attempt that didn't merge (`check-failed`…); nil when not errored or the engine is older.
     public var errored: String?
+    /// Why a waiting ticket waits, when status gives a `reason`.
+    public var reason: String? = nil
+    /// The latest attempt was a claude session the engine can reopen (`discuss --resume`); false from an older engine.
+    public var resumable = false
 }
 
 public struct QueueSections: Equatable, Sendable {
@@ -26,10 +30,13 @@ public struct QueueSections: Equatable, Sendable {
     public let done: [QueueTicket]
 }
 
-/// The `status --json` document (version 1), as far as the Queue tab reads it.
+/// The `status --json` document (version 1), as far as the board reads it.
 public struct QueueStatus: Equatable, Sendable {
     public let tickets: [QueueTicket]
     let groups: [String: [String]]
+
+    /// Ticket ids in one of status's groups (`waiting`, `running`, `ready_auto`, `ready_prep`, `blocked`, `done`), in queue order.
+    public func group(_ key: String) -> [String] { groups[key] ?? [] }
 
     public static func parse(_ data: Data) -> QueueStatus? {
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -43,7 +50,9 @@ public struct QueueStatus: Equatable, Sendable {
                                blockedBy: raw["blocked_by"] as? [String] ?? [],
                                waitingOn: raw["waiting_on"] as? String, harness: raw["harness"] as? String,
                                packet: raw["packet"] as? String,
-                               errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 })
+                               errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                               reason: (raw["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                               resumable: raw["resumable"] as? Bool ?? false)
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }

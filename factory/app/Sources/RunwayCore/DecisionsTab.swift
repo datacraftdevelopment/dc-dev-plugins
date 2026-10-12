@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// A decision packet broken into the blocks the Decisions tab draws. Inline Markdown (bold, code, links) stays in the text.
+/// A decision packet broken into the blocks the board's details pane draws. Inline Markdown (bold, code, links) stays in the text.
 public enum PacketBlock: Equatable, Sendable {
     case heading(level: Int, text: String)
     case paragraph(String)
@@ -90,7 +90,7 @@ public struct DecisionCard: Equatable, Sendable, Identifiable {
     public let answer: DecisionAnswer?
 }
 
-/// The Decisions tab's state. Nothing here sends an answer except `answer(_:go:…)`, which a button calls for one ticket.
+/// The board's status and answers. Nothing here sends an answer except `answer(_:go:…)`, which a button calls for one ticket.
 @MainActor @Observable
 public final class DecisionsFeed {
     public private(set) var queue: QueueStatus?

@@ -18,6 +18,16 @@ extension StatusSnapshot {
     public func canTalkThrough(_ ticket: String) -> Bool {
         errored[ticket] != nil || tickets.contains { $0.id == ticket }
     }
+
+    /// A Finished row that ended "needs you" offers the button only while its ticket still waits on Joe.
+    /// An errored flag alone doesn't count here: it stays until the next merge, so after a `go` it would keep
+    /// the button on a ticket that has been answered.
+    public func canTalkThrough(finished: FinishedTicket) -> Bool {
+        finished.result == "needs-human" && tickets.contains { $0.id == finished.ticket }
+    }
+
+    /// "Resume worker" shows only when the engine says the ticket's latest attempt is a claude session it can reopen.
+    public func canResumeWorker(_ ticket: String) -> Bool { resumable.contains(ticket) }
 }
 
 /// The Terminal commands behind the "Talk it through" button. The engine owns the brief and the prompt;
@@ -25,6 +35,11 @@ extension StatusSnapshot {
 extension RunwayTools {
     public func discuss(ticket: String, repo: String) -> Command {
         terminal(repo: repo, discussTail(ticket: ticket))
+    }
+
+    /// `runway discuss <ticket> --resume`: the worker's own conversation, in Terminal.
+    public func discussResume(ticket: String, repo: String) -> Command {
+        terminal(repo: repo, discussTail(ticket: ticket, resume: true))
     }
 
     public func discussLoop(repo: String) -> Command {
@@ -37,14 +52,20 @@ extension RunwayTools {
     }
 
     private func terminal(repo: String, _ tail: String) -> Command {
-        let shell = shellLine(repo: repo, tail)
-        let literal = shell.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        Self.terminal(line: shellLine(repo: repo, tail))
+    }
+
+    /// Terminal.app running one shell line (what "Pop out to Terminal" does for any pane session).
+    public static func terminal(line: String) -> Command {
+        let literal = line.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
         return Command(executable: "/usr/bin/osascript", arguments: [
             "-e", "tell application \"Terminal\" to activate",
             "-e", "tell application \"Terminal\" to do script \"\(literal)\""])
     }
 
-    func discussTail(ticket: String) -> String { "discuss " + Self.shellQuote(ticket) }
+    func discussTail(ticket: String, resume: Bool = false) -> String {
+        "discuss " + Self.shellQuote(ticket) + (resume ? " --resume" : "")
+    }
 
     /// Always single-quoted, so a space, a quote or a `$` in a path stays one word.
     static func shellQuote(_ word: String) -> String {

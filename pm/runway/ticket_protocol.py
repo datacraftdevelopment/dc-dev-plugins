@@ -101,6 +101,11 @@ class Ticket:
     def _older_comments(self) -> list[dict]:
         return []
 
+    def parent_issue(self) -> dict | None:
+        """The tracker's parent issue (sub-issue link, Linear parent) as a spec fact, or None. Shape: id, title,
+        url, closed, body (None unless its author is trusted), children (id, title, closed per sub-issue)."""
+        return None
+
     # -- refs: what commit subjects and the PR body say about this ticket --
 
     @property
@@ -410,6 +415,10 @@ class Tracker:
     """The tracker-wide rules: the spec-skip log line, the once-only log, and sync. `rules`, `root`, `c` and
     `load()` come from the adapter."""
     rules: Rules
+
+    def spec_issue(self, ref: str) -> dict | None:
+        """The issue `ref` (a `Part of` line names it) as the same spec fact `Ticket.parent_issue` returns, or None."""
+        return None
 
     def _log_once(self, line: str) -> None:
         p = self.root / "_pm" / "runway.log"

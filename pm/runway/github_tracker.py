@@ -130,6 +130,17 @@ Q_OLDER = """query($owner: String!, $name: String!, $number: Int!, $before: Stri
   } }
 }""" % (PAGE, COMMENT_FIELDS)
 
+SPEC_FIELDS = """number title body url state authorAssociation repository { nameWithOwner }
+  subIssues(first: 50) { nodes { number title state repository { nameWithOwner } } }"""
+
+Q_PARENT = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { issue(number: $number) { parent { %s } } }
+}""" % SPEC_FIELDS
+
+Q_SPEC = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { issue(number: $number) { %s } }
+}""" % SPEC_FIELDS
+
 Q_ONE = """query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) { issue(number: $number) { %s } }
 }""" % ISSUE_FIELDS
@@ -259,6 +270,11 @@ class GitHubTicket(ticket_protocol.Ticket):
             return native
         return [self.tr.ref(self.tr.repo, n) for n in _blockers_from_body(self.node.get("body") or "")]
 
+    def parent_issue(self) -> dict | None:
+        d = self.tr.api.graphql(Q_PARENT, owner=self.tr.owner, name=self.tr.name,
+                                number=int(self.num.rsplit("#", 1)[1]))["repository"]["issue"]
+        return self.tr.spec_fact((d or {}).get("parent"))
+
     # -- writes --
 
     def _issue(self, verb: str, *args: str, landed=None) -> None:
@@ -371,6 +387,23 @@ class GitHubTracker(ticket_protocol.Tracker):
 
     def ref(self, repo: str, number: int) -> str:
         return f"#{number}" if repo.lower() == self.repo.lower() else f"{repo}#{number}"
+
+    def spec_fact(self, n: dict | None) -> dict | None:
+        """An issue node as the spec fact the discuss brief reads. Its body counts only from a trusted author."""
+        if not n:
+            return None
+        return {"id": self.ref(n["repository"]["nameWithOwner"], n["number"]), "title": n["title"], "url": n.get("url"),
+                "closed": n["state"] == "CLOSED",
+                "body": n.get("body") if n.get("authorAssociation") in TRUSTED else None,
+                "children": [{"id": self.ref(c["repository"]["nameWithOwner"], c["number"]), "title": c["title"],
+                              "closed": c["state"] == "CLOSED"} for c in (n.get("subIssues") or {}).get("nodes", [])]}
+
+    def spec_issue(self, ref: str) -> dict | None:
+        m = re.fullmatch(r"#(\d+)", ref)
+        if not m:
+            return None
+        d = self.api.graphql(Q_SPEC, owner=self.owner, name=self.name, number=int(m.group(1)))["repository"]["issue"]
+        return self.spec_fact(d)
 
     def _create(self, title: str, full: str, labels: list[str]) -> str:
         """Open a new issue in the repo and return its ref ("#12"). `full` is the marked body. A create that

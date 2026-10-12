@@ -79,7 +79,7 @@ public struct StatusSnapshot: Equatable, Sendable {
     /// Tickets the loop could pick up: `ready_auto` plus `ready_prep`.
     public let readyCount: Int
 
-    /// Every ticket's title by id, so the Now tab can name what the loop is working on.
+    /// Every ticket's title by id, so the board can name what the loop is working on.
     public let titles: [String: String]
     /// Each ticket's tracker link (a Linear issue URL) by id, when the tracker gives one.
     public let urls: [String: URL]
@@ -106,13 +106,20 @@ public struct StatusSnapshot: Equatable, Sendable {
     public let needsYou: [NeedsYouRow]
     /// Every ticket whose latest attempt didn't merge, by id: the kind (`check-failed`…).
     public let errored: [String: String]
+    /// Tickets whose latest attempt is a claude session `discuss --resume` can reopen.
+    public let resumable: Set<String>
+    /// The last sign-in check this repo's loop (or `runway signin`) ran; empty before any ran.
+    public let signin: [SignInCheck]
 
     /// Tickets in the section only because they errored (not waiting on a decision).
     public var erroredOnlyCount: Int { needsYou.filter { !$0.waiting }.count }
 
     public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
-                upNext: [UpNext] = [], needsYou: [NeedsYouRow] = [], errored: [String: String] = [:]) {
+                upNext: [UpNext] = [], needsYou: [NeedsYouRow] = [], errored: [String: String] = [:],
+                resumable: Set<String> = [], signin: [SignInCheck] = []) {
+        self.signin = signin
         self.errored = errored
+        self.resumable = resumable
         self.needsYou = needsYou
         self.tickets = tickets
         self.readyCount = readyCount
@@ -161,7 +168,9 @@ public struct StatusSnapshot: Equatable, Sendable {
             byID[id].map { NeedsYouRow(entry: $0, url: urls[id]) }
         } + erroredOnly
         return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
-                              urls: urls, upNext: upNext, needsYou: needsYou, errored: errored)
+                              urls: urls, upNext: upNext, needsYou: needsYou, errored: errored,
+                              resumable: Set(all.compactMap { e in (e["resumable"] as? Bool) == true ? e["id"] as? String : nil }),
+                              signin: SignInCheck.parse(json["signin"]))
     }
 }
 

@@ -11,12 +11,15 @@ public struct NeedsYouRow: Equatable, Sendable, Identifiable {
     public let url: URL?
     /// Kind of the latest attempt that didn't merge, when there is one.
     public let errored: String?
+    /// The latest attempt is a claude session the engine can reopen.
+    public let resumable: Bool
     /// False for a ticket in the section only because it errored; those come after the waiting ones.
     public let waiting: Bool
 
     init(entry: [String: Any], url: URL?, waiting: Bool = true) {
         errored = (entry["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         self.waiting = waiting
+        resumable = (entry["resumable"] as? Bool) == true
         id = (entry["id"] as? String) ?? ""
         title = (entry["title"] as? String) ?? ""
         let reason = (entry["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 }
@@ -28,7 +31,8 @@ public struct NeedsYouRow: Equatable, Sendable, Identifiable {
     /// The ticket as `DecisionsFeed.answer` keeps it, so "Answered" outlives the ticket's place in the waiting list.
     public var queueTicket: QueueTicket {
         QueueTicket(id: id, title: title, url: url?.absoluteString, status: "needs-human", gate: "", blockedBy: [],
-                    waitingOn: reason, harness: nil, packet: nil, errored: errored)
+                    waitingOn: reason, harness: nil, packet: nil, errored: errored,
+                    resumable: resumable)
     }
 
     /// The first option line the packet marks as recommended.
