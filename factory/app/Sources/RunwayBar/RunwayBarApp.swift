@@ -84,6 +84,7 @@ struct RunwayMenu: View {
         }
         ForEach(store.signInNeeds) { need in
             Button("Sign in to \(need.label)…") {
+                guard let fix = need.fix, confirmRun(title: "Sign in to \(need.label)?", why: need.detail, line: fix) else { return }
                 store.signIn(need)
                 NSApplication.shared.activate(ignoringOtherApps: true)
                 openWindow(id: "runway")
@@ -106,9 +107,16 @@ struct RunwayMenu: View {
                 if let repo = project.repoPath {
                     ForEach(store.choreList().chores.filter { $0.cwd == .repo }) { chore in
                         Button("\(chore.title)…") {
-                            store.runChore(chore, repo: repo)
-                            NSApplication.shared.activate(ignoringOtherApps: true)
-                            openWindow(id: "runway")
+                            Task {
+                                // The menu can't list ahead of time, so show_if is asked at the click and its answer goes in the alert.
+                                let needed = await store.choreNeeded(chore, repo: repo)
+                                let why = needed == false ? "\(chore.why)\n\nIt doesn't look needed right now." : chore.why
+                                guard let line = store.choreLine(chore, repo: repo),
+                                      confirmRun(title: "\(chore.title)?", why: why, line: line) else { return }
+                                store.runChore(chore, repo: repo)
+                                NSApplication.shared.activate(ignoringOtherApps: true)
+                                openWindow(id: "runway")
+                            }
                         }
                         .help(store.choreLine(chore, repo: repo) ?? chore.run)
                     }
@@ -230,4 +238,17 @@ struct RunwayMenu: View {
         panel.message = "Pick the dc-dev-plugins checkout (the folder that contains factory/)."
         if panel.runModal() == .OK, let url = panel.url { store.setCheckout(url.path) }
     }
+}
+
+/// The menu's one look before a command runs: what it's for and the exact line, with Run or Cancel.
+/// The panel and the This Mac sheet show the line beside the button; a menu item can't.
+@MainActor
+func confirmRun(title: String, why: String, line: String) -> Bool {
+    NSApplication.shared.activate(ignoringOtherApps: true)
+    let alert = NSAlert()
+    alert.messageText = title
+    alert.informativeText = (why.isEmpty ? "" : why + "\n\n") + "Runs in the Runway window:\n" + line
+    alert.addButton(withTitle: "Run")
+    alert.addButton(withTitle: "Cancel")
+    return alert.runModal() == .alertFirstButtonReturn
 }

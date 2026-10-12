@@ -45,6 +45,8 @@ public struct Session: Identifiable, Equatable, Sendable {
     /// A command session (a sign-in, a chore): what it is, so its end can be followed up, its tab name,
     /// and the shell line "Pop out to Terminal" runs.
     public var command: CommandSession?
+    /// The process's exit status once it has ended, when the terminal reported one.
+    public var exitCode: Int32?
 
     public var title: String { command?.title ?? ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
 }
@@ -101,9 +103,10 @@ public final class SessionRegistry {
         return session
     }
 
-    public func markExited(_ id: UUID) {
+    public func markExited(_ id: UUID, exitCode: Int32? = nil) {
         guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].alive else { return }
         sessions[index].alive = false
+        sessions[index].exitCode = exitCode
         onExit?(sessions[index])
     }
 

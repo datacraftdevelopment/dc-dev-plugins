@@ -51,6 +51,21 @@ public struct Chore: Equatable, Sendable, Identifiable {
             "-e", "alarm shift; exec @ARGV", "10", "/bin/zsh", "-lc", "cd \(RunwayTools.shellQuote(folder)) && \(showIf)"])
     }
 
+    /// `show_if`'s answer: exit 0 means needed, exit 1 means not needed (what `grep -q` and `command -v` say when
+    /// nothing matches). Anything else (an error, the 10 second alarm) means it couldn't tell, so the chore stays shown.
+    public static func needed(probe: CommandResult) -> Bool { probe.status != 1 }
+
+    /// The line beside the button once the chore's tab has ended: its own exit first, then what `show_if` says now.
+    public func result(exit: Int32?, probe: CommandResult?) -> String {
+        if let exit, exit != 0 { return "Failed (exit \(exit)). Its output is in the \(title) tab." }
+        guard let probe else { return "Finished. Its output is in the \(title) tab." }
+        switch probe.status {
+        case 0: return "Finished, but it still looks needed. Check the output in its tab."
+        case 1: return "Done: no longer needed."
+        default: return "Finished, but Runway couldn't check whether it's still needed (check exited \(probe.status))."
+        }
+    }
+
     /// One pane tab per chore (and per repo for a per-repo chore).
     public func sessionKey(repo: String?) -> String {
         "chore:\(id)" + (cwd == .repo ? ":\(repo ?? "")" : "")

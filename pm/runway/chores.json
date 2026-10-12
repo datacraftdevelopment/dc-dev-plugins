@@ -4,7 +4,7 @@
     {
       "id": "codex-refresh",
       "title": "Refresh Codex plugins",
-      "why": "Rebuilds the Codex edition of these plugins, installs it into Codex, then checks it",
+      "why": "Rebuilds the Codex edition of these plugins, installs it into Codex (~/.codex), rewrites the shared library AGENTS.md and ~/.codex/AGENTS.md, then checks it",
       "run": "python3 scripts/refresh_codex.py --install && python3 scripts/refresh_codex.py --check",
       "cwd": "checkout",
       "show_if": "command -v codex",

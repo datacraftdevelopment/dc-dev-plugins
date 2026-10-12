@@ -82,10 +82,12 @@ public enum SignInFollowUp {
         return [tools.resumeIfSignedOut()] + waitingLoops.map { RunwayTools.runNow(label: $0) }
     }
 
-    /// A loaded loop whose last tick waited or paused (sign-in failures write heartbeat `waiting`, pause_for_auth `paused`).
-    public static func wasWaiting(_ heartbeat: Heartbeat?) -> Bool {
+    /// A loop held up by a sign-in: its tick waited on a failing sign-in check, or it is paused and the pause in force
+    /// is the one the engine set for sign-in. A loop paused by hand isn't kicked.
+    public static func wasWaiting(_ heartbeat: Heartbeat?, pauseReason: String?) -> Bool {
         guard let heartbeat else { return false }
-        return heartbeat.phase == "paused" || (heartbeat.phase == "waiting" && heartbeat.reason?.contains("sign") == true)
+        if heartbeat.phase == "paused" { return pauseReason == SignInNeed.signedOutReason }
+        return heartbeat.phase == "waiting" && heartbeat.reason?.contains("needs signing in") == true
     }
 
     /// The line the window shows once the re-check is done.

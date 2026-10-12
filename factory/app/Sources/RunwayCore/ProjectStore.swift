@@ -104,7 +104,7 @@ public final class ProjectStore {
         sessions.onExit = { [weak self] session in
             guard let self, let key = session.command?.key else { return }
             if key.hasPrefix("signin:") { Task { await self.recheckSignIns() } }
-            if key.hasPrefix("chore:") { Task { await self.choreEnded(key) } }
+            if key.hasPrefix("chore:") { Task { await self.choreEnded(key, exit: session.exitCode) } }
         }
     }
 
@@ -285,11 +285,17 @@ public final class ProjectStore {
                 failing += bad.filter { b in !failing.contains { $0.name == b.name } }
             }
         }
-        let waiting = projects.filter { $0.loaded && SignInFollowUp.wasWaiting($0.repoPath.flatMap { Heartbeat.load(repoPath: $0) }) }
+        let pauseReason = PauseInfo.load(pauseURL)?.reason
+        let waiting = projects.filter {
+            $0.loaded && SignInFollowUp.wasWaiting($0.repoPath.flatMap { Heartbeat.load(repoPath: $0) }, pauseReason: pauseReason)
+        }
+        // In order, stopping at the first failure: no tick is kicked if the sign-in pause couldn't be lifted.
         for command in SignInFollowUp.commands(allPassed: allPassed, tools: tools, waitingLoops: waiting.map(\.label)) {
             let result = await run(command)
-            if !result.succeeded { failing.append(SignInCheck(name: "follow-up", label: "", fix: nil, ok: false,
-                                                              detail: result.failureMessage)) }
+            if !result.succeeded {
+                failing.append(SignInCheck(name: "follow-up", label: "", fix: nil, ok: false, detail: result.failureMessage))
+                break
+            }
         }
         let labels = signInNeeds.map(\.label).joined(separator: ", ")
         signInNote = SignInFollowUp.note(label: labels.isEmpty ? "Sign-in" : labels, failing: failing)
@@ -315,7 +321,7 @@ public final class ProjectStore {
         var shown: [Chore] = []
         for chore in choreList().chores where chore.cwd == place {
             guard let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else { shown.append(chore); continue }
-            if await run(check).succeeded { shown.append(chore) }
+            if Chore.needed(probe: await run(check)) { shown.append(chore) }
         }
         return shown
     }
@@ -338,16 +344,20 @@ public final class ProjectStore {
 
     public func choreResult(_ chore: Chore, repo: String? = nil) -> String? { choreResults[chore.sessionKey(repo: repo)] }
 
-    private func choreEnded(_ key: String) async {
+    /// Whether a chore with a `show_if` is needed now (nil: it has none). For an entry point that can't list ahead of time.
+    public func choreNeeded(_ chore: Chore, repo: String? = nil) async -> Bool? {
+        guard let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else { return nil }
+        return Chore.needed(probe: await run(check))
+    }
+
+    private func choreEnded(_ key: String, exit: Int32?) async {
         guard let pending = runningChores.removeValue(forKey: key) else { return }
         let (chore, repo) = pending
-        guard let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else {
-            choreResults[key] = "Finished. Its output is in the \(chore.title) tab."
-            return
+        var probe: CommandResult?
+        if exit == nil || exit == 0, let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) {
+            probe = await run(check)
         }
-        choreResults[key] = await run(check).succeeded
-            ? "Finished, but it still looks needed. Check the output in its tab."
-            : "Done: no longer needed."
+        choreResults[key] = chore.result(exit: exit, probe: probe)
     }
 
     /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.

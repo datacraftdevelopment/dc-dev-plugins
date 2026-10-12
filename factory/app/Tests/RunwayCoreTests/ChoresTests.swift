@@ -57,4 +57,21 @@ final class ChoresTests: XCTestCase {
         let data = try XCTUnwrap(FileManager.default.contents(atPath: file.path))
         XCTAssertEqual(ChoreList.parse(data).chores.map(\.id), ["codex-refresh", "retired-plugins", "tracker-setup"])
     }
+
+    func testShowIfReadsExitOneAsNotNeededAndAnyOtherFailureAsStillShown() {
+        XCTAssertTrue(Chore.needed(probe: CommandResult(status: 0, stdout: "", stderr: "")))
+        XCTAssertFalse(Chore.needed(probe: CommandResult(status: 1, stdout: "", stderr: "")))
+        XCTAssertTrue(Chore.needed(probe: CommandResult(status: 127, stdout: "", stderr: "zsh: command not found")))
+        XCTAssertTrue(Chore.needed(probe: CommandResult(status: 142, stdout: "", stderr: "")), "the 10 second alarm")
+    }
+
+    func testTheResultLineLooksAtTheChoresOwnExitFirst() {
+        let chore = Chore(id: "c", title: "Refresh", why: "", run: "x", cwd: .checkout, showIf: "y")
+        func probe(_ status: Int32) -> CommandResult { CommandResult(status: status, stdout: "", stderr: "") }
+        XCTAssertEqual(chore.result(exit: 2, probe: probe(1)), "Failed (exit 2). Its output is in the Refresh tab.")
+        XCTAssertEqual(chore.result(exit: 0, probe: probe(1)), "Done: no longer needed.")
+        XCTAssertEqual(chore.result(exit: nil, probe: probe(0)), "Finished, but it still looks needed. Check the output in its tab.")
+        XCTAssertTrue(chore.result(exit: 0, probe: probe(127)).contains("couldn't check"))
+        XCTAssertEqual(chore.result(exit: 0, probe: nil), "Finished. Its output is in the Refresh tab.")
+    }
 }

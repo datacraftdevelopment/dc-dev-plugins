@@ -63,11 +63,12 @@ final class SignInTests: XCTestCase {
         func beat(_ phase: String, _ reason: String? = nil) -> Heartbeat {
             Heartbeat(phase: phase, ticket: nil, since: nil, pid: nil, reason: reason, attempt: nil, tickStarted: nil, lastResult: nil)
         }
-        XCTAssertTrue(SignInFollowUp.wasWaiting(beat("waiting", "Claude Code needs signing in (`claude auth login`)")))
-        XCTAssertTrue(SignInFollowUp.wasWaiting(beat("paused")))
-        XCTAssertFalse(SignInFollowUp.wasWaiting(beat("waiting", "quiet hours until 17:00")))
-        XCTAssertFalse(SignInFollowUp.wasWaiting(beat("idle")))
-        XCTAssertFalse(SignInFollowUp.wasWaiting(nil))
+        XCTAssertTrue(SignInFollowUp.wasWaiting(beat("waiting", "Claude Code needs signing in (`claude auth login`)"), pauseReason: nil))
+        XCTAssertTrue(SignInFollowUp.wasWaiting(beat("paused"), pauseReason: "signed-out"))
+        XCTAssertFalse(SignInFollowUp.wasWaiting(beat("paused"), pauseReason: nil), "a pause Joe set stays paused")
+        XCTAssertFalse(SignInFollowUp.wasWaiting(beat("waiting", "quiet hours until 17:00"), pauseReason: nil))
+        XCTAssertFalse(SignInFollowUp.wasWaiting(beat("idle"), pauseReason: "signed-out"))
+        XCTAssertFalse(SignInFollowUp.wasWaiting(nil, pauseReason: "signed-out"))
     }
 
     func testACommandSessionIsOneTabPerKeyAndReportsItsExitOnce() {
@@ -79,9 +80,10 @@ final class SignInTests: XCTestCase {
         let first = registry.open(command: command, spec: spec)
         XCTAssertEqual(registry.open(command: command, spec: spec).id, first.id)
         XCTAssertEqual(first.title, "Sign in: Claude Code")
-        registry.markExited(first.id)
-        registry.markExited(first.id)
+        registry.markExited(first.id, exitCode: 3)
+        registry.markExited(first.id, exitCode: 0)
         XCTAssertEqual(exited, ["signin:claude"])
+        XCTAssertEqual(registry.sessions.first?.exitCode, 3, "the first exit is the one kept")
         XCTAssertNotEqual(registry.open(command: command, spec: spec).id, first.id, "a finished tab doesn't take a new run")
     }
 
