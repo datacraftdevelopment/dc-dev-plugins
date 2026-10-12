@@ -7,6 +7,7 @@ struct RunwayBarApp: App {
     @State private var store: ProjectStore
     private let notifier: Notifier
     @NSApplicationDelegateAdaptor(QuitGuard.self) private var quitGuard
+    private let updater = AppUpdater()
 
     init() {
         // The store needs the notifier to deliver and the notifier needs the store to route clicks.
@@ -22,7 +23,7 @@ struct RunwayBarApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            RunwayMenu(store: store)
+            RunwayMenu(store: store, updater: updater)
         } label: {
             HStack(spacing: 2) {
                 icon
@@ -63,6 +64,7 @@ struct RunwayBarApp: App {
 
 struct RunwayMenu: View {
     let store: ProjectStore
+    let updater: AppUpdater
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -151,6 +153,11 @@ struct RunwayMenu: View {
             Button("Choose dc-dev-plugins checkout…") { chooseCheckout() }
             Button("Use the one the plists point at") { store.setCheckout(nil) }
                 .disabled(store.checkout == nil)
+        }
+        if let note = updater.state.menuNote {
+            Text(note)
+        } else {
+            Button("Check for Updates…") { updater.checkForUpdates() }
         }
         Button("Quit") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
