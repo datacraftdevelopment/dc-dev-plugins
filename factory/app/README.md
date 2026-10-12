@@ -46,6 +46,22 @@ bash make-app.sh --install  # build, copy to /Applications/Runway.app and open i
 
 `make-app.sh` prints the Login Items steps: System Settings > General > Login Items & Extensions > `+` > pick `build/Runway.app`.
 
+## Release (Joe only)
+
+Publishing is public and can't be quietly undone, so Runway never runs it. Spec: `docs/specs/app-updates.md`. Once, on the personal Mac: a Developer ID Application certificate, a `notarytool` keychain profile, and Sparkle's `generate_keys` (public key committed to `sparkle-public-key`). Nothing personal is written in this repo, so the script reads it from the environment and has no defaults:
+
+```bash
+export RUNWAY_SIGN_IDENTITY="Developer ID Application: <name> (<team id>)"
+export RUNWAY_NOTARY_PROFILE="<notarytool keychain profile>"
+# optional: SPARKLE_SIGN_UPDATE=<path to sign_update>; else found under .build/artifacts after a build
+```
+
+1. Bump `factory/app/VERSION`, merge to `main`, and be on a clean, pushed `main`.
+2. `bash factory/app/make-app.sh --release --dry-run` first. It does everything but notarize and publish, and leaves `Runway-<VERSION>.zip` and `appcast.xml` in `factory/app/build/release/`. Problems a real release would refuse on (dirty tree, not on `main`, tag exists, failed check) are reported as "would refuse" and don't stop it. A missing identity, public key or `sign_update` does stop it, with a message.
+3. `bash factory/app/make-app.sh --release` runs, in order: the refusals (dirty tree, not on `main`, `runway-app-v<VERSION>` already a release, `bash factory/scripts/check.sh` failing); build; sign with Developer ID and the hardened runtime; notarize and staple; zip; `sign_update` on the zip; write `appcast.xml` (version, build number = commit count on `main`, enclosure URL under `releases/download/runway-app-v<VERSION>/`); `gh release create runway-app-v<VERSION>` with the zip and appcast attached.
+
+`RUNWAY_RELEASE_CHECK_CMD` replaces the check command; the tests use it so they don't recurse into `check.sh`. The tests are `tests/test_make_app_release.py` (refusals only, no build).
+
 ## Check command
 
 `factory/scripts/check.sh` already runs `swift test` in `factory/app` once `Package.swift` exists, so the repo's `runway.json` `check_cmd` (`bash factory/scripts/check.sh`) covers the app. If you use a different `check_cmd`, include `(cd factory/app && swift test)`.
