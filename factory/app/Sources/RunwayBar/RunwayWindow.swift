@@ -138,6 +138,10 @@ struct RunwayWindow: View {
                 Button { Task { await store.startLoop(project) } } label: { Label("Start", systemImage: "play.fill") }
                     .help("Start this loop").labelStyle(.titleAndIcon)
                     .disabled(project.repoPath == nil || project.error != nil)
+                if let failure = store.startError(project: project) {
+                    Text("⚠︎ \(String(failure.prefix(200)))")
+                        .font(.caption).foregroundStyle(.red).lineLimit(2).help(failure)
+                }
             }
             Button { Task { await store.runNow(project) } } label: {
                 Label("Run a tick now", systemImage: "forward.end.fill")

@@ -26,6 +26,8 @@ public final class ProjectStore {
     public private(set) var lastError: String?
     /// Failed "Talk it through" launches, by project and ticket, so the error sits beside its button.
     private var talkErrors: [String: String] = [:]
+    /// Failed Start attempts by project label, so the window can show the error beside its Start button.
+    private var startErrors: [String: String] = [:]
     /// The dc-dev-plugins checkout holding `schedule.sh` and `runway.py`; nil means the one the plists point at.
     public private(set) var checkout: String?
     /// Labels of projects hidden from the app. Hiding touches nothing on disk; the loop, plist and repo stay as they are.
@@ -156,10 +158,18 @@ public final class ProjectStore {
     // MARK: commands
 
     public func startLoop(_ project: Project) async {
-        guard let repo = project.repoPath, let tools = requireTools() else { return }
+        guard let repo = project.repoPath else { return }
+        guard let tools = requireTools() else {
+            startErrors[project.label] = lastError
+            return
+        }
         let minutes = max(1, (project.interval ?? 600) / 60)
         await perform(tools.start(repo: repo, minutes: minutes), "Start \(project.name)")
+        startErrors[project.label] = lastError
     }
+
+    /// Why the last Start for this project failed; nil after one that worked.
+    public func startError(project: Project) -> String? { startErrors[project.label] }
 
     public func stopLoop(_ project: Project) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }

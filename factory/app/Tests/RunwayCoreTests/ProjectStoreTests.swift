@@ -67,6 +67,43 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(reopened.hiddenProjects.isEmpty)
     }
 
+    private func installPlist(script: String) throws {
+        let xml = """
+        <plist version="1.0"><dict>
+          <key>Label</key><string>com.joe.runway.demo</string>
+          <key>ProgramArguments</key><array><string>/bin/zsh</string><string>-lc</string>
+          <string>cd "\(repo.path)" &amp;&amp; python3 "\(script)" --root "\(repo.path)" loop</string></array>
+          <key>StartInterval</key><integer>900</integer>
+        </dict></plist>
+        """
+        try Data(xml.utf8).write(to: agents.appendingPathComponent("com.joe.runway.demo.plist"))
+    }
+
+    func testStartFallsBackToPmRunwayWhenPlistEngineMoved() async throws {
+        // The repo the plist names is itself a checkout whose engine now lives in pm/runway/.
+        let engine = repo.appendingPathComponent("pm/runway")
+        try FileManager.default.createDirectory(at: engine, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: engine.appendingPathComponent("runway.py").path, contents: Data())
+        try installPlist(script: repo.appendingPathComponent("factory/plugin/runway/runway.py").path)
+        let store = makeStore(loaded: false)
+        store.refresh()
+        await store.startLoop(try XCTUnwrap(store.entries.first).project)
+        XCTAssertEqual(ran.first?.arguments.first, engine.appendingPathComponent("schedule.sh").path)
+    }
+
+    func testFailedStartShowsItsErrorBesideTheButton() async throws {
+        try installPlist()
+        let store = makeStore(loaded: false)
+        store.refresh()
+        let project = try XCTUnwrap(store.entries.first).project
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "no such file")
+        await store.startLoop(project)
+        XCTAssertEqual(store.startError(project: project), "Start demo failed: no such file")
+        nextResult = CommandResult(status: 0, stdout: "", stderr: "")
+        await store.startLoop(project)
+        XCTAssertNil(store.startError(project: project))
+    }
+
     func testStartRunsInstallAndRefreshes() async throws {
         try installPlist()
         let store = makeStore()
