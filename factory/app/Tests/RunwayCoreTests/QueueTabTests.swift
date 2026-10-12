@@ -43,6 +43,69 @@ final class QueueTabTests: XCTestCase {
         XCTAssertEqual(blocked.blockedBy, ["DAT-22", "DAT-23"])
     }
 
+
+    // MARK: queue plan fields (next_step, reason, run_now, idle_reason, finish)
+
+    private func planJSON(runNow: String?, idle: String?) -> Data {
+        func q(_ s: String?) -> String { s.map { "\"\($0)\"" } ?? "null" }
+        return Data("""
+        {"version": 1, "run_now": \(q(runNow)), "idle_reason": \(q(idle)),
+         "finish": {"verdict": "wait", "reason": "2 open under all_done"},
+         "groups": {"waiting": ["T/07"], "ready_auto": ["T/21"], "blocked": ["T/22"], "running": [], "ready_prep": [], "done": []},
+         "tickets": [
+          {"id": "T/07", "title": "Decide", "status": "needs-human", "gate": "human", "next_step": "waiting", "reason": "waits on you"},
+          {"id": "T/21", "title": "Build", "status": "ready", "gate": "auto", "next_step": "queued", "reason": "after T/07", "blocked_by": ["T/07"]},
+          {"id": "T/22", "title": "More", "status": "ready", "gate": "auto", "next_step": "blocked", "reason": "waits on T/21", "blocked_by": ["T/21"]}]}
+        """.utf8)
+    }
+
+    func testParsesPlanFields() throws {
+        let queue = try XCTUnwrap(QueueStatus.parse(planJSON(runNow: "T/21", idle: nil)))
+        XCTAssertEqual(queue.runNow, "T/21")
+        XCTAssertNil(queue.idleReason)
+        XCTAssertEqual(queue.finish, QueueFinish(verdict: "wait", reason: "2 open under all_done"))
+        XCTAssertEqual(queue.tickets.first { $0.id == "T/22" }?.nextStep, "blocked")
+        XCTAssertEqual(queue.tickets.first { $0.id == "T/22" }?.reason, "waits on T/21")
+        XCTAssertTrue(queue.hasPlan)
+    }
+
+    func testOlderEngineHasNoPlan() throws {
+        let queue = try XCTUnwrap(QueueStatus.parse(fixture()))
+        XCTAssertFalse(queue.hasPlan)
+        XCTAssertNil(queue.runNow)
+        XCTAssertNil(queue.finish)
+        XCTAssertNil(queue.tickets.first?.nextStep)
+        XCTAssertNil(queue.banner)
+    }
+
+    func testNothingRunsShowsIdleReasonAndMarksNoTicket() throws {
+        let queue = try XCTUnwrap(QueueStatus.parse(planJSON(runNow: nil, idle: "Nothing can run: 19 tickets wait on #7")))
+        XCTAssertEqual(queue.banner?.headline, "Nothing can run: 19 tickets wait on #7")
+        XCTAssertEqual(queue.banner?.finish, "Finish waits: 2 open under all_done")
+        let board = Board.build(queue: queue)
+        XCTAssertTrue(board.cards(.upNext).allSatisfy { !$0.runsNext })
+        XCTAssertNotEqual(board.card("T/21")?.note, "Next in line")
+    }
+
+    func testRunNowIsMarkedAndBannerNamesIt() throws {
+        let queue = try XCTUnwrap(QueueStatus.parse(planJSON(runNow: "T/21", idle: nil)))
+        XCTAssertEqual(queue.banner?.headline, "Runs next: T/21 Build")
+        let board = Board.build(queue: queue)
+        XCTAssertEqual(board.cards(.upNext).filter(\.runsNext).map(\.id), ["T/21"])
+    }
+
+    func testWaitingAndBlockedCardsCarryTheEnginesReason() throws {
+        let board = Board.build(queue: try XCTUnwrap(QueueStatus.parse(planJSON(runNow: nil, idle: "x"))))
+        XCTAssertEqual(board.card("T/07")?.note, "waits on you")
+        XCTAssertEqual(board.card("T/22")?.note, "waits on T/21")
+    }
+
+    func testOlderEngineBoardStillMarksFirstReady() throws {
+        let board = Board.build(queue: try XCTUnwrap(QueueStatus.parse(fixture())))
+        XCTAssertEqual(board.cards(.upNext).first?.note, "Next in line")
+        XCTAssertEqual(board.card("DAT-24")?.note, "Waits on DAT-22, DAT-23")
+    }
+
     // MARK: age
 
     func testAgeText() {
