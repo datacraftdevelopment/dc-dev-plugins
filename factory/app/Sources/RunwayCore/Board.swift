@@ -62,7 +62,11 @@ public struct Board: Equatable, Sendable {
     /// - up next: `ready_auto` then `ready_prep`, in queue order;
     /// - blocked: the `blocked` group;
     /// - done: tickets this round merged (`RoundLog.merged`), newest first.
-    public static func build(queue: QueueStatus?, liveTicket: String? = nil, runs: [RunRecord] = []) -> Board {
+    /// A ticket Joe answered here (`answered`, from `DecisionsFeed`) that status no longer lists stays in Needs you,
+    /// so its "Answered" outlives the refresh. A live ticket status doesn't know (no status yet, or a stale one)
+    /// still gets a Running card with just its id.
+    public static func build(queue: QueueStatus?, liveTicket: String? = nil, runs: [RunRecord] = [],
+                             answered: [QueueTicket] = []) -> Board {
         let tickets = queue?.tickets ?? []
         let byID = Dictionary(tickets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var placed = Set<String>()
@@ -80,7 +84,14 @@ public struct Board: Equatable, Sendable {
         func group(_ key: String) -> [QueueTicket] { (queue?.group(key) ?? []).compactMap { byID[$0] } }
 
         var running = group("running")
-        if let live = liveTicket, !running.contains(where: { $0.id == live }), let t = byID[live] { running.insert(t, at: 0) }
+        if let live = liveTicket, !running.contains(where: { $0.id == live }) {
+            if let t = byID[live] {
+                running.insert(t, at: 0)
+            } else {
+                add(.running, BoardCard(id: live, title: "", column: .running, note: nil, ticket: nil, errored: nil,
+                                        waiting: false, needsPrep: false, harness: nil))
+            }
+        }
         for t in running { add(.running, card(t, .running, note: nil)) }
 
         for t in group("waiting") {
@@ -89,6 +100,10 @@ public struct Board: Equatable, Sendable {
         let done = Set(queue?.group("done") ?? [])
         for t in tickets where t.errored != nil && !done.contains(t.id) {
             add(.needsYou, card(t, .needsYou, note: t.errored.map(ErroredKind.words)))
+        }
+
+        for t in answered where byID[t.id] == nil {
+            add(.needsYou, card(t, .needsYou, note: "Answered"))
         }
 
         let auto = group("ready_auto"), prep = group("ready_prep")
@@ -171,7 +186,7 @@ public struct BoardStats: Equatable, Sendable {
         return BoardStats(mergedThisRound: board.cards(.done).count,
                           spendToday: today.reduce(0) { $0 + ($1.costUSD ?? 0) },
                           tokensToday: today.reduce(0) { $0 + ($1.tokens ?? 0) },
-                          needsYou: board.cards(.needsYou).count)
+                          needsYou: board.cards(.needsYou).filter { $0.waiting || $0.errored != nil }.count)
     }
 
     /// "1.9M", "820k", "512".

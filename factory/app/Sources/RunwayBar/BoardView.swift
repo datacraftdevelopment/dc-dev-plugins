@@ -56,7 +56,8 @@ struct BoardTab: View {
         let project = entry.project
         let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
         let live = store.live(heartbeat)
-        let board = Board.build(queue: feed.queue, liveTicket: live?.ticket, runs: runs)
+        let board = Board.build(queue: feed.queue, liveTicket: live?.ticket, runs: runs,
+                                answered: feed.cards.filter { $0.answer != nil }.map(\.ticket))
         let stats = BoardStats.make(board: board, runs: runs, now: now)
         let next = NowMath.nextTick(lastRun: heartbeat?.tickStarted ?? heartbeat?.since, interval: project.interval,
                                     loopOn: project.loaded, now: now)
@@ -370,7 +371,8 @@ private struct CardDetails: View {
                 if let note = card.note {
                     Text(note).foregroundStyle(.secondary).textSelection(.enabled)
                 }
-                if card.waiting { decision }
+                // An answered ticket keeps its "Answered" line wherever the refresh moved it.
+                if card.waiting || feed.answers[card.id] != nil { decision }
                 actions
                 history
             }

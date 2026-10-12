@@ -73,6 +73,48 @@ final class BoardTests: XCTestCase {
         XCTAssertEqual(board.cards(.upNext).map(\.id), ["DAT-23", "DAT-31"])
     }
 
+    func testLiveTicketStatusDoesNotKnowStillShowsAsRunning() throws {
+        let stale = Board.build(queue: try queue(), liveTicket: "DAT-99")
+        XCTAssertEqual(stale.cards(.running).map(\.id), ["DAT-99", "DAT-21"])
+        XCTAssertNil(stale.card("DAT-99")?.ticket)
+        let none = Board.build(queue: nil, liveTicket: "DAT-99")
+        XCTAssertEqual(none.cards(.running).map(\.id), ["DAT-99"])
+    }
+
+    func testAnsweredTicketStatusDroppedStaysInNeedsYou() throws {
+        let gone = QueueTicket(id: "DAT-77", title: "Gone", url: nil, status: "needs-human", gate: "human", blockedBy: [],
+                               waitingOn: nil, harness: nil, packet: "pick one")
+        let moved = try XCTUnwrap(try queue().tickets.first { $0.id == "DAT-22" })
+        let board = Board.build(queue: try queue(), answered: [gone, moved])
+        XCTAssertEqual(board.cards(.needsYou).map(\.id), ["DAT-30", "DAT-77"])
+        XCTAssertEqual(board.card("DAT-77")?.note, "Answered")
+        XCTAssertEqual(board.card("DAT-77")?.waiting, false)
+        XCTAssertEqual(board.card("DAT-22")?.column, .upNext)  // status still lists it, so it stays where status puts it
+        XCTAssertEqual(BoardStats.make(board: board, runs: [], now: Date()).needsYou, 1)  // an answered card isn't waiting
+    }
+
+    /// Go, then a refresh in which status has dropped the ticket: the card and its answer are still on the board.
+    @MainActor func testAnswerThenRefreshKeepsTheAnsweredCard() async throws {
+        let first = try String(contentsOf: XCTUnwrap(Bundle.module.url(forResource: "status", withExtension: "json", subdirectory: "Fixtures")), encoding: .utf8)
+        let gone = #"{"version": 1, "groups": {"waiting": []}, "tickets": []}"#
+        let statusCommand = Command(executable: "/usr/bin/env", arguments: ["status"])
+        let answerCommand = Command(executable: "/usr/bin/env", arguments: ["go"])
+        let calls = StatusCalls()
+        let feed = DecisionsFeed(run: { command in
+            guard command == statusCommand else { return CommandResult(status: 0, stdout: "", stderr: "") }
+            return CommandResult(status: 0, stdout: await calls.next() == 1 ? first : gone, stderr: "")
+        })
+        await feed.refresh(statusCommand)
+        let ticket = try XCTUnwrap(feed.queue?.decisions.first)
+        await feed.answer(ticket, go: true, note: "", command: answerCommand, status: statusCommand)
+
+        let board = Board.build(queue: feed.queue, answered: feed.cards.filter { $0.answer != nil }.map(\.ticket))
+        let card = try XCTUnwrap(board.card("DAT-30"))
+        XCTAssertEqual(card.column, .needsYou)
+        XCTAssertEqual(card.note, "Answered")
+        XCTAssertNotNil(feed.answers[card.id])
+    }
+
     func testNoStatusIsAnEmptyBoard() {
         let board = Board.build(queue: nil)
         for column in BoardColumn.allCases { XCTAssertTrue(board.cards(column).isEmpty) }
@@ -137,4 +179,9 @@ final class BoardTests: XCTestCase {
         XCTAssertEqual(BoardStats.tokens(820_400), "820k")
         XCTAssertEqual(BoardStats.tokens(1_940_000), "1.9M")
     }
+}
+
+private actor StatusCalls {
+    private var n = 0
+    func next() -> Int { n += 1; return n }
 }
