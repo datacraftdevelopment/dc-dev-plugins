@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 // The "Set up a loop" sheet's logic: what to check on this Mac, the steps to run, and how to run them.
@@ -103,13 +104,76 @@ public enum SetupChecks {
         Command(executable: "/usr/bin/env", arguments: ["git", "clone", engineURL, clonedCheckout(into: folder)])
     }
 
+    /// The repo's `linear.keychain_service` from its runway.json, as the engine reads it; `runway-linear` when unset.
+    public static func keychainService(repo: String) -> String {
+        guard !repo.isEmpty,
+              let data = FileManager.default.contents(atPath: URL(fileURLWithPath: repo).appendingPathComponent("runway.json").path),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let service = ((json["linear"] as? [String: Any])?["keychain_service"] as? String)?
+                  .trimmingCharacters(in: .whitespacesAndNewlines),
+              !service.isEmpty else { return keychainService }
+        return service
+    }
+
     /// Asks the keychain whether the item exists. No `-w` or `-g`, so the key itself is never printed.
-    public static func linearKey(run: (Command) async -> CommandResult) async -> SetupCheck {
-        let result = await run(Command(executable: "/usr/bin/security", arguments: ["find-generic-password", "-s", keychainService]))
+    public static func linearKey(service: String = keychainService, run: (Command) async -> CommandResult) async -> SetupCheck {
+        let result = await run(Command(executable: "/usr/bin/security", arguments: ["find-generic-password", "-s", service]))
         return result.succeeded
-            ? SetupCheck(id: "linear-key", title: "Linear API key", status: .ok, detail: "In the keychain (\(keychainService))", required: true)
+            ? SetupCheck(id: "linear-key", title: "Linear API key", status: .ok, detail: "In the keychain (\(service))", required: true)
             : SetupCheck(id: "linear-key", title: "Linear API key", status: .missing,
-                         detail: "No keychain item \(keychainService)", required: true, fix: .saveKey)
+                         detail: "No keychain item \(service)", required: true, fix: .saveKey)
+    }
+
+    /// pm from dc-dev-plugins, read from Claude Code's plugin registry (`PluginVersions`).
+    public static func pmPlugin(registry: Data?) -> SetupCheck {
+        if let version = registry.flatMap(PluginVersions.installedPm(registry:)) {
+            return SetupCheck(id: "pm", title: "pm plugin", status: .ok, detail: "pm \(version)", required: true)
+        }
+        return SetupCheck(id: "pm", title: "pm plugin", status: .missing,
+                          detail: "Not installed: claude plugin install pm@dc-dev-plugins", required: true)
+    }
+
+    /// Matt Pocock's skills (`mattpocock-skills@<marketplace>`), which the tickets' /tdd and friends come from.
+    public static func mattSkills(registry: Data?) -> SetupCheck {
+        let plugins = registry.flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }?["plugins"] as? [String: Any]
+        if let key = plugins?.keys.sorted().first(where: { $0.hasPrefix("mattpocock-skills@") }) {
+            return SetupCheck(id: "matt-skills", title: "Matt's skills", status: .ok, detail: key, required: true)
+        }
+        return SetupCheck(id: "matt-skills", title: "Matt's skills", status: .missing,
+                          detail: "Not installed: the mattpocock-skills plugin", required: true)
+    }
+
+    public static func ringer(run: (Command) async -> CommandResult) async -> SetupCheck {
+        await tool(id: "ringer", title: "Ringer (optional)", line: "command -v ringer", required: false, run: run)
+    }
+
+    /// `owner/name` from a github.com origin URL, the way setup.sh reads it.
+    public static func githubRepo(fromOrigin url: String) -> String? {
+        let text = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let match = text.range(of: #"github\.com[:/][^/ ]+/[^/ ]+$"#, options: .regularExpression) else { return nil }
+        var name = String(text[match].dropFirst("github.com/".count))
+        if name.hasSuffix("/") { name.removeLast() }
+        if name.hasSuffix(".git") { name.removeLast(4) }
+        return name.isEmpty ? nil : name
+    }
+
+    /// `gh` signed in to an account that can read this repo. `nil` means the sheet couldn't tell which repo.
+    public static func githubRepoAccess(_ repo: String?, run: (Command) async -> CommandResult) async -> SetupCheck {
+        let title = "GitHub repo access (gh)"
+        guard let repo, !repo.isEmpty else {
+            return SetupCheck(id: "gh-repo", title: title, status: .missing,
+                              detail: "Enter owner/name, or pick a clone with a github.com origin", required: true)
+        }
+        let result = await run(probe("gh api \(SetupStep.quote("repos/" + repo)) --jq .full_name"))
+        if result.succeeded {
+            return SetupCheck(id: "gh-repo", title: title, status: .ok, detail: "Can read \(repo)", required: true)
+        }
+        let text = (result.stdout + " " + result.stderr).lowercased()
+        if result.status == 127 || text.contains("command not found") {
+            return SetupCheck(id: "gh-repo", title: title, status: .missing, detail: "gh is not installed (brew install gh)", required: true)
+        }
+        return SetupCheck(id: "gh-repo", title: title, status: .missing,
+                          detail: "The signed-in account can't read \(repo)", required: true, fix: .ghLogin)
     }
 
     /// GitHub needs `gh` installed and signed in; `gh auth status` exits non-zero when it isn't.
@@ -132,13 +196,24 @@ public enum SetupChecks {
         "-e", "tell application \"Terminal\" to activate",
         "-e", "tell application \"Terminal\" to do script \"gh auth login\""])
 
+    /// `repo` is the folder being set up and `githubRepo` the sheet's owner/name (blank reads the clone's origin).
     public static func all(tracker: SetupTracker, checkout: String?, fileExists: (String) -> Bool,
+                           repo: String = "", githubRepo: String = "", registry: Data? = nil,
                            run: (Command) async -> CommandResult) async -> [SetupCheck] {
         var checks = [await python(run: run), await git(run: run), await claude(run: run),
-                      await codex(run: run), await cursorAgent(run: run),
+                      pmPlugin(registry: registry), mattSkills(registry: registry),
+                      await codex(run: run), await cursorAgent(run: run), await ringer(run: run),
                       engine(checkout: checkout, fileExists: fileExists)]
-        if tracker == .linear { checks.append(await linearKey(run: run)) }
-        if tracker == .github { checks.append(await githubAuth(run: run)) }
+        if tracker == .linear { checks.append(await linearKey(service: keychainService(repo: repo), run: run)) }
+        if tracker == .github {
+            checks.append(await githubAuth(run: run))
+            var name: String? = githubRepo.trimmingCharacters(in: .whitespaces)
+            if name?.isEmpty ?? true, !repo.isEmpty {
+                let origin = await run(Command(executable: "/usr/bin/env", arguments: ["git", "-C", repo, "remote", "get-url", "origin"]))
+                name = origin.succeeded ? Self.githubRepo(fromOrigin: origin.stdout) : nil
+            }
+            checks.append(await githubRepoAccess(name, run: run))
+        }
         return checks
     }
 
@@ -159,19 +234,20 @@ public enum Redactor {
 /// Saves the key with `security add-generic-password`. It goes to the keychain only: never a file, never a log, and
 /// never into the text shown or the output returned. (`security` takes the value as an argument; there is no stdin form.)
 public enum LinearKey {
-    public static func save(_ key: String, account: String = NSUserName(),
+    /// `service` is the repo's keychain item (`SetupChecks.keychainService(repo:)`).
+    public static func save(_ key: String, service: String = SetupChecks.keychainService, account: String = NSUserName(),
                             run: (Command) async -> CommandResult) async -> CommandResult {
         let secret = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !secret.isEmpty else { return CommandResult(status: 1, stdout: "", stderr: "Paste the Linear key first.") }
         let result = await run(Command(executable: "/usr/bin/security", arguments: [
-            "add-generic-password", "-U", "-s", SetupChecks.keychainService, "-a", account, "-w", secret]))
+            "add-generic-password", "-U", "-s", service, "-a", account, "-w", secret]))
         return CommandResult(status: result.status, stdout: Redactor.scrub(result.stdout, secret: secret),
                              stderr: Redactor.scrub(result.stderr, secret: secret))
     }
 
     /// What the sheet shows for this step, with the key masked.
-    public static func displayText(account: String = NSUserName()) -> String {
-        "security add-generic-password -U -s \(SetupChecks.keychainService) -a \(account) -w ••••"
+    public static func displayText(service: String = SetupChecks.keychainService, account: String = NSUserName()) -> String {
+        "security add-generic-password -U -s \(service) -a \(account) -w ••••"
     }
 }
 
@@ -207,6 +283,8 @@ public struct SetupStep: Equatable, Sendable, Identifiable {
         /// Runs a command whose JSON output is read for other machines' claims, not shown. Never fails the flow.
         case claimCheck(Command)
         case setHarness(repo: String, name: String)
+        /// Writes this root's park owner into runway.json when none is set, and commits it (`ParkAuthority`).
+        case parkAuthority(repo: String, tracker: SetupTracker)
     }
 
     public let id: String
@@ -229,6 +307,8 @@ public struct SetupStep: Equatable, Sendable, Identifiable {
             return words.map(Self.quote).joined(separator: " ")
         case .setHarness(let repo, let name):
             return "set \"harness\": \"\(name)\" in \(repo)/runway.json"
+        case .parkAuthority(let repo, let tracker):
+            return "set \(tracker.rawValue).park_authority to this root's _pm/park-owner in \(repo)/runway.json when unset, and commit it"
         }
     }
 
@@ -272,6 +352,8 @@ public enum SetupPlan {
             if config.harness != "claude" {
                 steps.append(SetupStep(id: "harness", title: "Set the harness", action: .setHarness(repo: config.repo, name: config.harness)))
             }
+            steps.append(SetupStep(id: "park-authority", title: "Make this Mac the repo's park owner",
+                                   action: .parkAuthority(repo: config.repo, tracker: config.tracker)))
             steps.append(SetupStep(id: "runway-setup",
                                    title: config.tracker == .github ? "Check gh and create the labels" : "Check the key, team and project",
                                    action: .run(python(["setup"]))))
@@ -342,6 +424,76 @@ public enum HarnessEdit {
     }
 }
 
+// MARK: park authority
+
+/// The single-writer designation from `pm/runway/park-ownership.md`. The engine's root identity is `<repo>/_pm/park-owner`
+/// (`TicketProtocol.park_owner` in `pm/runway/ticket_protocol.py`): 32 lowercase hex characters, created with
+/// `uuid4().hex` under the `owner-identity` park lock when absent. This reads it the same way.
+public enum ParkAuthority {
+    struct Failure: LocalizedError {
+        let errorDescription: String?
+    }
+
+    public static func owner(repo: String) throws -> String {
+        let pm = URL(fileURLWithPath: repo).appendingPathComponent("_pm")
+        let locks = pm.appendingPathComponent("park-locks")
+        try FileManager.default.createDirectory(at: locks, withIntermediateDirectories: true)
+        let lockPath = locks.appendingPathComponent(sha256Hex("owner-identity")).path
+        let fd = open(lockPath, O_WRONLY | O_APPEND | O_CREAT, 0o644)
+        guard fd >= 0 else { throw Failure(errorDescription: "Can't open the park lock \(lockPath).") }
+        defer { flock(fd, LOCK_UN); close(fd) }
+        flock(fd, LOCK_EX)
+        let file = pm.appendingPathComponent("park-owner")
+        if !FileManager.default.fileExists(atPath: file.path) {
+            try Data(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().utf8).write(to: file)
+        }
+        let id = (try String(contentsOf: file, encoding: .utf8)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard id.range(of: "^[0-9a-f]{32}$", options: .regularExpression) != nil else {
+            throw Failure(errorDescription: "\(file.path) isn't a valid park owner identity; manual recovery required "
+                          + "(see pm/runway/park-ownership.md).")
+        }
+        return id
+    }
+
+    /// Sets `<tracker>.park_authority` to this root's owner when it is missing or empty, and returns whether the file changed.
+    /// The same owner is a no-op. A different owner throws without touching the file: moving a loop between Macs is the
+    /// deliberate handoff in park-ownership.md, never something setup does.
+    public static func ensure(repo: String, tracker: SetupTracker) throws -> Bool {
+        let url = URL(fileURLWithPath: repo).appendingPathComponent("runway.json")
+        guard let data = try? Data(contentsOf: url),
+              var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw Failure(errorDescription: "Can't read \(url.path).")
+        }
+        var block = json[tracker.rawValue] as? [String: Any] ?? [:]
+        let current = (block["park_authority"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let me = try owner(repo: repo)
+        if current == me { return false }
+        if !current.isEmpty {
+            throw Failure(errorDescription: "\(url.path) already names a different park owner (\(current)), so another root "
+                          + "runs this \(tracker.rawValue) scope. Setup leaves it alone. To move the loop to this Mac, follow the "
+                          + "handoff in pm/runway/park-ownership.md.")
+        }
+        block["park_authority"] = me
+        json[tracker.rawValue] = block
+        try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
+        return true
+    }
+
+    public static func addCommand(repo: String) -> Command {
+        Command(executable: "/usr/bin/env", arguments: ["git", "-C", repo, "add", "--", "runway.json"])
+    }
+
+    /// Commits runway.json alone, whatever else is staged.
+    public static func commitCommand(repo: String) -> Command {
+        Command(executable: "/usr/bin/env", arguments: ["git", "-C", repo, "commit", "-m",
+                                                        "Runway: this root is the park_authority", "--", "runway.json"])
+    }
+
+    private static func sha256Hex(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
 // MARK: running
 
 public enum SetupOutcome: Equatable, Sendable {
@@ -356,6 +508,7 @@ public enum SetupRunner {
     public static func run(_ steps: [SetupStep],
                            execute: @Sendable (Command, @escaping @Sendable (String) -> Void) async -> CommandResult,
                            setHarness: (String, String) throws -> Void = { try HarnessEdit.set($1, inRepo: $0) },
+                           setParkAuthority: (String, SetupTracker) throws -> Bool = { try ParkAuthority.ensure(repo: $0, tracker: $1) },
                            started: (SetupStep) -> Void = { _ in },
                            output: @escaping @Sendable (String) -> Void = { _ in }) async -> SetupOutcome {
         var warnings: [ForeignClaim] = []
@@ -363,6 +516,21 @@ public enum SetupRunner {
             started(step)
             output("$ " + step.display)
             switch step.action {
+            case .parkAuthority(let repo, let tracker):
+                let changed: Bool
+                do { changed = try setParkAuthority(repo, tracker) } catch {
+                    let message = error.localizedDescription
+                    output(message)
+                    return .failed(step, output: message)
+                }
+                guard changed else { output("park_authority is already this root."); continue }
+                for command in [ParkAuthority.addCommand(repo: repo), ParkAuthority.commitCommand(repo: repo)] {
+                    let result = await execute(command) { line in output(line) }
+                    if !result.succeeded {
+                        output(result.failureMessage)
+                        return .failed(step, output: [result.stdout, result.failureMessage].filter { !$0.isEmpty }.joined(separator: "\n"))
+                    }
+                }
             case .setHarness(let repo, let name):
                 do { try setHarness(repo, name) } catch {
                     let message = error.localizedDescription
