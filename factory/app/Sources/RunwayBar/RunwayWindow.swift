@@ -2,14 +2,18 @@ import SwiftUI
 import RunwayCore
 
 enum RunwayTab: String, CaseIterable, Identifiable {
-    case now = "Now", queue = "Queue", decisions = "Decisions", runs = "Runs"
+    case board = "Board", runs = "Runs"
     var id: String { rawValue }
 }
 
 struct RunwayWindow: View {
     let store: ProjectStore
     @State private var selection: String?
-    @State private var tab: RunwayTab = .now
+    @State private var tab: RunwayTab = .board
+    /// The board card whose details are open, if any.
+    @State private var selectedTicket: String?
+    /// A routed ticket waiting for its project's selection to land, so the project switch doesn't clear it.
+    @State private var pendingTicket: String?
     @State private var showSetup = false
     @State private var showMachine = false
     @Environment(\.openWindow) private var openWindow
@@ -74,17 +78,10 @@ struct RunwayWindow: View {
                     }
                     .pickerStyle(.segmented).labelsHidden().padding(10)
                     Divider()
-                    if tab == .now {
-                        NowTab(store: store, entry: entry).id(entry.project.label)
-                    } else if tab == .queue {
-                        QueueTab(store: store, entry: entry)
-                    } else if tab == .decisions {
-                        DecisionsTab(store: store, entry: entry).id(entry.project.label)
-                    } else if tab == .runs {
-                        RunsTab(store: store, entry: entry)
+                    if tab == .board {
+                        BoardTab(store: store, entry: entry, selected: $selectedTicket).id(entry.project.label)
                     } else {
-                        Text("\(tab.rawValue): coming soon")
-                            .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        RunsTab(store: store, entry: entry)
                     }
                   }
                   if !store.sessions.sessions.isEmpty {
@@ -100,10 +97,12 @@ struct RunwayWindow: View {
         }
         .frame(minWidth: 760, minHeight: 480)
         .onChange(of: store.requestedRoute) { _, _ in applyRoute() }
-        // Picking a project in error lands on its Now tab, where the error is at the top.
+        // Picking another project closes the details pane; one in error lands on the board, where the error is at the top.
         .onChange(of: selection) { _, label in
+            selectedTicket = pendingTicket
+            pendingTicket = nil
             if let label, let picked = store.entries.first(where: { $0.project.label == label }),
-               case .error = picked.status.state { tab = .now }
+               case .error = picked.status.state { tab = .board }
         }
         // A route set from the menu while the window was closed is already there when the window opens.
         .onAppear { applyRoute() }
@@ -111,11 +110,13 @@ struct RunwayWindow: View {
 
     private func applyRoute() {
         guard let route = store.requestedRoute else { return }
-        selection = route.projectLabel
-        switch route.tab {
-        case .decisions: tab = .decisions
-        case .queue: tab = .queue
-        case .projects: tab = .now
+        // Every route lands on the board now: Decisions and Queue are its columns, and the ticket's details open.
+        tab = .board
+        if selection == route.projectLabel {
+            selectedTicket = route.ticketID
+        } else {
+            pendingTicket = route.ticketID
+            selection = route.projectLabel
         }
         store.requestedRoute = nil
     }
@@ -204,117 +205,6 @@ final class LogModel {
 
     func poll() {
         if tail.poll() { lines = tail.lines }
-    }
-}
-
-struct NowTab: View {
-    let store: ProjectStore
-    let entry: ProjectEntry
-    @State private var log: LogModel
-
-    init(store: ProjectStore, entry: ProjectEntry) {
-        self.store = store
-        self.entry = entry
-        let repo = entry.project.repoPath ?? ""
-        _log = State(initialValue: LogModel(url: URL(fileURLWithPath: repo).appendingPathComponent("_pm/runway.log")))
-    }
-
-    var body: some View {
-        // One second is enough for the elapsed clock and the log; the log read itself is incremental.
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            content(now: context.date)
-                .task(id: context.date) { log.poll() }
-        }
-    }
-
-    @ViewBuilder private func content(now: Date) -> some View {
-        let project = entry.project
-        let heartbeat = project.repoPath.flatMap { Heartbeat.load(repoPath: $0) }
-        let snapshot = store.snapshot(for: project.label)
-        let banners = NowMath.banners(loopOn: project.loaded, readyCount: snapshot?.readyCount ?? 0,
-                                      waiting: entry.status.waiting, paused: store.pause != nil)
-        let live = store.live(heartbeat)
-        let stopped = store.stoppedLine(heartbeat)
-        let next = NowMath.nextTick(lastRun: heartbeat?.tickStarted ?? heartbeat?.since, interval: project.interval,
-                                    loopOn: project.loaded, now: now)
-
-        VStack(alignment: .leading, spacing: 16) {
-            if case .error = entry.status.state { errorBanner(project: project) }
-            ForEach(Array(banners.enumerated()), id: \.offset) { _, banner in
-                Label(bannerText(banner), systemImage: "exclamationmark.circle.fill")
-                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
-            }
-            HStack(alignment: .top, spacing: 12) {
-                cell("Working on", "hammer", live?.ticket.map { id in
-                    let title = snapshot?.titles[id] ?? ""
-                    return title.isEmpty ? id : "\(id) \(title)"
-                } ?? "Nothing right now")
-                cell("Elapsed · attempt", "stopwatch", NowMath.elapsed(heartbeat: live, now: now).map {
-                    NowMath.clock($0) + (live?.attempt.map { " · #\($0)" } ?? "")
-                } ?? "—")
-                cell("Next tick", "clock", NowMath.text(next, now: now))
-            }
-            if let stopped {
-                Label([heartbeat?.ticket, stopped].compactMap { $0 }.joined(separator: " · "), systemImage: "exclamationmark.octagon.fill").foregroundStyle(.red)
-                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-            }
-            PhaseStrip(steps: NowMath.phaseStrip(heartbeat: live))
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Activity").font(.headline)
-                    Spacer()
-                    if let repo = project.repoPath {
-                        Button {
-                            NSWorkspace.shared.activateFileViewerSelecting(
-                                [URL(fileURLWithPath: repo).appendingPathComponent("_pm/runway.log")])
-                        } label: { Label("Show log", systemImage: "doc.text.magnifyingglass") }
-                        .buttonStyle(.borderless).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                LogList(entries: LogFeed.entries(log.lines))
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-        }
-        .padding(16)
-    }
-
-    /// The project's error in full (`ProjectStatus.detail`), the last log lines, and the button.
-    private func errorBanner(project: Project) -> some View {
-        let lines = log.lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.suffix(6)
-        return VStack(alignment: .leading, spacing: 8) {
-            Label(entry.status.detail, systemImage: "exclamationmark.triangle.fill")
-                .font(.headline).foregroundStyle(.red).textSelection(.enabled)
-            if lines.isEmpty {
-                Text("No log lines yet.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Text(lines.joined(separator: "\n")).font(.system(size: 11, design: .monospaced))
-                    .textSelection(.enabled).lineLimit(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            TalkButton(store: store, project: project)
-        }
-        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.red.opacity(0.5), lineWidth: 1))
-    }
-
-    private func cell(_ title: String, _ icon: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.title3.monospacedDigit()).lineLimit(2)
-        }
-        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func bannerText(_ banner: NowBanner) -> String {
-        switch banner {
-        case .loopOffReady(let n): return "Loop is off with \(n) ticket\(n == 1 ? "" : "s") ready. Start it to pick them up."
-        case .decisionsWaiting(let n): return "\(n) decision\(n == 1 ? "" : "s") waiting on you."
-        case .paused: return "All loops are paused."
-        }
     }
 }
 

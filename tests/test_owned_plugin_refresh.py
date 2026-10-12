@@ -94,12 +94,12 @@ class OwnedPluginRefreshTests(unittest.TestCase):
                 old.mkdir()
                 (old / build_codex.MARKER).write_text('{}')
                 (old / 'value').write_text('old')
-                with patch('refresh_codex.subprocess.run'):
-                    refresh_codex.promote([package], output, root / 'creator')
+                with patch('refresh_codex.validate_package'):
+                    refresh_codex.promote([package], output)
                 self.assertEqual((old / 'value').read_text(), 'new')
                 (old / build_codex.MARKER).unlink()
                 with self.assertRaisesRegex(ValueError, 'unowned'):
-                    refresh_codex.promote([package], output, root / 'creator')
+                    refresh_codex.promote([package], output)
                 self.assertEqual((old / 'value').read_text(), 'new')
 
 

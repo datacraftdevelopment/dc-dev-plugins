@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Connect Codex to the shared library and Claude's active Matt Pocock skills."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -214,7 +215,12 @@ Git repos, update Claude plugins, run models, or change credentials. Report any
 failure; do not claim later steps ran. New tasks pick up refreshed skills/tools.
 ''')
         description = 'Shared library access and Matt Pocock workflow skills for DataCraft PM in Codex.'
-        manifest = {'name': 'dc-workflow', 'version': '0.1.0', 'description': description,
+        # A content hash in the version, so Codex's version-keyed cache picks up every refresh.
+        digest = hashlib.sha256()
+        for f in sorted((stage / 'skills').rglob('*')):
+            if f.is_file():
+                digest.update(str(f.relative_to(stage)).encode() + b'\0' + f.read_bytes() + b'\0')
+        manifest = {'name': 'dc-workflow', 'version': '0.1.0+codex.' + digest.hexdigest()[:12], 'description': description,
                     'author': {'name': 'DataCraft Development'}, 'skills': './skills/',
                     'interface': {'displayName': 'DataCraft Shared Workflow', 'shortDescription': description,
                                   'longDescription': description, 'developerName': 'DataCraft Development',
@@ -245,14 +251,13 @@ def main():
     parser.add_argument('--registry', type=Path, default=Path.home() / '.claude/plugins/installed_plugins.json')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--install', action='store_true')
-    parser.add_argument('--plugin-creator-dir', type=Path, default=Path.home() / '.codex/skills/.system/plugin-creator')
     args = parser.parse_args()
     if args.install and args.output:
         parser.error('--install and --output cannot be combined')
     output = Path.home() / 'plugins' if args.install else args.output or ROOT / '.codex-build'
     package = build(args.library, args.registry, output.resolve())
     if args.install:
-        install([package], args.plugin_creator_dir)
+        install([package])
         connect_agents(args.library.expanduser().resolve())
 
 

@@ -42,17 +42,14 @@ Add new source files to Git's index before building. This prevents local virtual
 environments, sandbox databases, personal tracking, and client files entering a
 package. The `fm-lens` plugin (formerly `fm-adt-helper`) is intentionally outside this build; its source moved to the private FM_Agent_Lens repo (`lens/`) on 2026-09-16.
 
-Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,basecamp-dc}`, validates
-them with Codex's plugin-creator helper, registers them in
-`~/.agents/plugins/marketplace.json`, and runs `codex plugin add` for each.
-Unrelated package folders are never overwritten. Existing generated folders are
-replaced, so keep all edits in this repository. Updates use the helper's version
-cachebuster and reinstall flow. Open a **new Codex task** after installation.
+Installation builds owned packages in `~/plugins/{pm,design-dc,fm-dc,basecamp-dc}`, checks
+each manifest (name, version, skills folder), registers them in
+`~/.agents/plugins/marketplace.json` (existing entries keep their order and metadata), and runs
+`codex plugin add` for each. Unrelated package folders are never overwritten. Existing generated
+folders are replaced, so keep all edits in this repository. Each build's version carries a content
+hash, so a changed package installs as a new version. Open a **new Codex task** after installation.
 
-The helper default is `~/.codex/skills/.system/plugin-creator`. If your Codex
-installation provides it elsewhere, pass `--plugin-creator-dir <path>`.
-If the helper is missing, the builder still works without `--install`; install
-or update Codex's plugin-creator skill before using the installation option.
+The installer no longer uses Codex's plugin-creator helper scripts, which Codex 0.159 removed.
 
 Build without changing Codex settings:
 
