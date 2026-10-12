@@ -103,6 +103,16 @@ struct RunwayMenu: View {
                     if let failure = store.talkError(project: project, ticket: nil) { Text("⚠︎ \(String(failure.prefix(200)))") }
                     Divider()
                 }
+                if let repo = project.repoPath {
+                    ForEach(store.choreList().chores.filter { $0.cwd == .repo }) { chore in
+                        Button("\(chore.title)…") {
+                            store.runChore(chore, repo: repo)
+                            NSApplication.shared.activate(ignoringOtherApps: true)
+                            openWindow(id: "runway")
+                        }
+                        .help(store.choreLine(chore, repo: repo) ?? chore.run)
+                    }
+                }
                 let canStart = project.repoPath != nil && !project.loaded
                 Button("Start loop") { Task { await store.startLoop(project) } }
                     .disabled(!canStart || project.error != nil)

@@ -315,6 +315,28 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(ran.contains(RunwayTools.terminal(line: "claude auth login")))
     }
 
+    func testAChoreRunsInThePaneAndItsEndRechecksShowIf() async throws {
+        try installPlist(script: "/co/pm/runway/runway.py")
+        let store = makeStore()
+        store.setCheckout("/co")
+        store.refresh()
+        let chore = Chore(id: "codex-refresh", title: "Refresh Codex plugins", why: "", run: "python3 x.py",
+                          cwd: .checkout, showIf: "command -v codex")
+        XCTAssertEqual(store.choreLine(chore), "cd '/co' && python3 x.py")
+        store.runChore(chore)
+        let session = try XCTUnwrap(store.sessions.sessions.first)
+        XCTAssertEqual(session.title, "Refresh Codex plugins")
+        XCTAssertEqual(session.spec, LaunchSpec(executable: "/bin/zsh", arguments: ["-lc", "python3 x.py"], workingDirectory: "/co"))
+        let check = try XCTUnwrap(chore.showIfCommand(checkout: "/co", repo: nil))
+        let rechecked = expectation(description: "show_if ran again")
+        afterRun = { if $0 == check { rechecked.fulfill() } }
+        nextResult = CommandResult(status: 1, stdout: "", stderr: "")
+        store.sessions.markExited(session.id)
+        await fulfillment(of: [rechecked], timeout: 2)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(store.choreResult(chore), "Done: no longer needed.")
+    }
+
     func testPopOutEndsTheTabAndRunsTheTerminalCommand() async throws {
         try installPlist()
         let store = makeStore()

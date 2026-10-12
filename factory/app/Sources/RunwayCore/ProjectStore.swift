@@ -24,6 +24,9 @@ public final class ProjectStore {
     public private(set) var signInNote: String?
     /// True while the re-check after a sign-in session runs.
     public private(set) var signInChecking = false
+    /// What each chore's last run ended with, by its session key, shown beside its button.
+    public private(set) var choreResults: [String: String] = [:]
+    @ObservationIgnored private var runningChores: [String: (Chore, String?)] = [:]
     /// A project has ready tickets but its loop is off. Drives the amber icon; independent of notifications.
     public private(set) var readyWhileOff = false
     /// Set when a notification is clicked: the tab the window should open on.
@@ -99,8 +102,9 @@ public final class ProjectStore {
         self.hidden = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
         self.sessionPlace = defaults.string(forKey: Self.sessionPlaceKey).flatMap(SessionPlace.init(rawValue:)) ?? .window
         sessions.onExit = { [weak self] session in
-            guard let self, let key = session.command?.key, key.hasPrefix("signin:") else { return }
-            Task { await self.recheckSignIns() }
+            guard let self, let key = session.command?.key else { return }
+            if key.hasPrefix("signin:") { Task { await self.recheckSignIns() } }
+            if key.hasPrefix("chore:") { Task { await self.choreEnded(key) } }
         }
     }
 
@@ -291,6 +295,59 @@ public final class ProjectStore {
         signInNote = SignInFollowUp.note(label: labels.isEmpty ? "Sign-in" : labels, failing: failing)
         waitingFetchedAt = .distantPast
         refresh()
+    }
+
+    // MARK: chores
+
+    /// The engine checkout the chores list and its commands come from.
+    public var engineCheckout: String? {
+        checkout ?? tools.map { SetupChecks.checkout(ofRunwayScript: $0.runwayScript) }
+    }
+
+    public func choreList() -> ChoreList {
+        guard let engineCheckout else { return .unusable("Can't find the engine checkout. Choose it under Scripts.") }
+        return ChoreList.load(checkout: engineCheckout)
+    }
+
+    /// The chores for one place whose `show_if` passes now (each at most 10 seconds). `repo` for per-repo chores.
+    public func visibleChores(_ place: Chore.Place, repo: String? = nil) async -> [Chore] {
+        guard let engineCheckout else { return [] }
+        var shown: [Chore] = []
+        for chore in choreList().chores where chore.cwd == place {
+            guard let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else { shown.append(chore); continue }
+            if await run(check).succeeded { shown.append(chore) }
+        }
+        return shown
+    }
+
+    /// The exact line a chore runs and where, for the button to show before the click.
+    public func choreLine(_ chore: Chore, repo: String? = nil) -> String? {
+        guard let tools, let engineCheckout, let folder = chore.folder(checkout: engineCheckout, repo: repo) else { return nil }
+        return "cd \(RunwayTools.shellQuote(folder)) && " + chore.line(runwayScript: tools.runwayScript, checkout: engineCheckout, repo: repo)
+    }
+
+    /// Runs the chore in the window's pane, as Joe. Its exit re-runs `show_if` and records the result.
+    public func runChore(_ chore: Chore, repo: String? = nil) {
+        guard let tools, let engineCheckout, let line = choreLine(chore, repo: repo),
+              let spec = chore.session(runwayScript: tools.runwayScript, checkout: engineCheckout, repo: repo) else { return }
+        let key = chore.sessionKey(repo: repo)
+        choreResults[key] = nil
+        runningChores[key] = (chore, repo)
+        sessions.open(command: CommandSession(key: key, title: chore.title, line: line), spec: spec)
+    }
+
+    public func choreResult(_ chore: Chore, repo: String? = nil) -> String? { choreResults[chore.sessionKey(repo: repo)] }
+
+    private func choreEnded(_ key: String) async {
+        guard let pending = runningChores.removeValue(forKey: key) else { return }
+        let (chore, repo) = pending
+        guard let engineCheckout, let check = chore.showIfCommand(checkout: engineCheckout, repo: repo) else {
+            choreResults[key] = "Finished. Its output is in the \(chore.title) tab."
+            return
+        }
+        choreResults[key] = await run(check).succeeded
+            ? "Finished, but it still looks needed. Check the output in its tab."
+            : "Done: no longer needed."
     }
 
     /// Ends the pane's session (the view has already asked) and reopens the same discussion in Terminal.
