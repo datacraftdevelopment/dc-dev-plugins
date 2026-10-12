@@ -1,6 +1,9 @@
 # Spec: Runway someone else can install, set up and keep running
 
-Status: draft, north star. Tickets come after Joe's review.
+Status: long-term direction, not current work. No tickets. Joe (2026-10-12):
+"This is the long-term vision ... Now it's just me running it on two Macs and
+getting it working." Current work is `app-updates.md` and `app-chores.md`;
+they should avoid choices that would block what's below.
 
 Builds on `app-updates.md` (#66: updates, parity, setup checks) and
 `app-chores.md` (#73: sign-in, rebuild and chores as buttons). Those two are
@@ -123,7 +126,7 @@ checks pass.
    the link. That decides how much the wizard has to explain, and whether
    notarization (#67) gates the first hand-off.
 
-## Tickets (after review)
+## Tickets (later, not filed)
 
 Likely slices, in order: owner name and LaunchAgent label (engine plus app);
 Ringer path and review default; managed engine clone; the wizard's Tools and
