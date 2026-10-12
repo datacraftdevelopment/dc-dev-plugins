@@ -110,13 +110,16 @@ public struct StatusSnapshot: Equatable, Sendable {
     public let resumable: Set<String>
     /// The last sign-in check this repo's loop (or `runway signin`) ran; empty before any ran.
     public let signin: [SignInCheck]
+    /// When `runway status --json` produced this (`generated_at`); nil from an older engine or a hand-built snapshot.
+    public let generatedAt: Date?
 
     /// Tickets in the section only because they errored (not waiting on a decision).
     public var erroredOnlyCount: Int { needsYou.filter { !$0.waiting }.count }
 
     public init(tickets: [Ticket], readyCount: Int, titles: [String: String] = [:], urls: [String: URL] = [:],
                 upNext: [UpNext] = [], needsYou: [NeedsYouRow] = [], errored: [String: String] = [:],
-                resumable: Set<String> = [], signin: [SignInCheck] = []) {
+                resumable: Set<String> = [], signin: [SignInCheck] = [], generatedAt: Date? = nil) {
+        self.generatedAt = generatedAt
         self.signin = signin
         self.errored = errored
         self.resumable = resumable
@@ -170,7 +173,8 @@ public struct StatusSnapshot: Equatable, Sendable {
         return StatusSnapshot(tickets: tickets, readyCount: count("ready_auto") + count("ready_prep"), titles: titles,
                               urls: urls, upNext: upNext, needsYou: needsYou, errored: errored,
                               resumable: Set(all.compactMap { e in (e["resumable"] as? Bool) == true ? e["id"] as? String : nil }),
-                              signin: SignInCheck.parse(json["signin"]))
+                              signin: SignInCheck.parse(json["signin"]),
+                              generatedAt: (json["generated_at"] as? String).flatMap(ISO8601DateFormatter().date(from:)))
     }
 }
 
