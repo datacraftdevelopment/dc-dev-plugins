@@ -28,6 +28,11 @@ extension RunwayTools {
         spec(repo: repo, "discuss --loop")
     }
 
+    /// The same command as `discussReview(repo:)`, run in the pane instead of Terminal.
+    public func discussReviewSession(repo: String) -> LaunchSpec {
+        spec(repo: repo, "discuss --review")
+    }
+
     private func spec(repo: String, _ tail: String) -> LaunchSpec {
         LaunchSpec(executable: "/bin/zsh", arguments: ["-lc", shellLine(repo: repo, tail)], workingDirectory: repo)
     }
@@ -36,14 +41,14 @@ extension RunwayTools {
 public struct Session: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let project: String
-    /// nil for the loop (`discuss --loop`).
+    /// nil for the loop (`discuss --loop`) or, with `resume`, the last review (`discuss --review`).
     public let ticket: String?
     public let spec: LaunchSpec
-    /// True for "Resume worker": the ticket's own claude session, not a fresh one.
+    /// True for "Resume worker" (the ticket's own claude session, not a fresh one) and for "Open last review".
     public var resume = false
     public var alive = true
 
-    public var title: String { ticket.map { resume ? "\($0) (resume)" : $0 } ?? "loop" }
+    public var title: String { ticket.map { resume ? "\($0) (resume)" : $0 } ?? (resume ? "last review" : "loop") }
 }
 
 /// The tabs of the terminal pane. One live tab per ticket (or per project's loop); a tab whose process

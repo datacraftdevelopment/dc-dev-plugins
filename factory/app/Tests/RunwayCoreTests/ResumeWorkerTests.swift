@@ -43,6 +43,25 @@ final class ResumeWorkerTests: XCTestCase {
         XCTAssertEqual(q.tickets.map(\.resumable), [true, false, true])
     }
 
+    func testLastReviewIsDiscussReviewInItsOwnTab() {
+        let spec = tools.discussReviewSession(repo: "/r")
+        XCTAssertEqual(spec.arguments, ["-lc", "cd '/r' && python3 '/Users/me/My Plugins/runway.py' discuss --review"])
+        XCTAssertTrue(tools.discussReview(repo: "/r").arguments.last?.contains("discuss --review") == true)
+        let registry = SessionRegistry()
+        let loop = registry.open(project: "p", ticket: nil, spec: tools.discussLoopSession(repo: "/r"))
+        let review = registry.open(project: "p", ticket: nil, resume: true, spec: spec)
+        XCTAssertNotEqual(loop.id, review.id)
+        XCTAssertEqual(loop.title, "loop")
+        XCTAssertEqual(review.title, "last review")
+    }
+
+    func testStatusParsesReviewResumableAndAnOlderEngineLeavesItOff() throws {
+        let on = Data(#"{"version":1,"groups":{},"tickets":[],"review_resumable":true}"#.utf8)
+        XCTAssertTrue(try XCTUnwrap(QueueStatus.parse(on)).reviewResumable)
+        let old = Data(#"{"version":1,"groups":{},"tickets":[]}"#.utf8)
+        XCTAssertFalse(try XCTUnwrap(QueueStatus.parse(old)).reviewResumable)
+    }
+
     func testAnOlderEngineWithoutTheFieldNeverShowsTheButton() throws {
         let data = Data(#"{"version":1,"groups":{"waiting":["W"]},"tickets":[{"id":"W","status":"needs-human"}]}"#.utf8)
         XCTAssertFalse(try XCTUnwrap(StatusSnapshot.parse(data)).canResumeWorker("W"))

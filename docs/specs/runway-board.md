@@ -29,8 +29,15 @@ Board, top to bottom:
    is remembered.
 
 Clicking a card opens a details pane on the right (a second click, or the close button, shuts it): title, the note,
-the packet plus a note field and Go / No when it waits on Joe, Talk it through (waiting, errored, running), the
-tracker link, and the ticket's prep / agent / check / outcome rows from the runs log.
+the packet plus a note field and Go / No when it waits on Joe, Talk it through (waiting, errored, running, done), Resume
+worker when status marks the ticket `resumable` (done tickets too: the worktree is recreated from the kept branch), the
+tracker link (done tickets keep theirs, since status loads closed issues), and the ticket's prep / agent / check /
+outcome rows from the runs log. A done ticket's session answers questions about what got done and posts nothing.
+
+Under Done this round, **Open last review** shows when status says `review_resumable`: it runs `discuss --review`, the
+last finish review's own claude session, to ask what the reviewer found. That review covered the previous round; the
+cards above it get reviewed at the next finish. Which session to open: the worker's, per ticket, because the review
+is one per round and covers every ticket in it.
 
 Every way into the window (sidebar, side panel Details or red card, menu items, notifications) lands on the board,
 with the named ticket's details open.

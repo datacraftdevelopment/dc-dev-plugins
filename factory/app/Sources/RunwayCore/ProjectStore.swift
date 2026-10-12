@@ -229,6 +229,16 @@ public final class ProjectStore {
         await launch(tools.discussResume(ticket: ticket, repo: repo), key: Self.talkKey(project, ticket, resume: true))
     }
 
+    /// Opens the last finish review's own conversation (`runway discuss --review`), in the pane or Terminal.
+    public func openLastReview(_ project: Project) async {
+        guard let repo = project.repoPath, let tools = requireTools() else { return }
+        if sessionPlace == .window {
+            sessions.open(project: project.label, ticket: nil, resume: true, spec: tools.discussReviewSession(repo: repo))
+            return
+        }
+        await launch(tools.discussReview(repo: repo), key: Self.talkKey(project, nil, resume: true))
+    }
+
     /// Opens Terminal on `runway discuss --loop` for the project.
     public func talkThroughLoop(_ project: Project) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
@@ -246,7 +256,7 @@ public final class ProjectStore {
         sessions.close(id)
         let command = session.ticket.map {
             session.resume ? tools.discussResume(ticket: $0, repo: repo) : tools.discuss(ticket: $0, repo: repo)
-        } ?? tools.discussLoop(repo: repo)
+        } ?? (session.resume ? tools.discussReview(repo: repo) : tools.discussLoop(repo: repo))
         let result = await run(command)
         if !result.succeeded { lastError = result.failureMessage }
     }

@@ -22,6 +22,7 @@ TICKETS = {
     "03-retrying": ("", "\nReady body.\n"),
     "04-merged": ("", "\nMerged body.\n"),
     "05-blocked": ("Blocked by: 02", "\nNeeds the parked one.\n"),
+    "06-shipped": ("Status: done", "\nShipped body.\n"),
 }
 
 
@@ -128,6 +129,15 @@ class Discuss(DiscussBase):
         self.assertEqual(self.fake.calls, [])
         self.assertFalse((self.root / "_pm" / "discuss").exists())
 
+    def test_done_ticket_starts_a_questions_session_that_posts_nothing(self):
+        self.assertEqual(self.discuss("eff/06"), 0)
+        self.assertIn("Shipped body", self.brief("eff-06.md"))
+        (root, prompt), = self.fake.calls
+        self.assertEqual(root, self.root)
+        self.assertIn("_pm/discuss/eff-06.md", prompt)
+        self.assertIn("is done", prompt)
+        self.assertIn("Post no go or no", prompt)
+
     def test_errored_in_status_json_then_null_after_a_merge(self):
         def errored():
             d = runway.status_json(self.cfg, self.root, self.tracker)
@@ -178,8 +188,8 @@ class FakeResume:
         raise SystemExit(0)
 
 
-class Resume(DiscussBase):
-    """`discuss --resume`: recreate the parked worktree on the kept branch, then claude --resume there."""
+class ResumeBase(DiscussBase):
+    """A git repo with the parked ticket's branch kept, a transcript on disk, and claude --resume faked."""
 
     def setUp(self):
         super().setUp()
@@ -211,6 +221,11 @@ class Resume(DiscussBase):
         with self.assertRaises(SystemExit) as e:
             runway.cmd_discuss(self.cfg, self.root, self.tracker, ticket, resume=True)
         return e.exception.code
+
+
+
+class Resume(ResumeBase):
+    """`discuss --resume`: recreate the parked worktree on the kept branch, then claude --resume there."""
 
     def test_recreates_the_worktree_at_the_recorded_path_and_resumes_there(self):
         self.run_row()
@@ -290,6 +305,22 @@ class Resume(DiscussBase):
         self.assertFalse(runway.is_resumable(self.root, "eff/02", self.branch))
         self.refuses("branch")
 
+    def test_a_done_ticket_resumes_from_its_kept_branch_and_posts_nothing(self):
+        self.git("branch", "runway/eff-06-shipped")
+        wt = self.root.parent / (self.root.name + "-wt") / "eff-06-shipped"
+        self.runs({"kind": "run", "ticket": "eff/06", "attempt": 1, "exit": 0, "cwd": str(wt),
+                   "harness": "claude", "session_id": self.sid},
+                  {"kind": "outcome", "ticket": "eff/06", "attempts": 1, "result": "done"})
+        flags = {t["id"]: t["resumable"] for t in runway.status_json(self.cfg, self.root, self.tracker)["tickets"]}
+        self.assertTrue(flags["eff/06"])
+        self.assertEqual(self.resume("eff/06"), 0)
+        self.assertEqual(self.git("rev-parse", "--abbrev-ref", "HEAD", cwd=wt).stdout.strip(), "runway/eff-06-shipped")
+        (cwd, sid, prompt), = self.resume_fake.calls
+        self.assertEqual(sid, self.sid)
+        self.assertIn("is done", prompt)
+        self.assertIn("Post no go or no", prompt)
+        self.assertNotIn("When Joe says go", prompt)
+
     def test_resumable_in_status_json(self):
         def flags():
             d = runway.status_json(self.cfg, self.root, self.tracker)
@@ -348,6 +379,58 @@ class DiscussLoop(unittest.TestCase):
         self.assertTrue((self.root / "_pm" / "discuss" / "loop.md").exists())
 
 
+class DiscussReview(ResumeBase):
+    """`discuss --review`: reopen the last finish review's claude session where it ran."""
+
+    def review_row(self, **kw):
+        self.wt.mkdir(parents=True)
+        row = {"kind": "review", "ticket": "finish", "attempt": 1, "exit": 0, "cwd": str(self.wt),
+               "harness": "claude", "session_id": self.sid}
+        self.runs({**row, **kw})
+
+    def review(self):
+        with self.assertRaises(SystemExit) as e:
+            runway.cmd_discuss_review(self.root)
+        return e.exception.code
+
+    def flag(self):
+        return runway.status_json(self.cfg, self.root, self.tracker)["review_resumable"]
+
+    def test_resumes_the_last_review_in_its_folder(self):
+        self.assertFalse(self.flag())
+        self.review_row(session_id="old")
+        self.runs({"kind": "review", "ticket": "finish", "cwd": str(self.wt), "harness": "claude",
+                   "session_id": self.sid})
+        self.assertTrue(self.flag())
+        self.assertEqual(self.review(), 0)
+        (cwd, sid, prompt), = self.resume_fake.calls
+        self.assertEqual((Path(cwd), sid), (self.wt, self.sid))
+        self.assertIn("review", prompt)
+        self.assertIn("Change nothing", prompt)
+
+    def refuses_review(self, needle):
+        self.assertFalse(self.flag())
+        code = self.review()
+        self.assertIn(needle, str(code))
+        self.assertEqual(self.resume_fake.calls, [])
+
+    def test_no_review_logged(self):
+        self.refuses_review("no finish review")
+
+    def test_a_panel_review_does_not_resume(self):
+        self.review_row(harness="ringer-panel", session_id=None)
+        self.refuses_review("ringer-panel")
+
+    def test_transcript_missing(self):
+        self.review_row(session_id="nope")
+        self.refuses_review("transcript")
+
+    def test_folder_gone(self):
+        self.review_row()
+        self.wt.rmdir()
+        self.refuses_review("folder")
+
+
 class DiscussCli(unittest.TestCase):
     def test_cli_replaces_the_process_with_claude_in_the_repo_root(self):
         root = Path(tempfile.mkdtemp()).resolve()
@@ -366,6 +449,13 @@ class DiscussCli(unittest.TestCase):
         neither = subprocess.run([sys.executable, py, "--root", str(root), "discuss"],
                                  capture_output=True, text=True, env=env)
         self.assertNotEqual(neither.returncode, 0)
+        both = subprocess.run([sys.executable, py, "--root", str(root), "discuss", "--loop", "--review"],
+                              capture_output=True, text=True, env=env)
+        self.assertNotEqual(both.returncode, 0)
+        review = subprocess.run([sys.executable, py, "--root", str(root), "discuss", "--review"],
+                                capture_output=True, text=True, env=env)
+        self.assertNotEqual(review.returncode, 0)
+        self.assertIn("no finish review", review.stderr)
 
 
 if __name__ == "__main__":

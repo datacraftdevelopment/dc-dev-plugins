@@ -41,7 +41,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
    "generated_at": "ISO-8601",
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
-   "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null,
+   "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null, "review_resumable": bool,
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
                 "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason", "resumable"}]}
 
@@ -79,13 +79,14 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   errored  The kind of the ticket's latest attempt that didn't merge, from _pm/runway-runs.jsonl
            (agent-failed, no-commits, check-failed, merge-conflict, signed-out), or null. A merge clears it.
   resumable  true when the ticket's latest attempt was a claude session with a session id, so
-           `runway discuss <ticket> --resume` can reopen it; false otherwise.
+           `runway discuss <ticket> --resume` can reopen it; false otherwise. A done ticket counts too.
+  review_resumable  true when the last finish review was a claude session `runway discuss --review` can reopen.
 
 `runway discuss <ticket>` writes _pm/discuss/<id>.md (ticket text, packet, Runway's park comment, blockers,
 attempts with kind, check exit and transcript path, the ticket's log lines) and replaces the process with an
 interactive `claude` in the repo root, told to follow the runway skill's "Talk a ticket through" section. It
-takes a waiting ticket or an errored one (a ticket still being retried counts); anything else exits non-zero
-and starts nothing. `runway discuss --loop` is for the loop itself and always runs: _pm/discuss/loop.md holds
+takes a waiting ticket, an errored one (a ticket still being retried counts) or a done one (to ask what got
+done; that session posts no go or no); anything else exits non-zero and starts nothing. `runway discuss --loop` is for the loop itself and always runs: _pm/discuss/loop.md holds
 the heartbeat, `launchctl print` for the job, the pause, the last sign-in check, log tails and the last runs.
 Always the claude harness. A GitHub brief carries trusted authors' comments only.
 `runway discuss <ticket> --resume` instead reopens the worker's own conversation: the latest attempt's session
@@ -93,6 +94,9 @@ id from _pm/runway-runs.jsonl (claude only), the worktree recreated at the path 
 kept branch (`git worktree add <cwd> <branch>`; an existing path is reused), then `claude --resume <id>` there
 with a first message pointing at the brief. No session id, a codex attempt, no transcript or a gone branch
 exits non-zero with the reason and "use Talk it through instead".
+`runway discuss --review` reopens the last finish review's conversation (`claude --resume` in the folder it
+reviewed in, the integration worktree), to ask the reviewer about the round. A panel review, a codex review,
+no transcript or a gone folder exits non-zero with the reason.
 
 `runway pause [--until ISO-8601 | --for 1h] [--stop-now]` writes ~/.runway/pause (RUNWAY_HOME
 overrides the folder), the machine-wide pause. It holds with the app closed and leaves launchd jobs loaded:
@@ -2356,6 +2360,30 @@ def _is_repo_root(root: Path, cwd: Path) -> bool:
         return False
 
 
+def latest_review(root: Path) -> dict | None:
+    """The last finish review's agent row in _pm/runway-runs.jsonl, or None."""
+    rows = [r for r in read_runs(root) if r.get("ticket") == "finish" and r.get("kind") == "review"]
+    return rows[-1] if rows else None
+
+
+def review_target(root: Path) -> tuple:
+    """(cwd, session_id) of the last finish review, or ("", why) when `discuss --review` can't reopen it."""
+    r = latest_review(root)
+    if not r:
+        return "", "no finish review is logged"
+    harness = r.get("harness") or "claude"
+    if harness != "claude":
+        return "", f"the last review ran on {harness}, and only a single claude review resumes"
+    sid = r.get("session_id")
+    if not sid:
+        return "", "the last review has no session id"
+    if not transcript(sid):
+        return "", f"the transcript for session {sid} was not found on this machine"
+    if not r.get("cwd") or not Path(r["cwd"]).is_dir():
+        return "", "the folder the review ran in is gone"
+    return Path(r["cwd"]), sid
+
+
 def resume_target(root: Path, t) -> tuple:
     """(cwd, session_id) to resume for the ticket, recreating its parked worktree from the kept branch.
     Exits with the reason (and "use Talk it through instead") when it can't be done; creates nothing then."""
@@ -2544,11 +2572,25 @@ def write_brief(root: Path, name: str, text: str) -> str:
     return f"_pm/discuss/{name}"
 
 
+DONE_TALK = ("{t} is done. Joe wants to ask about what got done: answer from {where}, the ticket's branch and its "
+             "history. Post no go or no, change nothing in the tracker, and commit nothing unless he asks.")
+
+
 def cmd_discuss(cfg: dict, root: Path, tracker, num: str, resume: bool = False) -> None:
     loaded = tracker.load()
     t = find(type("Loaded", (), {"load": lambda self: loaded})(), num)
-    if t.id not in {x.id for x in group_tickets(loaded, cfg)["waiting"]} and t.id not in errored_kinds(root):
-        sys.exit(f"{t.id} is not waiting on Joe and has no attempt that failed to merge; nothing to discuss.")
+    done = t.status in DONE
+    if not done and t.id not in {x.id for x in group_tickets(loaded, cfg)["waiting"]} and t.id not in errored_kinds(root):
+        sys.exit(f"{t.id} is not waiting on Joe, not done, and has no attempt that failed to merge; nothing to discuss.")
+    if resume and done:
+        cwd, sid = resume_target(root, t)
+        rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
+        exec_claude_resume(cwd, sid, "You're now talking with Joe, interactively, no longer headless. "
+                           + DONE_TALK.format(t=f"Ticket {t.id}", where=f"this conversation, {root / rel}"))
+    if done:
+        rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
+        exec_claude(root, f"Read {rel}, the brief for ticket {t.id}. "
+                          + DONE_TALK.format(t=f"Ticket {t.id}", where="the brief, its transcripts"))
     if resume:
         cwd, sid = resume_target(root, t)
         rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
@@ -2561,6 +2603,16 @@ def cmd_discuss(cfg: dict, root: Path, tracker, num: str, resume: bool = False) 
     rel = write_brief(root, safe_name(t.id) + ".md", ticket_brief(root, loaded, t))
     exec_claude(root, f"Read {rel}, the brief for ticket {t.id}, and follow the runway skill's "
                       f"\"Talk a ticket through\" section. Wait for Joe before posting anything.")
+
+
+def cmd_discuss_review(root: Path) -> None:
+    cwd, sid = review_target(root)
+    if not cwd:
+        sys.exit(f"Can't reopen the last review: {sid}.")
+    exec_claude_resume(cwd, sid, (
+        "You're now talking with Joe, interactively, no longer headless. He wants to ask about the review you did. "
+        "Answer from this conversation and the branch. Change nothing, post nothing to the tracker, and "
+        "commit nothing unless he asks."))
 
 
 def loop_label(root: Path) -> str:
@@ -2851,7 +2903,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "run_now": qp.run_now.id if qp.run_now else None,
             "finish": {"verdict": qp.finish.verdict, "reason": qp.finish.reason},
-            "idle_reason": qp.idle_reason,
+            "idle_reason": qp.idle_reason, "review_resumable": bool(review_target(root)[0]),
             "tickets": [entry(t) for t in loaded if t.id in steps]}
 
 
@@ -2924,10 +2976,12 @@ def main() -> None:
     n = sub.add_parser("no"); n.add_argument("ticket"); n.add_argument("note", nargs="?", default="")
     sub.add_parser("setup", help="Linear or GitHub: check the sign-in and project/repo, and create Runway's labels")
     sub.add_parser("finish", help="review the integration branch, fix once, check, and write the PR body now")
-    ds = sub.add_parser("discuss", help="open a claude session to talk a waiting or errored ticket (or --loop) through")
+    ds = sub.add_parser("discuss", help="open a claude session to talk a waiting, errored or done ticket "
+                                        "(or --loop, or --review) through")
     ds.add_argument("ticket", nargs="?")
     ds.add_argument("--resume", action="store_true", help="reopen the ticket's own worker session (claude only), not a fresh one")
     ds.add_argument("--loop", action="store_true", help="the loop itself (stale heartbeat, failed tick, sign-in), not a ticket")
+    ds.add_argument("--review", action="store_true", help="reopen the last finish review's session (claude only)")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
     a = ap.parse_args()
@@ -2946,12 +3000,14 @@ def main() -> None:
         print(describe_machine(root))
         return
     if a.cmd == "discuss":
-        if a.resume and a.loop:
-            sys.exit("--resume is for a ticket's worker session, not the loop.")
-        if a.loop == bool(a.ticket):
-            sys.exit("Give a ticket to discuss, or --loop for the loop itself (not both).")
+        if a.resume and (a.loop or a.review):
+            sys.exit("--resume is for a ticket's worker session, not the loop or the review.")
+        if [bool(a.ticket), a.loop, a.review].count(True) != 1:
+            sys.exit("Give a ticket to discuss, --loop for the loop itself, or --review for the last review (one of them).")
         if a.loop:
             cmd_discuss_loop(root)
+        if a.review:
+            cmd_discuss_review(root)
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():

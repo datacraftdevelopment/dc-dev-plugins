@@ -150,6 +150,7 @@ struct BoardTab: View {
                     Text("Finish").font(.caption.weight(.semibold))
                     Text("Runs when the queue is empty: review, one fix pass, re-test, draft PR.")
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    if feed.queue?.reviewResumable == true { lastReview }
                 }
                 .padding(.horizontal, 4)
             }
@@ -159,6 +160,24 @@ struct BoardTab: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(columnTint(column).opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.quaternary, lineWidth: 1))
+    }
+
+    /// The last finish's reviewer, to ask what it found. It reviewed the previous round, not the cards above.
+    @ViewBuilder private var lastReview: some View {
+        let project = entry.project
+        Button("Open last review") {
+            Task {
+                await store.openLastReview(project)
+            }
+        }
+        .disabled(project.repoPath == nil)
+        .font(.caption).padding(.top, 4)
+        .help("Reopen the last finish review's Claude conversation: `runway discuss --review`")
+        if let error = store.talkError(project: project, ticket: nil, resume: true) {
+            Text(error).font(.caption2.monospaced()).textSelection(.enabled).padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+        }
     }
 
     private func emptyText(_ column: BoardColumn) -> String {
@@ -343,7 +362,8 @@ private struct RunningColumn: View {
 }
 
 /// What a click on a card opens: the ticket in full, its packet and Go / No when it waits on Joe,
-/// Talk it through, the tracker link and its attempt history.
+/// Talk it through (and Resume worker when the engine can reopen the worker's session, done tickets included),
+/// the tracker link and its attempt history.
 private struct CardDetails: View {
     let store: ProjectStore
     let entry: ProjectEntry
@@ -410,7 +430,8 @@ private struct CardDetails: View {
 
     private var actions: some View {
         HStack(spacing: 10) {
-            if card.waiting || card.errored != nil || card.column == .running {
+            // A done card talks too: the session answers what got done and posts nothing.
+            if card.waiting || card.errored != nil || card.column == .running || card.column == .done {
                 TalkButton(store: store, project: entry.project, ticket: card.id,
                            resumable: card.ticket?.resumable == true)
             }
