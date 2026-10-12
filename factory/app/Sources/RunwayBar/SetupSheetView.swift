@@ -48,6 +48,8 @@ final class SetupModel {
     func refreshChecks() async {
         checks = await SetupChecks.all(tracker: tracker, checkout: checkout,
                                        fileExists: { FileManager.default.fileExists(atPath: $0) },
+                                       repo: repo, githubRepo: githubRepo,
+                                       registry: try? Data(contentsOf: PluginVersions.registryURL),
                                        run: { await CommandRunner.run($0) })
         if !harnesses.contains(harness) { harness = "claude" }
     }
@@ -84,8 +86,9 @@ final class SetupModel {
     func saveKey() async {
         let key = keyInput
         keyInput = ""
-        append("$ " + LinearKey.displayText())
-        let result = await LinearKey.save(key, run: { await CommandRunner.run($0) })
+        let service = SetupChecks.keychainService(repo: repo)
+        append("$ " + LinearKey.displayText(service: service))
+        let result = await LinearKey.save(key, service: service, run: { await CommandRunner.run($0) })
         if !result.succeeded { append(result.failureMessage) }
         note = result.succeeded ? nil : "Couldn't save the key: \(result.failureMessage)"
         await refreshChecks()
@@ -155,8 +158,8 @@ struct SetupSheet: View {
             .padding(12)
         }
         .frame(width: 620, height: 640)
-        .task { await model.refreshChecks() }
-        .onChange(of: model.tracker) { _, _ in Task { await model.refreshChecks() } }
+        // The repo-dependent checks (keychain item, gh access) follow the tracker, folder and owner/name.
+        .task(id: "\(model.tracker)|\(model.repo)|\(model.githubRepo)") { await model.refreshChecks() }
     }
 
     // MARK: sections
