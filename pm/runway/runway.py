@@ -96,7 +96,8 @@ id from _pm/runway-runs.jsonl (claude only), the worktree recreated at the path 
 kept branch (`git worktree add <cwd> <branch>`; an existing path is reused), then `claude --resume <id>` there
 with a first message pointing at the brief. No session id, a codex attempt, no transcript or a gone branch
 exits non-zero with the reason and "use Talk it through instead".
-`runway discuss --review` reopens the last finish review's conversation (`claude --resume` in the folder it
+`runway discuss --review [SESSION]` reopens the last finish review's conversation (or the review with that
+session id, which is what the app passes from `review_session`) (`claude --resume` in the folder it
 reviewed in, the integration worktree), to ask the reviewer about the round. A panel review, a codex review,
 no transcript or a gone folder exits non-zero with the reason.
 
@@ -2362,17 +2363,19 @@ def _is_repo_root(root: Path, cwd: Path) -> bool:
         return False
 
 
-def latest_review(root: Path) -> dict | None:
-    """The last finish review's agent row in _pm/runway-runs.jsonl, or None."""
-    rows = [r for r in read_runs(root) if r.get("ticket") == "finish" and r.get("kind") == "review"]
+def latest_review(root: Path, session: str | None = None) -> dict | None:
+    """The last finish review's agent row in _pm/runway-runs.jsonl (the one with `session`'s id, if given), or None."""
+    rows = [r for r in read_runs(root) if r.get("ticket") == "finish" and r.get("kind") == "review"
+            and (session is None or r.get("session_id") == session)]
     return rows[-1] if rows else None
 
 
-def review_target(root: Path) -> tuple:
-    """(cwd, session_id) of the last finish review, or ("", why) when `discuss --review` can't reopen it."""
-    r = latest_review(root)
+def review_target(root: Path, session: str | None = None) -> tuple:
+    """(cwd, session_id) of the last finish review (or of the review with that session id), or ("", why) when
+    `discuss --review` can't reopen it."""
+    r = latest_review(root, session)
     if not r:
-        return "", "no finish review is logged"
+        return "", (f"no finish review with session {session} is logged" if session else "no finish review is logged")
     harness = r.get("harness") or "claude"
     if harness != "claude":
         return "", f"the last review ran on {harness}, and only a single claude review resumes"
@@ -2607,8 +2610,8 @@ def cmd_discuss(cfg: dict, root: Path, tracker, num: str, resume: bool = False) 
                       f"\"Talk a ticket through\" section. Wait for Joe before posting anything.")
 
 
-def cmd_discuss_review(root: Path) -> None:
-    cwd, sid = review_target(root)
+def cmd_discuss_review(root: Path, session: str | None = None) -> None:
+    cwd, sid = review_target(root, session)
     if not cwd:
         sys.exit(f"Can't reopen the last review: {sid}.")
     exec_claude_resume(cwd, sid, (
@@ -2984,7 +2987,8 @@ def main() -> None:
     ds.add_argument("ticket", nargs="?")
     ds.add_argument("--resume", action="store_true", help="reopen the ticket's own worker session (claude only), not a fresh one")
     ds.add_argument("--loop", action="store_true", help="the loop itself (stale heartbeat, failed tick, sign-in), not a ticket")
-    ds.add_argument("--review", action="store_true", help="reopen the last finish review's session (claude only)")
+    ds.add_argument("--review", nargs="?", const="", default=None, metavar="SESSION",
+                    help="reopen the last finish review's session, or the review with that session id (claude only)")
     rt = sub.add_parser("retro", help="usage per ticket, and a /retro prompt for the runs that struggled")
     rt.add_argument("--last", type=int, default=200, help="log records to read (default 200)")
     a = ap.parse_args()
@@ -3003,14 +3007,15 @@ def main() -> None:
         print(describe_machine(root))
         return
     if a.cmd == "discuss":
-        if a.resume and (a.loop or a.review):
+        review = a.review is not None
+        if a.resume and (a.loop or review):
             sys.exit("--resume is for a ticket's worker session, not the loop or the review.")
-        if [bool(a.ticket), a.loop, a.review].count(True) != 1:
+        if [bool(a.ticket), a.loop, review].count(True) != 1:
             sys.exit("Give a ticket to discuss, --loop for the loop itself, or --review for the last review (one of them).")
         if a.loop:
             cmd_discuss_loop(root)
-        if a.review:
-            cmd_discuss_review(root)
+        if review:
+            cmd_discuss_review(root, a.review or None)
     cfg = dict(DEFAULT_CONFIG)
     cfg_path = Path(a.config) if a.config else root / "runway.json"
     if cfg_path.exists():

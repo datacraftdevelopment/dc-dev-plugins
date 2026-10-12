@@ -414,12 +414,30 @@ class DiscussReview(ResumeBase):
         self.assertIn(needle, str(code))
         self.assertEqual(self.resume_fake.calls, [])
 
-    def test_a_malformed_row_refuses_and_status_still_answers(self):
+    def test_a_numeric_cwd_refuses_and_status_still_answers(self):
         self.review_row(cwd=123)
-        self.runs({"kind": "review", "ticket": "finish", "cwd": str(self.wt), "harness": "claude", "session_id": 7})
+        d = runway.status_json(self.cfg, self.root, self.tracker)
+        self.assertEqual((d["review_resumable"], d["review_session"]), (False, None))
+        self.assertIn("folder", str(self.review()))
+
+    def test_a_numeric_session_id_refuses_and_status_still_answers(self):
+        self.review_row(session_id=7)
         d = runway.status_json(self.cfg, self.root, self.tracker)
         self.assertEqual((d["review_resumable"], d["review_session"]), (False, None))
         self.assertIn("session id", str(self.review()))
+
+    def test_a_named_review_resumes_that_one_after_a_newer_review(self):
+        self.review_row(session_id=self.sid)
+        newer = "sess-2"
+        (Path(self.home) / "projects" / "x" / f"{newer}.jsonl").write_text("{}")
+        self.runs({"kind": "review", "ticket": "finish", "cwd": str(self.wt), "harness": "claude", "session_id": newer})
+        self.assertEqual(runway.status_json(self.cfg, self.root, self.tracker)["review_session"], newer)
+        with self.assertRaises(SystemExit):
+            runway.cmd_discuss_review(self.root, self.sid)
+        self.assertEqual(self.resume_fake.calls[-1][1], self.sid)
+        with self.assertRaises(SystemExit) as e:
+            runway.cmd_discuss_review(self.root, "gone")
+        self.assertIn("no finish review with session gone", str(e.exception.code))
 
     def test_status_names_the_review_session(self):
         self.review_row()

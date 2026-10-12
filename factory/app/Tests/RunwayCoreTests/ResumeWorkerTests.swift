@@ -63,6 +63,10 @@ final class ResumeWorkerTests: XCTestCase {
         let b = registry.open(project: "p", ticket: nil, resume: true, reviewSession: "B", spec: spec)
         XCTAssertNotEqual(a.id, b.id)
         XCTAssertEqual(registry.liveCount, 2)
+        // Each tab runs its own review, so Pop out to Terminal reopens A, not the newer B.
+        XCTAssertEqual(tools.discussReviewSession(repo: "/r", session: "A").arguments.last,
+                       "cd '/r' && python3 '/Users/me/My Plugins/runway.py' discuss --review 'A'")
+        XCTAssertTrue(tools.discussReview(repo: "/r", session: "A").arguments.last?.contains("--review 'A'") == true)
     }
 
     func testStatusParsesReviewResumableAndAnOlderEngineLeavesItOff() throws {

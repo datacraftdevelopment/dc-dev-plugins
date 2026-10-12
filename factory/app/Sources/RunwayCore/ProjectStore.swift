@@ -252,10 +252,10 @@ public final class ProjectStore {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
         if sessionPlace == .window {
             sessions.open(project: project.label, ticket: nil, resume: true, reviewSession: reviewSession,
-                          spec: tools.discussReviewSession(repo: repo))
+                          spec: tools.discussReviewSession(repo: repo, session: reviewSession))
             return
         }
-        await launch(tools.discussReview(repo: repo), key: Self.talkKey(project, nil, resume: true))
+        await launch(tools.discussReview(repo: repo, session: reviewSession), key: Self.talkKey(project, nil, resume: true))
     }
 
     /// Opens Terminal on `runway discuss --loop` for the project.
@@ -378,7 +378,7 @@ public final class ProjectStore {
         }
         let command = session.ticket.map {
             session.resume ? tools.discussResume(ticket: $0, repo: repo) : tools.discuss(ticket: $0, repo: repo)
-        } ?? (session.resume ? tools.discussReview(repo: repo) : tools.discussLoop(repo: repo))
+        } ?? (session.resume ? tools.discussReview(repo: repo, session: session.reviewSession) : tools.discussLoop(repo: repo))
         let result = await run(command)
         if !result.succeeded { lastError = result.failureMessage }
     }

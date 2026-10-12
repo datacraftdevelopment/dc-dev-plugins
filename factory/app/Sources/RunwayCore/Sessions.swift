@@ -29,8 +29,8 @@ extension RunwayTools {
     }
 
     /// The same command as `discussReview(repo:)`, run in the pane instead of Terminal.
-    public func discussReviewSession(repo: String) -> LaunchSpec {
-        spec(repo: repo, "discuss --review")
+    public func discussReviewSession(repo: String, session: String? = nil) -> LaunchSpec {
+        spec(repo: repo, reviewTail(session))
     }
 
     private func spec(repo: String, _ tail: String) -> LaunchSpec {
