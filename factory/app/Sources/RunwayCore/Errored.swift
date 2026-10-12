@@ -29,9 +29,12 @@ extension StatusSnapshot {
     /// What a Finished row shows now. The row is history from the runs log, so a ticket that ended "needs you"
     /// keeps that result there for good; once the ticket no longer waits on Joe (answered with a go, or closed in
     /// the tracker, which drops it from status) and has no errored flag, the row reads `answered` instead.
-    /// Without a snapshot the logged result stands.
+    /// Only a status produced after the outcome counts: one taken earlier (or kept after a failed refresh) says
+    /// nothing about whether the new question was answered, so the logged result stands then, as it does when
+    /// either time is unknown. The log keeps minutes, so the status must be a full minute past the outcome.
     public func shownResult(_ finished: FinishedTicket) -> String {
         guard finished.result == "needs-human",
+              let generatedAt, let outcomeAt = finished.finishedAt, generatedAt >= outcomeAt.addingTimeInterval(60),
               !tickets.contains(where: { $0.id == finished.ticket }), errored[finished.ticket] == nil else {
             return finished.result
         }

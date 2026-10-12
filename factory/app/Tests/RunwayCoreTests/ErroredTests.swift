@@ -99,12 +99,10 @@ final class ErroredTests: XCTestCase {
 
     func testFinishedNeedsYouRowReadsAnsweredOnceTheTicketStopsWaiting() throws {
         // W still waits; E errored; R was answered (ready now); #8 was closed, so status no longer lists it.
-        let s = try XCTUnwrap(StatusSnapshot.parse(Data("""
-        {"groups":{"waiting":["W"],"ready_auto":["E","R"]},
-         "tickets":[{"id":"W","status":"needs-human"},{"id":"E","errored":"check-failed"},{"id":"R"}]}
-        """.utf8)))
+        // The outcomes below are logged at 10:00 EDT; this status was produced five minutes later.
+        let s = try snapshot(generatedAt: "2026-10-12T10:05:00-04:00")
         func finished(_ ticket: String, _ result: String) throws -> FinishedTicket {
-            let line = #"{"at":"2026-10-12 10:00 CEST","kind":"outcome","ticket":"\#(ticket)","attempts":2,"result":"\#(result)","detail":"q"}"#
+            let line = #"{"at":"2026-10-12 10:00 EDT","kind":"outcome","ticket":"\#(ticket)","attempts":2,"result":"\#(result)","detail":"q"}"#
             guard case .ticket(let t)? = PanelHistory.rows(Data(line.utf8)).first else { throw XCTSkip("no ticket row") }
             return t
         }
@@ -114,6 +112,21 @@ final class ErroredTests: XCTestCase {
         XCTAssertEqual(s.shownResult(try finished("#8", "needs-human")), "answered")
         XCTAssertEqual(s.shownResult(try finished("R", "done")), "done")
         XCTAssertEqual(s.shownResult(try finished("#8", "stopped")), "stopped")
+
+        // A status from before the outcome (or kept after a failed refresh), within the logged minute, or with no
+        // time at all can't show the new question was answered: the row keeps "needs you".
+        for stale in ["2026-10-12T09:58:00-04:00", "2026-10-12T10:00:30-04:00", nil] {
+            XCTAssertEqual(try snapshot(generatedAt: stale).shownResult(try finished("R", "needs-human")), "needs-human",
+                           "generated_at \(stale ?? "missing")")
+        }
+    }
+
+    private func snapshot(generatedAt: String?) throws -> StatusSnapshot {
+        let stamp = generatedAt.map { #""generated_at":"\#($0)","# } ?? ""
+        return try XCTUnwrap(StatusSnapshot.parse(Data("""
+        {\(stamp)"groups":{"waiting":["W"],"ready_auto":["E","R"]},
+         "tickets":[{"id":"W","status":"needs-human"},{"id":"E","errored":"check-failed"},{"id":"R"}]}
+        """.utf8)))
     }
 
     func testBadgeCountsErroredTickets() {
