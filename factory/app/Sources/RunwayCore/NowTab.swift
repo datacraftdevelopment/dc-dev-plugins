@@ -21,7 +21,7 @@ public struct PhaseStep: Equatable, Sendable {
     public let state: State
 }
 
-/// The Now tab's arithmetic, kept out of the views so it can be tested.
+/// The Running card's arithmetic, kept out of the views so it can be tested.
 public enum NowMath {
     public static let phases = ["sync", "prep", "agent", "check", "merge"]
 
@@ -143,7 +143,7 @@ public struct LogTail: Sendable {
     }
 }
 
-/// One row of `_pm/runway.log` as the Now tab shows it. A run of identical idle lines is one row with a count.
+/// One row of `_pm/runway.log` as the activity drawer shows it. A run of identical idle lines is one row with a count.
 public struct LogEntry: Equatable, Sendable {
     /// `HH:mm` of the first line, or nil for a line that isn't a timestamped event (a continuation line).
     public let time: String?
