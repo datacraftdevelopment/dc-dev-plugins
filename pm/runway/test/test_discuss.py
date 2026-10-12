@@ -414,6 +414,17 @@ class DiscussReview(ResumeBase):
         self.assertIn(needle, str(code))
         self.assertEqual(self.resume_fake.calls, [])
 
+    def test_a_malformed_row_refuses_and_status_still_answers(self):
+        self.review_row(cwd=123)
+        self.runs({"kind": "review", "ticket": "finish", "cwd": str(self.wt), "harness": "claude", "session_id": 7})
+        d = runway.status_json(self.cfg, self.root, self.tracker)
+        self.assertEqual((d["review_resumable"], d["review_session"]), (False, None))
+        self.assertIn("session id", str(self.review()))
+
+    def test_status_names_the_review_session(self):
+        self.review_row()
+        self.assertEqual(runway.status_json(self.cfg, self.root, self.tracker)["review_session"], self.sid)
+
     def test_no_review_logged(self):
         self.refuses_review("no finish review")
 

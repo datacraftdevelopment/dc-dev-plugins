@@ -55,9 +55,21 @@ final class ResumeWorkerTests: XCTestCase {
         XCTAssertEqual(review.title, "last review")
     }
 
+    func testANewerReviewOpensANewTabBesideTheOlderOne() {
+        let registry = SessionRegistry()
+        let spec = tools.discussReviewSession(repo: "/r")
+        let a = registry.open(project: "p", ticket: nil, resume: true, reviewSession: "A", spec: spec)
+        XCTAssertEqual(registry.open(project: "p", ticket: nil, resume: true, reviewSession: "A", spec: spec).id, a.id)
+        let b = registry.open(project: "p", ticket: nil, resume: true, reviewSession: "B", spec: spec)
+        XCTAssertNotEqual(a.id, b.id)
+        XCTAssertEqual(registry.liveCount, 2)
+    }
+
     func testStatusParsesReviewResumableAndAnOlderEngineLeavesItOff() throws {
         let on = Data(#"{"version":1,"groups":{},"tickets":[],"review_resumable":true}"#.utf8)
         XCTAssertTrue(try XCTUnwrap(QueueStatus.parse(on)).reviewResumable)
+        let named = Data(#"{"version":1,"groups":{},"tickets":[],"review_resumable":true,"review_session":"s1"}"#.utf8)
+        XCTAssertEqual(try XCTUnwrap(QueueStatus.parse(named)).reviewSession, "s1")
         let old = Data(#"{"version":1,"groups":{},"tickets":[]}"#.utf8)
         XCTAssertFalse(try XCTUnwrap(QueueStatus.parse(old)).reviewResumable)
     }

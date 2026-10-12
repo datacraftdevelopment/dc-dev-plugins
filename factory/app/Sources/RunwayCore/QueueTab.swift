@@ -37,6 +37,8 @@ public struct QueueStatus: Equatable, Sendable {
     let groups: [String: [String]]
     /// The last finish review was a claude session `discuss --review` can reopen; false from an older engine.
     public var reviewResumable = false
+    /// That review's session id, so a pane left open on an older review isn't mistaken for this one.
+    public var reviewSession: String? = nil
 
     /// Ticket ids in one of status's groups (`waiting`, `running`, `ready_auto`, `ready_prep`, `blocked`, `done`), in queue order.
     public func group(_ key: String) -> [String] { groups[key] ?? [] }
@@ -59,7 +61,8 @@ public struct QueueStatus: Equatable, Sendable {
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }
-        return QueueStatus(tickets: tickets, groups: groups, reviewResumable: root["review_resumable"] as? Bool ?? false)
+        return QueueStatus(tickets: tickets, groups: groups, reviewResumable: root["review_resumable"] as? Bool ?? false,
+                           reviewSession: root["review_session"] as? String)
     }
 
     /// Tickets waiting on a go or no (the `waiting` group, not tickets that merely need prep).

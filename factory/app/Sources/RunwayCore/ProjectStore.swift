@@ -247,10 +247,12 @@ public final class ProjectStore {
     }
 
     /// Opens the last finish review's own conversation (`runway discuss --review`), in the pane or Terminal.
-    public func openLastReview(_ project: Project) async {
+    /// `reviewSession` is status's `review_session`: a pane still open on an older review gets a new tab beside it.
+    public func openLastReview(_ project: Project, reviewSession: String?) async {
         guard let repo = project.repoPath, let tools = requireTools() else { return }
         if sessionPlace == .window {
-            sessions.open(project: project.label, ticket: nil, resume: true, spec: tools.discussReviewSession(repo: repo))
+            sessions.open(project: project.label, ticket: nil, resume: true, reviewSession: reviewSession,
+                          spec: tools.discussReviewSession(repo: repo))
             return
         }
         await launch(tools.discussReview(repo: repo), key: Self.talkKey(project, nil, resume: true))

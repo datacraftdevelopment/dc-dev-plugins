@@ -47,6 +47,8 @@ public struct Session: Identifiable, Equatable, Sendable {
     /// True for "Resume worker" (the ticket's own claude session, not a fresh one) and for "Open last review".
     public var resume = false
     public var alive = true
+    /// For "Open last review": the review's session id, so a newer review opens a new tab.
+    public var reviewSession: String?
     /// A command session (a sign-in, a chore): what it is, so its end can be followed up, its tab name,
     /// and the shell line "Pop out to Terminal" runs.
     public var command: CommandSession?
@@ -85,12 +87,15 @@ public final class SessionRegistry {
     public var liveCount: Int { sessions.filter(\.alive).count }
 
     @discardableResult
-    public func open(project: String, ticket: String?, resume: Bool = false, spec: LaunchSpec) -> Session {
-        if let existing = sessions.first(where: { $0.alive && $0.command == nil && $0.project == project && $0.ticket == ticket && $0.resume == resume }) {
+    public func open(project: String, ticket: String?, resume: Bool = false, reviewSession: String? = nil,
+                     spec: LaunchSpec) -> Session {
+        if let existing = sessions.first(where: { $0.alive && $0.command == nil && $0.project == project && $0.ticket == ticket
+                                                  && $0.resume == resume && $0.reviewSession == reviewSession }) {
             selected = existing.id
             return existing
         }
-        let session = Session(id: UUID(), project: project, ticket: ticket, spec: spec, resume: resume)
+        var session = Session(id: UUID(), project: project, ticket: ticket, spec: spec, resume: resume)
+        session.reviewSession = reviewSession
         sessions.append(session)
         selected = session.id
         return session

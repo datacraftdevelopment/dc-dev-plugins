@@ -167,7 +167,7 @@ struct BoardTab: View {
         let project = entry.project
         Button("Open last review") {
             Task {
-                await store.openLastReview(project)
+                await store.openLastReview(project, reviewSession: feed.queue?.reviewSession)
             }
         }
         .disabled(project.repoPath == nil)

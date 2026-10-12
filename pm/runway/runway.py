@@ -42,6 +42,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
    "groups": {"waiting": [id...], "running": [...], "ready_auto": [...],
               "ready_prep": [...], "blocked": [...], "done": [...]},
    "run_now": id|null, "finish": {"verdict", "reason"}, "idle_reason": str|null, "review_resumable": bool,
+   "review_session": str|null,
    "tickets": [{"id", "title", "url", "status", "gate", "blocked_by": [id...],
                 "waiting_on", "packet", "harness", "claimed_by", "errored", "next_step", "reason", "resumable"}]}
 
@@ -81,6 +82,7 @@ Version 1 (additive changes keep the version; renames or removals bump it):
   resumable  true when the ticket's latest attempt was a claude session with a session id, so
            `runway discuss <ticket> --resume` can reopen it; false otherwise. A done ticket counts too.
   review_resumable  true when the last finish review was a claude session `runway discuss --review` can reopen.
+  review_session    that review's session id when review_resumable, else null; a new finish changes it.
 
 `runway discuss <ticket>` writes _pm/discuss/<id>.md (ticket text, packet, Runway's park comment, blockers,
 attempts with kind, check exit and transcript path, the ticket's log lines) and replaces the process with an
@@ -2374,14 +2376,14 @@ def review_target(root: Path) -> tuple:
     harness = r.get("harness") or "claude"
     if harness != "claude":
         return "", f"the last review ran on {harness}, and only a single claude review resumes"
-    sid = r.get("session_id")
-    if not sid:
+    sid, cwd = r.get("session_id"), r.get("cwd")
+    if not sid or not isinstance(sid, str):
         return "", "the last review has no session id"
     if not transcript(sid):
         return "", f"the transcript for session {sid} was not found on this machine"
-    if not r.get("cwd") or not Path(r["cwd"]).is_dir():
+    if not cwd or not isinstance(cwd, str) or not Path(cwd).is_dir():
         return "", "the folder the review ran in is gone"
-    return Path(r["cwd"]), sid
+    return Path(cwd), sid
 
 
 def resume_target(root: Path, t) -> tuple:
@@ -2885,6 +2887,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
         return f"{t.effort}/{b}" if b.isdigit() else b  # markdown blockers are bare numbers
 
     errored = errored_kinds(root)
+    review_cwd, review_sid = review_target(root)
     resumable = {t.id: is_resumable(root, t.id, f"runway/{t.effort}-{t.slug}") for t in loaded if t.id in steps}
 
     def entry(t) -> dict:
@@ -2903,7 +2906,7 @@ def status_json(cfg: dict, root: Path, tracker) -> dict:
             "groups": {k: [t.id for t in ts] for k, ts in groups.items()},
             "run_now": qp.run_now.id if qp.run_now else None,
             "finish": {"verdict": qp.finish.verdict, "reason": qp.finish.reason},
-            "idle_reason": qp.idle_reason, "review_resumable": bool(review_target(root)[0]),
+            "idle_reason": qp.idle_reason, "review_resumable": bool(review_cwd), "review_session": review_sid if review_cwd else None,
             "tickets": [entry(t) for t in loaded if t.id in steps]}
 
 
