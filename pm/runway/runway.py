@@ -282,8 +282,10 @@ def active_pause(clean: bool = True) -> dict | None:
     except (OSError, ValueError):
         data = {"until": None, "mode": "finish", "at": None}  # unreadable: stay paused, never run on a guess
     if pause_expired(data):
-        if clean:  # under the pause lock, and only if the pause there now is still expired
-            remove_pause_if(pause_expired)
+        # Under the pause lock, and only if the pause there now is still expired. When a fresh pause replaced it
+        # meanwhile, that one is in force: report it, not None.
+        if clean and not remove_pause_if(pause_expired):
+            return active_pause(clean=False)
         return None
     return data
 

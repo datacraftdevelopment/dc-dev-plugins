@@ -108,9 +108,11 @@ class PauseReason(unittest.TestCase):
             return real(data)
         runway.pause_expired = expired_then_replaced
         try:
-            self.assertIsNone(runway.active_pause())
+            seen = runway.active_pause()
         finally:
             runway.pause_expired = real
+        self.assertEqual(seen["mode"], "stop")  # this very call reports the stop now in force
+        self.assertTrue(runway.stop_requested())
         self.assertEqual(runway.active_pause(clean=False)["mode"], "stop")
 
     def test_expired_pause_is_still_cleaned_up(self):
