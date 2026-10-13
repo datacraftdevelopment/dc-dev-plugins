@@ -215,7 +215,7 @@ public final class ProjectStore {
             updateResult = .failed(step: "Update Runway", output: "Can't find the engine checkout. Choose it under Scripts.")
             return
         }
-        let heartbeats = projects.compactMap(\.repoPath).map { Heartbeat.load(repoPath: $0) }
+        let heartbeats = (projects + hiddenProjects).compactMap(\.repoPath).map { Heartbeat.load(repoPath: $0) }
         updating = true
         let outcome = await RunwayUpdate.run(commands: UpdateCommands(checkout: engineCheckout),
                                              midTick: RunwayUpdate.midTick(heartbeats, pidAlive: pidAlive),

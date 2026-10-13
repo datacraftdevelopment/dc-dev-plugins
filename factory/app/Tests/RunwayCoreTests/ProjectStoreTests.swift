@@ -431,6 +431,24 @@ final class ProjectStoreTests: XCTestCase {
 
     private func pulls() -> Int { ran.filter { $0.arguments.contains("--ff-only") }.count }
 
+    func testHiddenProjectsLoopMidTickStillBlocksThePull() async throws {
+        try installPlist()
+        afterRun = { [unowned self] command in
+            let line = command.arguments.joined(separator: " ")
+            self.nextResult = CommandResult(status: 0, stdout: line.contains("--abbrev-ref") ? "main" : "", stderr: "")
+        }
+        try Data(#"{"phase": "agent", "pid": 42}"#.utf8).write(to: repo.appendingPathComponent("_pm/runway-state.json"))
+        let store = makeStore()
+        store.setCheckout("/co")
+        store.refresh()
+        store.hide("com.joe.runway.demo")
+        XCTAssertTrue(store.entries.isEmpty)
+        store.updateOnLaunch(build: "8")
+        for _ in 0..<50 where store.updateResult == nil { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(store.updateResult, .waiting)
+        XCTAssertEqual(pulls(), 0, "a hidden project's live loop still blocks the pull")
+    }
+
     func testNewBuildUpdatesOnceAfterTheTickInFlight() async throws {
         try installPlist()
         afterRun = { [unowned self] command in
