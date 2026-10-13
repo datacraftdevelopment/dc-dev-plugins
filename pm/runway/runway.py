@@ -1571,15 +1571,16 @@ Triage the review findings with these rules:
 5. The lowered-bar scan section lists hits from a deterministic diff scan (deleted or skipped tests, new
    suppressions, lowered thresholds, stubs, edits to the check). Every hit is BLOCKING, and you do not repeat
    them in "blocking". Clear a hit only when a done ticket's acceptance criteria explicitly call for that exact
-   change (for example "remove the obsolete test for X"): list its id in "cleared" with that criterion quoted
-   verbatim from the ticket. A hit you cannot tie to a quoted criterion stays blocking.
+   change (for example "remove the obsolete test for X"): list its id in "cleared" with that ticket, the
+   criterion's id from the inventory, and the criterion quoted verbatim. Only an inventory criterion clears a hit;
+   background text, headings and other tickets never do. A hit you cannot tie to one stays blocking.
 6. Never ask anyone anything. Make your best judgment.
 
 Reply with one JSON object and nothing after it:
 {{"verdict": "pass" or "fail",
   "blocking": ["finding, with file:line and why"],
   "non_blocking": ["finding"],
-  "cleared": [{{"id": "lowered-bar hit id, e.g. LB:removed-test:tests/test_x.py:5", "quote": "the ticket criterion, verbatim"}}],
+  "cleared": [{{"id": "lowered-bar hit id, e.g. LB:removed-test:tests/test_x.py:5", "ticket": "id", "criterion": "criterion id from inventory", "quote": "the criterion, verbatim"}}],
   "criteria": [{{"ticket": "id", "id": "criterion id from inventory", "criterion": "text", "evidence": "what shows it, or empty if none"}}]}}
 "verdict" is "pass" only when "blocking" is empty.
 
@@ -2244,7 +2245,7 @@ def finish(cfg: dict, root: Path, tracker, force: bool = False) -> bool:
                                                    findings=findings), "finish", "judge", harness=hp)
     valid_reviews = sum(1 for r_ in seat_rows if r_["status"] in ("PASS", "FAIL"))
     lb_blocking, lb_cleared = lowered_bar.apply_clearances(
-        lb, None if jr.failure else judge_cleared(judge_text), ttext)
+        lb, None if jr.failure else judge_cleared(judge_text), expected)
     verdict = decide_verdict(c.returncode, None if jr.failure else parse_verdict(judge_text), valid_reviews,
                              expected, inventory_errors,
                              extra_blocking=bug_check_blocking(bc, sha, bcfg) + lb_blocking)

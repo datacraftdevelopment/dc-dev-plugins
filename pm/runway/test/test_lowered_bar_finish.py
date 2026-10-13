@@ -15,6 +15,12 @@ from test_fix_ticket import FixTicket, PASS  # noqa: E402
 HIT_ID = "LB:new-suppression:a.py:1"
 
 
+def inventory(prompt):
+    """The expected criterion inventory the judge prompt carries."""
+    return json.loads(prompt.split("Expected criterion inventory (cover each ticket/id exactly once):\n")[1]
+                      .split("\n\nReview findings")[0])
+
+
 class Base(FixTicket):
     merge = "shadow"
     judge_edit = None
@@ -37,7 +43,8 @@ class Base(FixTicket):
             self.judge_prompts.append(prompt)
         r, text = super()._agent(cfg, root, cmd, cwd, prompt, ticket, kind, *a, **k)
         if kind == "judge" and self.judge_edit:
-            text = json.dumps({**json.loads(text), **self.judge_edit})
+            edit = self.judge_edit(inventory(prompt)) if callable(self.judge_edit) else self.judge_edit
+            text = json.dumps({**json.loads(text), **edit})
         return r, text
 
     def last_verdict(self):
@@ -55,11 +62,17 @@ class InFinish(Base):
         self.assertTrue(any(HIT_ID in b for b in v["blocking"]), v["blocking"])
 
     def test_ticket_quote_clears_it(self):
-        self.judge_edit = {"cleared": [{"id": HIT_ID, "quote": "it works"}]}
+        self.judge_edit = lambda inv: {"cleared": [{"id": HIT_ID, "ticket": inv[0]["ticket"], "criterion": inv[0]["id"],
+                                                    "quote": "it works"}]}
         self.finish()
         v = self.last_verdict()
         self.assertEqual(v["verdict"], "pass")
         self.assertTrue(any(HIT_ID in n and "Cleared" in n for n in v["non_blocking"]), v["non_blocking"])
+
+    def test_quote_with_no_criterion_id_does_not_clear_it(self):
+        self.judge_edit = {"cleared": [{"id": HIT_ID, "quote": "it works"}]}
+        self.finish()
+        self.assertEqual(self.last_verdict()["verdict"], "fail")
 
     def test_invented_quote_does_not_clear_it(self):
         self.judge_edit = {"cleared": [{"id": HIT_ID, "quote": "looks fine to me, honestly"}]}

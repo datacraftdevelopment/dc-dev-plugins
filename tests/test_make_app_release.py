@@ -31,11 +31,16 @@ def repo(tmp_path):
     git(root, "config", "user.name", "t")
     git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "init")
-    # a gh that says whether the tag exists, per FAKE_TAG_EXISTS
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True, capture_output=True)
+    git(root, "remote", "add", "origin", str(origin))
+    git(root, "push", "-q", "origin", "main")
+    # a gh that is signed in unless FAKE_GH_SIGNED_OUT, and says whether the release exists, per FAKE_TAG_EXISTS
     bindir = tmp_path / "bin"
     bindir.mkdir()
     gh = bindir / "gh"
-    gh.write_text('#!/bin/sh\n[ "$1 $2" = "release view" ] && [ -n "$FAKE_TAG_EXISTS" ] && exit 0\nexit 1\n')
+    gh.write_text('#!/bin/sh\n[ "$1 $2" = "auth status" ] && { [ -n "$FAKE_GH_SIGNED_OUT" ] && exit 1; exit 0; }\n'
+                  '[ "$1 $2" = "release view" ] && [ -n "$FAKE_TAG_EXISTS" ] && exit 0\nexit 1\n')
     gh.chmod(0o755)
     return root
 
@@ -65,6 +70,31 @@ def test_refuses_branch_that_is_not_main(repo):
 def test_refuses_existing_tag(repo):
     r = release(repo, FAKE_TAG_EXISTS="1")
     assert r.returncode != 0 and "runway-app-v1.2.3 already exists" in r.stderr
+
+
+def test_refuses_local_tag_with_no_release(repo):
+    git(repo, "tag", "runway-app-v1.2.3")
+    r = release(repo)
+    assert r.returncode != 0 and "runway-app-v1.2.3 already exists as a local git tag" in r.stderr
+
+
+def test_refuses_remote_tag_with_no_release(repo):
+    git(repo, "tag", "runway-app-v1.2.3")
+    git(repo, "push", "-q", "origin", "runway-app-v1.2.3")
+    git(repo, "tag", "-d", "runway-app-v1.2.3")
+    r = release(repo)
+    assert r.returncode != 0 and "runway-app-v1.2.3 already exists as a tag on origin" in r.stderr
+
+
+def test_refuses_when_origin_cannot_be_checked(repo):
+    git(repo, "remote", "set-url", "origin", str(repo.parent / "missing.git"))
+    r = release(repo)
+    assert r.returncode != 0 and "could not check origin" in r.stderr
+
+
+def test_refuses_signed_out_gh(repo):
+    r = release(repo, FAKE_GH_SIGNED_OUT="1")
+    assert r.returncode != 0 and "gh is missing or not signed in" in r.stderr
 
 
 def test_refuses_when_check_fails(repo):

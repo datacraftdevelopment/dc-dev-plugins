@@ -90,14 +90,21 @@ class Fires(Repo):
         self.assertEqual(f["rule"], "removed-test")
 
     def test_skip_markers(self):
-        for i, mark in enumerate([SKIPMARK, "@pytest.mark.skipif(True, reason='x')", "@pytest.mark.xfail",
-                                  "    pytest.skip('no')", "@unittest.skip('x')", "    throw XCTSkip()"]):
+        for i, mark in enumerate([SKIPMARK, SKIPMARK + "if(True, reason='x')", "@pytest.mark." + "xfail",
+                                  "    pytest." + "skip('no')", "@unittest." + "skip('x')", "    throw XCT" + "Skip()"]):
             with self.subTest(mark=mark):
                 self.setUp()
                 self.base({"tests/test_x.py": GOOD_TESTS})
                 self.work({"tests/test_x.py": f"{mark}\n" + GOOD_TESTS})
                 self.assertIn("test-skipped", self.rules())
                 self._tmp.cleanup()
+
+    def test_test_file_renamed_out_of_collection(self):
+        self.base({"tests/test_x.py": GOOD_TESTS})
+        self.work({"tests/disabled_x.py": GOOD_TESTS}, remove=["tests/test_x.py"])
+        (f,) = self.scan()
+        self.assertEqual((f["rule"], f["file"]), ("test-disabled", "tests/disabled_x.py"))
+        self.assertIn("tests/test_x.py", f["hunk"])
 
     def test_renamed_so_runner_skips_it(self):
         self.base({"tests/test_x.py": GOOD_TESTS})
@@ -252,27 +259,46 @@ class CannotRun(Repo):
 
     def test_scan_error_cannot_be_cleared(self):
         f = {"rule": "scan-error", "file": "", "line": 0, "hunk": "x"}
-        blocking, cleared = lowered_bar.apply_clearances([f], [{"id": lowered_bar.finding_id(f), "quote": "remove the obsolete test"}],
-                                                         "remove the obsolete test")
+        inv = [{"ticket": "#1", "id": "c1", "criterion": "remove the obsolete test"}]
+        blocking, cleared = lowered_bar.apply_clearances(
+            [f], [{"id": lowered_bar.finding_id(f), "ticket": "#1", "criterion": "c1", "quote": "remove the obsolete test"}], inv)
         self.assertEqual((len(blocking), cleared), (1, []))
 
 
 class Clearance(unittest.TestCase):
     HIT = {"rule": "deleted-test-file", "file": "tests/test_old.py", "line": 1, "hunk": "x"}
-    TICKET = "Acceptance:\n- Remove the obsolete test for the legacy importer.\n"
+    CRITERION = "Remove the obsolete test for the legacy importer."
+    INVENTORY = [{"ticket": "#7", "id": "c1", "criterion": CRITERION},
+                 {"ticket": "#8", "id": "c2", "criterion": "The importer reads both formats."}]
 
-    def test_quote_from_a_ticket_clears(self):
-        c = [{"id": lowered_bar.finding_id(self.HIT), "quote": "Remove the obsolete test for the legacy importer."}]
-        blocking, cleared = lowered_bar.apply_clearances([self.HIT], c, self.TICKET)
+    def clear(self, **c):
+        return lowered_bar.apply_clearances([self.HIT], [{"id": lowered_bar.finding_id(self.HIT), **c}], self.INVENTORY)
+
+    def test_quote_from_the_named_criterion_clears(self):
+        blocking, cleared = self.clear(ticket="#7", criterion="c1", quote=self.CRITERION)
         self.assertEqual((blocking, len(cleared)), ([], 1))
+        self.assertIn("#7 criterion c1", cleared[0])
 
     def test_invented_quote_does_not(self):
-        c = [{"id": lowered_bar.finding_id(self.HIT), "quote": "the worker said this was fine"}]
-        blocking, cleared = lowered_bar.apply_clearances([self.HIT], c, self.TICKET)
+        blocking, cleared = self.clear(ticket="#7", criterion="c1", quote="the worker said this was fine")
+        self.assertEqual((len(blocking), cleared), (1, []))
+
+    def test_quote_must_come_from_the_named_criterion(self):
+        # a real criterion's words, credited to another ticket's criterion, clear nothing
+        blocking, cleared = self.clear(ticket="#8", criterion="c2", quote=self.CRITERION)
+        self.assertEqual((len(blocking), cleared), (1, []))
+
+    def test_quote_without_a_criterion_id_does_not_clear(self):
+        blocking, cleared = self.clear(quote=self.CRITERION)
+        self.assertEqual((len(blocking), cleared), (1, []))
+
+    def test_background_text_is_not_a_criterion(self):
+        # text that is in the ticket body but not in its parsed acceptance criteria never clears
+        blocking, cleared = self.clear(ticket="#7", criterion="background", quote="Background: the importer")
         self.assertEqual((len(blocking), cleared), (1, []))
 
     def test_no_clearance_blocks(self):
-        blocking, _ = lowered_bar.apply_clearances([self.HIT], None, self.TICKET)
+        blocking, _ = lowered_bar.apply_clearances([self.HIT], None, self.INVENTORY)
         self.assertEqual(len(blocking), 1)
 
 

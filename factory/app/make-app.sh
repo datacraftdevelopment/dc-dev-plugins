@@ -38,7 +38,17 @@ if [ "$RELEASE" = 1 ]; then
   [ -n "${RUNWAY_SIGN_IDENTITY:-}" ] || die "RUNWAY_SIGN_IDENTITY is not set (the Developer ID Application identity to sign with)"
   [ "$DRY" = 1 ] || [ -n "${RUNWAY_NOTARY_PROFILE:-}" ] || die "RUNWAY_NOTARY_PROFILE is not set (the notarytool keychain profile)"
   [ -s sparkle-public-key ] || die "factory/app/sparkle-public-key is missing; run Sparkle's generate_keys and commit the public key"
+  # A missing or signed-out gh would make "no release" look like the answer, so check it first.
+  command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 || refuse "gh is missing or not signed in (gh auth login)"
   if gh release view "$TAG" >/dev/null 2>&1; then refuse "$TAG already exists as a GitHub release"; fi
+  # A tag with no release would be reused by gh release create, so the binary and the tagged source could disagree.
+  if git -C "$REPO" rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then refuse "$TAG already exists as a local git tag"; fi
+  rc=0; git -C "$REPO" ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1 || rc=$?
+  case "$rc" in
+    0) refuse "$TAG already exists as a tag on origin" ;;
+    2) ;;
+    *) refuse "could not check origin for $TAG (git ls-remote exited $rc)" ;;
+  esac
   echo "== check"
   CHECK_CMD="${RUNWAY_RELEASE_CHECK_CMD:-bash $REPO/factory/scripts/check.sh}"
   bash -c "$CHECK_CMD" || refuse "check failed ($CHECK_CMD)"

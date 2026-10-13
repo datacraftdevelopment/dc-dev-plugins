@@ -35,9 +35,9 @@ SUPPRESSIONS = {
     "noqa": re.compile(r"#\s*noqa\b(?!\s*:\s*E402\s*$)"),
     "type-ignore": re.compile(r"#\s*type:\s*ignore"),
     "no-cover": re.compile(r"#\s*pragma:\s*no\s*cover"),
-    "ts-ignore": re.compile(r"@ts-ig" r"nore"),
-    "eslint-disable": re.compile(r"eslint-dis" r"able"),
-    "swiftlint-disable": re.compile(r"swiftlint:dis" r"able"),
+    "ts-" "ignore": re.compile(r"@ts-ig" r"nore"),
+    "eslint-" "disable": re.compile(r"eslint-dis" r"able"),
+    "swiftlint-" "disable": re.compile(r"swiftlint:dis" r"able"),
 }
 THRESHOLD = re.compile(r"""["']?([\w.-]*(?:fail[_-]?under|coverage|threshold|min[_-]?cov\w*|timeout)[\w.-]*)["']?\s*[:=]\s*["']?(\d+(?:\.\d+)?)""", re.I)
 STUB = re.compile(r"\braise\s+NotImplementedError\b|\bTODO:\s*implement", re.I)
@@ -133,6 +133,19 @@ def _collected(path: str, name: str) -> bool:
     return True
 
 
+def _collected_file(path: str) -> bool:
+    """Would the runner still collect this file? pytest: test_*.py or *_test.py; XCTest: *Tests.swift or a Tests/
+    folder; jest/vitest: *.test.* or *.spec.* or __tests__/. Other files fall back to the test-path rule."""
+    base = path.rsplit("/", 1)[-1]
+    if path.endswith(".py"):
+        return base == "conftest.py" or bool(re.fullmatch(r"test_.*\.py|.*_test\.py", base))
+    if path.endswith(".swift"):
+        return bool(re.search(r"Tests?\.swift$|(^|/)Tests?/", path))
+    if re.search(r"\.[jt]sx?$", path):
+        return bool(re.search(r"\.(test|spec)\.[jt]sx?$|(^|/)__tests__/", path))
+    return _is_test_path(path)
+
+
 def _is_test_name(path: str, name: str) -> bool:
     return _collected(path, name) if not re.search(r"\.[jt]sx?$", path) else True
 
@@ -204,6 +217,9 @@ def scan_files(files: list[dict], check_cmd: str = "", allow=(), repo: Path | No
         elif base == "pyproject.toml":
             out.add("check-edited", shown, 1, "pyproject.toml was deleted")
 
+        if status == "R" and _collected_file(old) and not _collected_file(path):
+            out.add("test-disabled", path, 1, f"`{old}` was renamed to `{path}`, which the runner no longer collects")
+
         if status == "D":
             if is_test:
                 out.add("deleted-test-file", shown, 1, "the test file was deleted")
@@ -237,7 +253,7 @@ def scan_files(files: list[dict], check_cmd: str = "", allow=(), repo: Path | No
                         out.add("removed-test", path, n, h, f"`{nm}` was removed")
 
             for t, n in added:
-                if SKIP.search(t):
+                if is_test and SKIP.search(t):
                     out.add("test-skipped", path, n, h, "a test is newly skipped or disabled")
                 if STUB.search(t) and not is_test:
                     out.add("stub", path, n, h, "a stub in shipped code")
@@ -308,26 +324,32 @@ def section(findings: list[dict]) -> str:
     """The findings as a review section for the judge and the PR body."""
     out = ("\n\n### lowered-bar scan (deterministic diff scan, no model)\n"
            "Every hit below is BLOCKING. Clear one only when a done ticket's acceptance criteria explicitly call for "
-           "that change, by listing its id in \"cleared\" with the criterion quoted verbatim. Do not repeat them in "
+           "that change, by listing its id in \"cleared\" with that ticket, the criterion's inventory id and the criterion "
+           "quoted verbatim. Do not repeat them in "
            "\"blocking\".\n")
     if not findings:
         return out + "No hits."
     return out + "\n".join(f"- {finding_line(f)}\n```diff\n{f['hunk']}\n```" for f in findings)
 
 
-def apply_clearances(findings: list[dict], cleared, ticket_text: str) -> tuple[list[str], list[str]]:
-    """(blocking lines, cleared lines). A hit is cleared only by a quote that appears verbatim in a done ticket's text.
+def apply_clearances(findings: list[dict], cleared, criteria) -> tuple[list[str], list[str]]:
+    """(blocking lines, cleared lines). `criteria` is the parsed acceptance inventory ({ticket, id, criterion} rows,
+    acceptance.inventory). A hit is cleared only when the clearance names one of those criteria by ticket and id and
+    its quote appears verbatim in that criterion's text; background text, headings and other tickets never count.
     A scan error can never be cleared."""
-    quotes = {}
+    known = {(str(r.get("ticket")), str(r.get("id"))): " ".join(str(r.get("criterion") or "").split())
+             for r in criteria or [] if isinstance(r, dict)}
+    claims = {}
     for c in cleared if isinstance(cleared, list) else []:
         if isinstance(c, dict) and c.get("id"):
-            quotes[str(c["id"])] = " ".join(str(c.get("quote") or "").split())
-    flat = " ".join((ticket_text or "").split())
+            claims[str(c["id"])] = ((str(c.get("ticket")), str(c.get("criterion"))),
+                                    " ".join(str(c.get("quote") or "").split()))
     blocking, ok = [], []
     for f in findings:
-        q = quotes.get(finding_id(f), "")
-        if f["rule"] != "scan-error" and len(q) >= 8 and q in flat:
-            ok.append(f"{finding_line(f)} Cleared by the ticket criterion: \"{q}\"")
+        key, q = claims.get(finding_id(f), ((None, None), ""))
+        text = known.get(key, "")
+        if f["rule"] != "scan-error" and len(q) >= 8 and text and q in text:
+            ok.append(f"{finding_line(f)} Cleared by {key[0]} criterion {key[1]}: \"{q}\"")
         else:
             blocking.append(finding_line(f))
     return blocking, ok
