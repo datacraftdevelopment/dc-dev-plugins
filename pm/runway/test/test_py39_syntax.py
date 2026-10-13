@@ -23,17 +23,26 @@ def multiline_fstring_lines(src):
     return bad
 
 
-@unittest.skipIf(sys.version_info < (3, 12), "needs the 3.12+ tokenizer to see f-string tokens")
 class Py39Syntax(unittest.TestCase):
+    """On 3.12+ the tokenizer shows f-string tokens, so look for a field that spans lines. On an older python3
+    the file itself is the test: it must compile there."""
+
     def test_no_fstring_field_spans_lines(self):
         for path in sorted(RUNWAY.glob("*.py")):
             with self.subTest(file=path.name):
-                self.assertEqual(multiline_fstring_lines(path.read_text()), [],
-                                 f"{path.name}: f-string field spans lines")
+                src = path.read_text()
+                if sys.version_info >= (3, 12):
+                    self.assertEqual(multiline_fstring_lines(src), [], f"{path.name}: f-string field spans lines")
+                else:
+                    compile(src, str(path), "exec")
 
     def test_detector_flags_the_known_bad_shape(self):
         bad = 'x = f"a ({s or \'t \'\n    + str(1)})"\n'
-        self.assertTrue(multiline_fstring_lines(bad))
+        if sys.version_info >= (3, 12):
+            self.assertTrue(multiline_fstring_lines(bad))
+        else:
+            with self.assertRaises(SyntaxError):
+                compile(bad, "bad.py", "exec")
 
 
 if __name__ == "__main__":
