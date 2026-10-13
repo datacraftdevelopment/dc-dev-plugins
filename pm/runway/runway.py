@@ -1991,8 +1991,8 @@ def bug_check(cfg: dict, root: Path, wt: Path, done: list) -> dict:
         subtype = str(meta.get("subtype") or "")
         moved = sh(["git", "rev-parse", "HEAD"], wt).stdout.strip() != head
         if r.returncode == 124 or subtype.startswith("error_max"):
-            res.update(status="budget_exhausted", detail=f"stopped by a limit ({subtype or 'timed out after '
-                                                                                 + str(bc['timeout_s']) + 's'})")
+            limit = subtype or f"timed out after {bc['timeout_s']}s"
+            res.update(status="budget_exhausted", detail=f"stopped by a limit ({limit})")
         elif getattr(r, "auth", False) or r.returncode == 127:
             res.update(status="unavailable", detail=(r.failure or "not available").splitlines()[0][:200])
         elif r.failure:
