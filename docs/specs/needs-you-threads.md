@@ -1,6 +1,6 @@
 # Spec: everything that needs Joe becomes a thread in the project
 
-Tracker entry: filled in when the tickets are filed.
+Tracker entry: #99 (tickets #100-#102, its sub-issues).
 
 ## Problem
 
