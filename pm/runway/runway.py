@@ -1650,6 +1650,7 @@ def decide_verdict(check_exit: int, parsed, valid_reviews=None, expected=None, i
     blocking.extend(inventory_errors)
     blocking.extend(extra_blocking)
     if expected is not None:
+        criteria = acceptance.canonical(expected, criteria)
         blocking.extend(acceptance.coverage(expected, criteria))
     for c in criteria:
         if not c["evidence"]:
