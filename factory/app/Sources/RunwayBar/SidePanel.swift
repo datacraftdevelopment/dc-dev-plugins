@@ -98,7 +98,7 @@ private struct ProjectNow: View {
             header(needsYouCount: NeedsYouRow.rows(from: snapshot).count)
             NeedsYouSection(store: store, entry: entry, rows: NeedsYouRow.rows(from: snapshot),
                             highlighted: highlightNeedsYou, open: open)
-            if !queued.isEmpty { upNext(queued, snapshot: snapshot) }
+            if !queued.isEmpty || snapshot?.idleReason != nil { upNext(queued, snapshot: snapshot) }
             if case .error = entry.status.state {
                 errorCard
             } else if let heartbeat, let stopped = store.stoppedLine(heartbeat) {
@@ -205,6 +205,11 @@ private struct ProjectNow: View {
         return VStack(alignment: .leading, spacing: 2) {
             SectionLabel(text: "Up next · \(queued.count)",
                          trailing: queued.contains { $0.kind == .prep } ? "some need prep" : nil)
+            // The engine's word on why nothing runs; no ticket is marked "next" then.
+            if snapshot?.hasPlan == true, snapshot?.runNow == nil, let idle = snapshot?.idleReason {
+                Text(idle).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
             if hidden > 0 || showAllQueued && queued.count > Self.queueShown {
                 Button { showAllQueued.toggle() } label: {
                     Text(showAllQueued ? "Show fewer" : "+\(hidden) more").font(.caption).foregroundStyle(.secondary)
@@ -212,7 +217,7 @@ private struct ProjectNow: View {
                 .buttonStyle(.borderless).padding(.horizontal, 4)
             }
             ForEach(Array(shown.enumerated().reversed()), id: \.element.id) { index, ticket in
-                QueueRow(ticket: ticket, isNext: index == 0, url: snapshot?.urls[ticket.id], tracker: entry.project.tracker)
+                QueueRow(ticket: ticket, isNext: snapshot?.hasPlan == true ? ticket.id == snapshot?.nextID : index == 0, url: snapshot?.urls[ticket.id], tracker: entry.project.tracker)
             }
         }
     }
@@ -439,6 +444,7 @@ private struct QueueRow: View {
     private var tooltip: String {
         var lines = ["\(ticket.id) \(ticket.title)"]
         if ticket.kind == .prep { lines.append("Needs prep by a person before the loop takes it.") }
+        if let reason = ticket.reason { lines.append(reason) }
         if !ticket.blockedBy.isEmpty { lines.append("After " + ticket.blockedBy.joined(separator: ", ")) }
         if url != nil { lines.append(TicketLink.doubleClickHint(tracker: tracker)) }
         return lines.joined(separator: "\n")

@@ -79,6 +79,8 @@ struct BoardTab: View {
             }
             .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
 
+            queueBanner(feed.queue?.banner)
+
             HStack(spacing: 0) {
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 12) {
@@ -116,6 +118,23 @@ struct BoardTab: View {
         }
     }
 
+    /// What runs next, or why nothing does, and where finish stands: the engine's words, shown once for the window.
+    @ViewBuilder private func queueBanner(_ banner: QueueBanner?) -> some View {
+        if let banner, banner.headline != nil || banner.finish != nil {
+            VStack(alignment: .leading, spacing: 2) {
+                if let headline = banner.headline {
+                    Label(headline, systemImage: feed.queue?.runNow == nil ? "pause.circle" : "play.fill").font(.callout.weight(.medium))
+                }
+                if let finish = banner.finish {
+                    Text(finish).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 16).padding(.bottom, 8)
+        }
+    }
+
     private func stat(_ label: String, _ value: String, _ sub: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
@@ -148,8 +167,11 @@ struct BoardTab: View {
                 Divider()
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Finish").font(.caption.weight(.semibold))
-                    Text("Runs when the queue is empty: review, one fix pass, re-test, draft PR.")
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    // With the plan, the banner above says where finish stands; this is the older engine's only line.
+                    if feed.queue?.finish == nil {
+                        Text("Runs when the queue is empty: review, one fix pass, re-test, draft PR.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                     if feed.queue?.reviewResumable == true { lastReview }
                 }
                 .padding(.horizontal, 4)
@@ -235,6 +257,7 @@ private struct CardView: View {
                     if let errored = card.errored { ErroredFlag(kind: errored, compact: true) }
                     if card.waiting { chip("decision", .orange) }
                     if card.needsPrep { chip("prep", .gray) }
+                    if card.runsNext { chip("▶ runs next", .accentColor) }
                     if let harness = card.harness, harness != "claude" { chip(harness, .purple) }
                 }
                 Text(card.title.isEmpty ? card.id : card.title).font(.callout.weight(.medium))

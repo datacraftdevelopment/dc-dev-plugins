@@ -177,20 +177,20 @@ final class SetupTests: XCTestCase {
 
     func testLinearPlanRunsTheThreeScriptsInOrder() {
         let steps = SetupPlan.steps(config(), tools: tools)
-        XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
+        XCTAssertEqual(steps.map(\.id), ["setup-repo", "park-authority", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
             "/co/pm/runway/setup.sh", "/r/demo", "DAT", "Runway app"])))
-        XCTAssertEqual(steps[1].action, .run(Command(executable: "/usr/bin/env", arguments: [
+        XCTAssertEqual(steps[2].action, .run(Command(executable: "/usr/bin/env", arguments: [
             "python3", "/co/pm/runway/runway.py", "--root", "/r/demo", "setup"])))
-        XCTAssertEqual(steps[2].action, .claimCheck(Command(executable: "/usr/bin/env", arguments: [
+        XCTAssertEqual(steps[3].action, .claimCheck(Command(executable: "/usr/bin/env", arguments: [
             "python3", "/co/pm/runway/runway.py", "--root", "/r/demo", "status", "--json"])))
-        XCTAssertEqual(steps[3].action, .run(Command(executable: "/bin/bash", arguments: [
+        XCTAssertEqual(steps[4].action, .run(Command(executable: "/bin/bash", arguments: [
             "/co/pm/runway/schedule.sh", "install", "/r/demo", "15"])))
     }
 
     func testGitHubPlanUsesTheSetupScriptsGitHubMode() {
         let steps = SetupPlan.steps(config(.github), tools: tools)
-        XCTAssertEqual(steps.map(\.id), ["setup-repo", "runway-setup", "claims", "install"])
+        XCTAssertEqual(steps.map(\.id), ["setup-repo", "park-authority", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[0].title, "Point the repo at GitHub")
         XCTAssertEqual(steps[0].action, .run(Command(executable: "/bin/bash", arguments: [
             "/co/pm/runway/setup.sh", "/r/demo", "--github"])))
@@ -218,7 +218,7 @@ final class SetupTests: XCTestCase {
     func testHarnessStepOnlyWhenNotClaude() {
         XCTAssertFalse(SetupPlan.steps(config(), tools: tools).contains { $0.id == "harness" })
         let steps = SetupPlan.steps(config(harness: "codex"), tools: tools)
-        XCTAssertEqual(steps.map(\.id), ["setup-repo", "harness", "runway-setup", "claims", "install"])
+        XCTAssertEqual(steps.map(\.id), ["setup-repo", "harness", "park-authority", "runway-setup", "claims", "install"])
         XCTAssertEqual(steps[1].action, .setHarness(repo: "/r/demo", name: "codex"))
     }
 
@@ -226,7 +226,7 @@ final class SetupTests: XCTestCase {
         let steps = SetupPlan.steps(config(), tools: tools)
         XCTAssertEqual(steps[0].display,
                        "bash /co/pm/runway/setup.sh /r/demo DAT 'Runway app'")
-        XCTAssertEqual(steps[3].display, "bash /co/pm/runway/schedule.sh install /r/demo 15")
+        XCTAssertEqual(steps[4].display, "bash /co/pm/runway/schedule.sh install /r/demo 15")
     }
 
     func testValidation() {
@@ -247,10 +247,12 @@ final class SetupTests: XCTestCase {
 
     private func runPlan(_ steps: [SetupStep], rec: Recorder,
                          execute: @escaping @Sendable (Command, @Sendable (String) -> Void) async -> CommandResult,
-                         harness: @escaping (String, String) throws -> Void = { _, _ in }) async -> SetupOutcome {
+                         harness: @escaping (String, String) throws -> Void = { _, _ in },
+                         park: @escaping (String, SetupTracker) throws -> Bool = { _, _ in false }) async -> SetupOutcome {
         await SetupRunner.run(steps,
                               execute: { cmd, out in rec.ran.append(cmd); return await execute(cmd, out) },
                               setHarness: harness,
+                              setParkAuthority: park,
                               started: { rec.started.append($0.id) },
                               output: { rec.lines.append($0) })
     }
@@ -264,7 +266,7 @@ final class SetupTests: XCTestCase {
             return CommandResult(status: 0, stdout: cmd.arguments.contains("--json") ? "{\"machine\":\"A\",\"tickets\":[]}" : "", stderr: "")
         }
         XCTAssertEqual(outcome, .completed(warnings: []))
-        XCTAssertEqual(rec.started, ["setup-repo", "runway-setup", "claims", "install"])
+        XCTAssertEqual(rec.started, ["setup-repo", "park-authority", "runway-setup", "claims", "install"])
         XCTAssertEqual(rec.ran.count, 4)
         XCTAssertTrue(rec.lines.contains("$ " + steps[0].display))
         XCTAssertFalse(rec.lines.contains { $0.contains("\"machine\"") })
@@ -283,7 +285,7 @@ final class SetupTests: XCTestCase {
         guard case .failed(let step, let output) = outcome else { return XCTFail("expected failure, got \(outcome)") }
         XCTAssertEqual(step.id, "runway-setup")
         XCTAssertTrue(output.contains("No Linear API key."))
-        XCTAssertEqual(rec.started, ["setup-repo", "runway-setup"])
+        XCTAssertEqual(rec.started, ["setup-repo", "park-authority", "runway-setup"])
         XCTAssertFalse(rec.ran.contains { $0.arguments.contains("install") })
     }
 
@@ -306,7 +308,7 @@ final class SetupTests: XCTestCase {
         let second = Recorder()
         let b = await runPlan(steps, rec: second) { _, _ in CommandResult(status: 0, stdout: "", stderr: "") }
         XCTAssertEqual(b, .completed(warnings: []))
-        XCTAssertEqual(second.started, ["setup-repo", "runway-setup", "claims", "install"])
+        XCTAssertEqual(second.started, ["setup-repo", "park-authority", "runway-setup", "claims", "install"])
     }
 
     func testForeignClaimsWarnButDoNotStop() async {
@@ -405,6 +407,281 @@ final class SetupTests: XCTestCase {
         XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/pm/runway/runway.py"), "/co")
         XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/factory/plugin/runway/runway.py"), "/co")
         XCTAssertEqual(SetupChecks.checkout(ofRunwayScript: "/co/factory/experiments/01-runway/runway.py"), "/co")
+    }
+
+    // MARK: a new Mac
+
+    private func registry(_ keys: [String: String]) -> Data {
+        let plugins = keys.mapValues { [["scope": "user", "version": $0]] }
+        return try! JSONSerialization.data(withJSONObject: ["version": 2, "plugins": plugins])
+    }
+
+    func testPmPluginCheck() {
+        let ok = SetupChecks.pmPlugin(registry: registry(["pm@dc-dev-plugins": "0.27.2"]))
+        XCTAssertEqual(ok.id, "pm")
+        XCTAssertEqual(ok.status, .ok)
+        XCTAssertTrue(ok.detail.contains("0.27.2"))
+        XCTAssertTrue(ok.required)
+        let other = SetupChecks.pmPlugin(registry: registry(["pm@someone-else": "1.0"]))
+        XCTAssertEqual(other.status, .missing)
+        XCTAssertTrue(other.detail.contains("pm@dc-dev-plugins"))
+        XCTAssertEqual(SetupChecks.pmPlugin(registry: nil).status, .missing)
+    }
+
+    func testMattsSkillsCheck() {
+        let ok = SetupChecks.mattSkills(registry: registry(["mattpocock-skills@mattpocock": "1.4.0"]))
+        XCTAssertEqual(ok.id, "matt-skills")
+        XCTAssertEqual(ok.status, .ok)
+        XCTAssertTrue(ok.required)
+        let missing = SetupChecks.mattSkills(registry: registry(["pm@dc-dev-plugins": "0.27.2"]))
+        XCTAssertEqual(missing.status, .missing)
+        XCTAssertTrue(missing.detail.contains("mattpocock-skills"))
+        XCTAssertEqual(SetupChecks.mattSkills(registry: Data("junk".utf8)).status, .missing)
+    }
+
+    func testRingerIsOptional() async {
+        var seen: Command?
+        let ok = await SetupChecks.ringer(run: { seen = $0; return CommandResult(status: 0, stdout: "/usr/local/bin/ringer", stderr: "") })
+        XCTAssertEqual(ok.id, "ringer")
+        XCTAssertEqual(ok.status, .ok)
+        XCTAssertFalse(ok.required)
+        XCTAssertEqual(seen, SetupChecks.probe("command -v ringer"))
+        let gone = await SetupChecks.ringer(run: stub(1))
+        XCTAssertEqual(gone.status, .missing)
+        XCTAssertFalse(gone.required)
+    }
+
+    func testGhRepoAccessCheck() async {
+        var seen: Command?
+        let ok = await SetupChecks.githubRepoAccess("acme/widgets",
+                                                    run: { seen = $0; return CommandResult(status: 0, stdout: "acme/widgets", stderr: "") })
+        XCTAssertEqual(ok.id, "gh-repo")
+        XCTAssertEqual(ok.status, .ok)
+        XCTAssertTrue(ok.required)
+        XCTAssertEqual(seen, SetupChecks.probe("gh api repos/acme/widgets --jq .full_name"))
+        let denied = await SetupChecks.githubRepoAccess("acme/widgets", run: stub(1, "", "gh: Not Found (HTTP 404)"))
+        XCTAssertEqual(denied.status, .missing)
+        XCTAssertEqual(denied.fix, .ghLogin)
+        XCTAssertTrue(denied.detail.contains("acme/widgets"))
+        let gone = await SetupChecks.githubRepoAccess("acme/widgets", run: stub(127, "", "command not found: gh"))
+        XCTAssertEqual(gone.status, .missing)
+        XCTAssertNil(gone.fix)
+        let unknown = await SetupChecks.githubRepoAccess(nil, run: stub(0))
+        XCTAssertEqual(unknown.status, .missing)
+        XCTAssertTrue(unknown.required)
+    }
+
+    func testGhRepoAccessQuotesAnOddName() async {
+        var seen: Command?
+        _ = await SetupChecks.githubRepoAccess("a/b;rm", run: { seen = $0; return CommandResult(status: 0, stdout: "", stderr: "") })
+        XCTAssertEqual(seen, SetupChecks.probe("gh api 'repos/a/b;rm' --jq .full_name"))
+    }
+
+    func testGithubRepoFromOrigin() {
+        XCTAssertEqual(SetupChecks.githubRepo(fromOrigin: "git@github.com:acme/widgets.git"), "acme/widgets")
+        XCTAssertEqual(SetupChecks.githubRepo(fromOrigin: "https://github.com/acme/widgets\n"), "acme/widgets")
+        XCTAssertNil(SetupChecks.githubRepo(fromOrigin: "https://gitlab.com/acme/widgets.git"))
+        XCTAssertNil(SetupChecks.githubRepo(fromOrigin: ""))
+    }
+
+    func testAllChecksForGitHubReadTheRepo() async {
+        var lines: [String] = []
+        let checks = await SetupChecks.all(tracker: .github, checkout: "/co", fileExists: { _ in true },
+                                           repo: "/r/demo", githubRepo: " acme/widgets ",
+                                           registry: registry(["pm@dc-dev-plugins": "0.27.2", "mattpocock-skills@mattpocock": "1"]),
+                                           run: { cmd in lines.append(cmd.arguments.last ?? ""); return CommandResult(status: 0, stdout: "Python 3.12", stderr: "") })
+        XCTAssertTrue(lines.contains("gh api repos/acme/widgets --jq .full_name"))
+        for id in ["pm", "matt-skills", "ringer", "codex", "gh-auth", "gh-repo"] {
+            XCTAssertTrue(checks.contains { $0.id == id }, id)
+        }
+        XCTAssertEqual(checks.first { $0.id == "pm" }?.status, .ok)
+    }
+
+    func testAllChecksForGitHubFallBackToTheOrigin() async {
+        let checks = await SetupChecks.all(tracker: .github, checkout: "/co", fileExists: { _ in true }, repo: "/r/demo",
+                                           run: { cmd in
+            let line = cmd.arguments.joined(separator: " ")
+            if line.contains("remote get-url origin") { return CommandResult(status: 0, stdout: "git@github.com:acme/w.git", stderr: "") }
+            if line.contains("gh api") { return CommandResult(status: line.contains("repos/acme/w ") ? 0 : 1, stdout: "", stderr: "") }
+            return CommandResult(status: 0, stdout: "x", stderr: "")
+        })
+        XCTAssertEqual(checks.first { $0.id == "gh-repo" }?.status, .ok)
+        let linear = await SetupChecks.all(tracker: .linear, checkout: "/co", fileExists: { _ in true }, run: stub(0, "x"))
+        XCTAssertFalse(linear.contains { $0.id == "gh-repo" })
+    }
+
+    // MARK: the per-repo keychain item
+
+    private func tempRepo(_ runwayJSON: String?) throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("setup-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        if let runwayJSON { try Data(runwayJSON.utf8).write(to: dir.appendingPathComponent("runway.json")) }
+        return dir
+    }
+
+    func testKeychainServiceComesFromRunwayJSON() throws {
+        let repo = try tempRepo("{\"tracker\": \"linear\", \"linear\": {\"team\": \"DAT\", \"keychain_service\": \"runway-linear-work\"}}")
+        XCTAssertEqual(SetupChecks.keychainService(repo: repo.path), "runway-linear-work")
+    }
+
+    func testKeychainServiceFallsBack() throws {
+        XCTAssertEqual(SetupChecks.keychainService(repo: try tempRepo("{\"linear\": {\"team\": \"DAT\"}}").path), "runway-linear")
+        XCTAssertEqual(SetupChecks.keychainService(repo: try tempRepo("{\"linear\": {\"keychain_service\": \" \"}}").path), "runway-linear")
+        XCTAssertEqual(SetupChecks.keychainService(repo: try tempRepo("not json").path), "runway-linear")
+        XCTAssertEqual(SetupChecks.keychainService(repo: try tempRepo(nil).path), "runway-linear")
+        XCTAssertEqual(SetupChecks.keychainService(repo: ""), "runway-linear")
+    }
+
+    func testLinearKeyCheckUsesTheRepoService() async {
+        var seen: Command?
+        let ok = await SetupChecks.linearKey(service: "runway-linear-work",
+                                             run: { seen = $0; return CommandResult(status: 0, stdout: "", stderr: "") })
+        XCTAssertEqual(seen!.arguments, ["find-generic-password", "-s", "runway-linear-work"])
+        XCTAssertTrue(ok.detail.contains("runway-linear-work"))
+        let missing = await SetupChecks.linearKey(service: "runway-linear-work", run: stub(44))
+        XCTAssertTrue(missing.detail.contains("runway-linear-work"))
+    }
+
+    func testAllChecksForLinearUseTheRepoService() async throws {
+        let repo = try tempRepo("{\"linear\": {\"keychain_service\": \"runway-linear-work\"}}")
+        var seen: [Command] = []
+        _ = await SetupChecks.all(tracker: .linear, checkout: "/co", fileExists: { _ in true }, repo: repo.path,
+                                  run: { seen.append($0); return CommandResult(status: 0, stdout: "x", stderr: "") })
+        XCTAssertTrue(seen.contains { $0.arguments == ["find-generic-password", "-s", "runway-linear-work"] })
+    }
+
+    func testSaveKeyUsesTheRepoServiceAndStillMasks() async {
+        var seen: Command?
+        let result = await LinearKey.save("lin_api_SECRET", service: "runway-linear-work", account: "joe",
+                                          run: { seen = $0; return CommandResult(status: 1, stdout: "lin_api_SECRET", stderr: "lin_api_SECRET") })
+        XCTAssertEqual(seen?.arguments, ["add-generic-password", "-U", "-s", "runway-linear-work", "-a", "joe", "-w", "lin_api_SECRET"])
+        XCTAssertFalse((result.stdout + result.stderr + result.failureMessage).contains("lin_api_SECRET"))
+        let shown = LinearKey.displayText(service: "runway-linear-work", account: "joe")
+        XCTAssertTrue(shown.contains("runway-linear-work"))
+        XCTAssertFalse(shown.contains("lin_api"))
+    }
+
+    // MARK: park_authority
+
+    private let owner = "0123456789abcdef0123456789abcdef"
+
+    private func writeOwner(_ repo: URL, _ id: String) throws {
+        let pm = repo.appendingPathComponent("_pm")
+        try FileManager.default.createDirectory(at: pm, withIntermediateDirectories: true)
+        try Data(id.utf8).write(to: pm.appendingPathComponent("park-owner"))
+    }
+
+    private func runwayJSON(_ repo: URL) throws -> [String: Any] {
+        try JSONSerialization.jsonObject(with: Data(contentsOf: repo.appendingPathComponent("runway.json"))) as! [String: Any]
+    }
+
+    func testParkOwnerReadsTheEnginesIdentity() throws {
+        let repo = try tempRepo(nil)
+        try writeOwner(repo, owner + "\n")
+        XCTAssertEqual(try ParkAuthority.owner(repo: repo.path), owner)
+    }
+
+    func testParkOwnerIsCreatedLikeTheEngineWhenAbsent() throws {
+        let repo = try tempRepo(nil)
+        let made = try ParkAuthority.owner(repo: repo.path)
+        XCTAssertNotNil(made.range(of: "^[0-9a-f]{32}$", options: .regularExpression))
+        XCTAssertEqual(try String(contentsOf: repo.appendingPathComponent("_pm/park-owner"), encoding: .utf8), made)
+        XCTAssertEqual(try ParkAuthority.owner(repo: repo.path), made)
+    }
+
+    func testParkOwnerRefusesACorruptIdentity() throws {
+        let repo = try tempRepo(nil)
+        try writeOwner(repo, "not-a-uuid")
+        XCTAssertThrowsError(try ParkAuthority.owner(repo: repo.path))
+    }
+
+    func testParkAuthorityWrittenWhenAbsentOrEmpty() throws {
+        for config in ["{\"tracker\": \"github\", \"github\": {\"park_authority\": \"\", \"repo\": \"acme/w\"}, \"review\": \"panel\"}",
+                       "{\"tracker\": \"github\", \"github\": {\"repo\": \"acme/w\"}}",
+                       "{\"tracker\": \"github\"}"] {
+            let repo = try tempRepo(config)
+            try writeOwner(repo, owner)
+            XCTAssertTrue(try ParkAuthority.ensure(repo: repo.path, tracker: .github))
+            let json = try runwayJSON(repo)
+            let gh = json["github"] as? [String: Any]
+            XCTAssertEqual(gh?["park_authority"] as? String, owner)
+            if config.contains("acme/w") { XCTAssertEqual(gh?["repo"] as? String, "acme/w") }
+            XCTAssertEqual(json["tracker"] as? String, "github")
+        }
+    }
+
+    func testParkAuthorityGoesInTheLinearBlockForLinear() throws {
+        let repo = try tempRepo("{\"tracker\": \"linear\", \"linear\": {\"park_authority\": \"\", \"team\": \"DAT\"}}")
+        try writeOwner(repo, owner)
+        XCTAssertTrue(try ParkAuthority.ensure(repo: repo.path, tracker: .linear))
+        let linear = try runwayJSON(repo)["linear"] as? [String: Any]
+        XCTAssertEqual(linear?["park_authority"] as? String, owner)
+        XCTAssertEqual(linear?["team"] as? String, "DAT")
+    }
+
+    func testParkAuthorityAlreadyThisRootLeavesTheFileAlone() throws {
+        let repo = try tempRepo("{\"linear\": {\"park_authority\": \"\(owner)\"}}")
+        try writeOwner(repo, owner)
+        let before = try Data(contentsOf: repo.appendingPathComponent("runway.json"))
+        XCTAssertFalse(try ParkAuthority.ensure(repo: repo.path, tracker: .linear))
+        XCTAssertEqual(try Data(contentsOf: repo.appendingPathComponent("runway.json")), before)
+    }
+
+    func testADifferentOwnerStopsWithoutTouchingTheFile() throws {
+        let other = String(repeating: "f", count: 32)
+        let repo = try tempRepo("{\"github\": {\"park_authority\": \"\(other)\"}}")
+        try writeOwner(repo, owner)
+        let before = try Data(contentsOf: repo.appendingPathComponent("runway.json"))
+        XCTAssertThrowsError(try ParkAuthority.ensure(repo: repo.path, tracker: .github)) { error in
+            XCTAssertTrue(error.localizedDescription.contains("pm/runway/park-ownership.md"))
+            XCTAssertTrue(error.localizedDescription.contains(other))
+        }
+        XCTAssertEqual(try Data(contentsOf: repo.appendingPathComponent("runway.json")), before)
+    }
+
+    func testParkAuthorityNeedsARunwayJSON() throws {
+        XCTAssertThrowsError(try ParkAuthority.ensure(repo: try tempRepo(nil).path, tracker: .github))
+    }
+
+    func testParkAuthorityStepInThePlan() {
+        let steps = SetupPlan.steps(config(), tools: tools)
+        XCTAssertEqual(steps[1].action, .parkAuthority(repo: "/r/demo", tracker: .linear))
+        XCTAssertEqual(SetupPlan.steps(config(.github), tools: tools)[1].action, .parkAuthority(repo: "/r/demo", tracker: .github))
+        XCTAssertTrue(steps[1].display.contains("park_authority"))
+        XCTAssertFalse(SetupPlan.steps(config(.git), tools: tools).contains { $0.id == "park-authority" })
+    }
+
+    func testParkAuthorityWrittenIsCommitted() async {
+        let rec = Recorder()
+        let outcome = await runPlan(SetupPlan.steps(config(), tools: tools), rec: rec,
+                                    execute: { _, _ in CommandResult(status: 0, stdout: "", stderr: "") },
+                                    park: { _, _ in true })
+        XCTAssertEqual(outcome, .completed(warnings: []))
+        XCTAssertTrue(rec.ran.contains(ParkAuthority.addCommand(repo: "/r/demo")))
+        XCTAssertTrue(rec.ran.contains(ParkAuthority.commitCommand(repo: "/r/demo")))
+        XCTAssertEqual(ParkAuthority.commitCommand(repo: "/r/demo").arguments.suffix(2), ["--", "runway.json"])
+    }
+
+    func testParkAuthorityUnchangedMakesNoCommit() async {
+        let rec = Recorder()
+        _ = await runPlan(SetupPlan.steps(config(), tools: tools), rec: rec,
+                          execute: { _, _ in CommandResult(status: 0, stdout: "", stderr: "") },
+                          park: { _, _ in false })
+        XCTAssertFalse(rec.ran.contains { $0.arguments.contains("commit") })
+    }
+
+    func testForeignParkOwnerStopsTheFlow() async {
+        struct Foreign: LocalizedError { var errorDescription: String? { "owned elsewhere, see pm/runway/park-ownership.md" } }
+        let rec = Recorder()
+        let outcome = await runPlan(SetupPlan.steps(config(), tools: tools), rec: rec,
+                                    execute: { _, _ in CommandResult(status: 0, stdout: "", stderr: "") },
+                                    park: { _, _ in throw Foreign() })
+        guard case .failed(let step, let output) = outcome else { return XCTFail() }
+        XCTAssertEqual(step.id, "park-authority")
+        XCTAssertTrue(output.contains("park-ownership.md"))
+        XCTAssertFalse(rec.ran.contains { $0.arguments.contains("install") })
+        XCTAssertFalse(rec.ran.contains { $0.arguments.contains("setup") && $0.arguments.contains("--root") })
     }
 
     func testStreamMissingExecutable() async {

@@ -239,7 +239,7 @@ class GitHubWrites(unittest.TestCase):
         with mock.patch.object(runway, "machine_name", return_value=me), \
                 mock.patch.object(runway, "run_ticket", side_effect=lambda cfg, r, tr, t: ran.append(t.id)), \
                 mock.patch.object(runway, "sync_base", return_value=True), \
-                mock.patch.object(runway, "signin_waiting_for_work", return_value=False), \
+                mock.patch.object(runway, "signin_waiting_for_plan", return_value=False), \
                 mock.patch.object(runway, "log", lg):
             runway.tick(dict(runway.DEFAULT_CONFIG), self.dir, self.tracker())
         return ran, [c.args[1] for c in lg.call_args_list]
