@@ -40,6 +40,13 @@ def inventory(tickets):
     return rows, errors
 
 
+def canonical(expected, actual):
+    """The judge's rows with each known (ticket, id) carrying the inventory's own criterion text.
+    The id already hashes that text; judges shorten long criteria when they echo them back."""
+    known = {(r['ticket'], r['id']): r['criterion'] for r in expected}
+    return [dict(r, criterion=known.get((r.get('ticket'), r.get('id')), r.get('criterion'))) for r in actual]
+
+
 def coverage(expected, actual):
     errors, seen = [], set()
     known = {(r['ticket'], r['id']): r['criterion'] for r in expected}

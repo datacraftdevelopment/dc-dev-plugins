@@ -1639,6 +1639,7 @@ def decide_verdict(check_exit: int, parsed, valid_reviews=None, expected=None, i
         blocking.insert(0, "The judge returned nothing parseable, so nothing was shown to pass.")
     blocking.extend(inventory_errors)
     if expected is not None:
+        criteria = acceptance.canonical(expected, criteria)
         blocking.extend(acceptance.coverage(expected, criteria))
     for c in criteria:
         if not c["evidence"]:

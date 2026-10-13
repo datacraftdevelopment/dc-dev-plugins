@@ -32,6 +32,16 @@ class Coverage(unittest.TestCase):
                      [dict(good[0],criterion='different'),good[1]],[dict(good[0],evidence=''),good[1]]):
             with self.subTest(rows=rows):self.assertTrue(acceptance.coverage(expected,rows))
 
+    def test_shortened_criterion_text_still_covers_by_id(self):
+        body='## Acceptance\n- Every `sdlc:` reference points at `pm:` (the config folder too); look-alike strings stay.'
+        expected,_=acceptance.inventory([SimpleNamespace(id='#5',body=body)])
+        short=[dict(expected[0],criterion='points at `pm:`; look-alike strings stay.',evidence='test passes')]
+        v=runway.decide_verdict(0,{'verdict':'pass','blocking':[],'non_blocking':[],'criteria':short},1,expected)
+        self.assertEqual(v['verdict'],'pass')
+        self.assertEqual(v['criteria'][0]['criterion'],expected[0]['criterion'])
+        v=runway.decide_verdict(0,{'verdict':'pass','blocking':[],'non_blocking':[],'criteria':[dict(short[0],evidence='')]},1,expected)
+        self.assertEqual(v['verdict'],'fail')
+
     def test_missing_criteria_refuses_pass(self):
         expected,_=acceptance.inventory([SimpleNamespace(id='#1',body='## Acceptance\n- a')])
         self.assertEqual(runway.decide_verdict(0,{'verdict':'pass','blocking':[], 'non_blocking':[], 'criteria':[]},1,expected)['verdict'],'fail')
