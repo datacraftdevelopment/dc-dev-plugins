@@ -16,7 +16,9 @@ struct RunwayBarApp: App {
         let notifier = Notifier(store: store)
         deliver = { notifier.deliver($0) }
         self.notifier = notifier
+        store.appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         store.start()
+        store.updateOnLaunch(build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)
         QuitGuard.store = store
         _store = State(initialValue: store)
     }
@@ -183,8 +185,26 @@ struct RunwayMenu: View {
         } else {
             Button("Check for Updates…") { updater.checkForUpdates() }
         }
+        updateSection
         Button("Quit") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    /// The parity line, the Behind badge (whose action is Update Runway), the menu item and the last result.
+    @ViewBuilder private var updateSection: some View {
+        let behind = store.parity.behind
+        Text(store.parity.line)
+        if !behind.isEmpty {
+            Button("⬆︎ Behind: \(behind.joined(separator: "; ")) — Update Runway") { store.requestUpdate() }
+                .disabled(store.updatePending || store.updating)
+        }
+        Button(store.updating ? "Updating Runway…" : store.updatePending ? "Update Runway (waits for the tick)" : "Update Runway")
+            { store.requestUpdate() }
+            .disabled(store.updatePending || store.updating)
+        if let result = store.updateResult {
+            Text(String(result.summary.prefix(400)))
+            if result != .waiting { Button("Dismiss") { store.dismissUpdateResult() } }
+        }
     }
 
     /// One waiting or errored ticket: a submenu with where it lives and the "Talk it through" button.

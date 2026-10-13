@@ -166,5 +166,28 @@ final class PanelHistoryTests: XCTestCase {
         XCTAssertEqual(snapshot.upNext.map(\.kind), [.ready, .prep, .blocked, .blocked])
         XCTAssertEqual(snapshot.upNext[2].title, "Works an issue")
         XCTAssertEqual(snapshot.upNext[2].blockedBy, ["DAT-35"])
+        XCTAssertEqual(snapshot.nextID, "R1", "an older engine: the first queued ticket is next, as before")
+        XCTAssertNil(snapshot.idleReason)
+    }
+
+    func testWithThePlanBlockedTicketsLeaveUpNextAndOnlyRunNowIsNext() throws {
+        let json = #"""
+        {"version":1,"run_now":null,"idle_reason":"Nothing can run: 2 tickets wait on #7",
+         "groups":{"waiting":["#7"],"running":[],"ready_auto":[],"ready_prep":[],"blocked":["#21","#22"],"done":[]},
+         "tickets":[{"id":"#7","title":"Decide"},{"id":"#21","title":"A","reason":"waits on #7","blocked_by":["#7"]},
+          {"id":"#22","title":"B","blocked_by":["#7"]}]}
+        """#
+        let idle = try XCTUnwrap(StatusSnapshot.parse(Data(json.utf8)))
+        XCTAssertTrue(idle.upNext.isEmpty)
+        XCTAssertNil(idle.nextID)
+        XCTAssertEqual(idle.idleReason, "Nothing can run: 2 tickets wait on #7")
+
+        let running = json.replacingOccurrences(of: ##""run_now":null"##, with: ##""run_now":"#9""##)
+            .replacingOccurrences(of: ##""ready_auto":[]"##, with: ##""ready_auto":["#9"]"##)
+            .replacingOccurrences(of: ##""tickets":["##, with: ##""tickets":[{"id":"#9","title":"Go","reason":"ready"},"##)
+        let go = try XCTUnwrap(StatusSnapshot.parse(Data(running.utf8)))
+        XCTAssertEqual(go.upNext.map(\.id), ["#9"])
+        XCTAssertEqual(go.upNext[0].reason, "ready")
+        XCTAssertEqual(go.nextID, "#9")
     }
 }

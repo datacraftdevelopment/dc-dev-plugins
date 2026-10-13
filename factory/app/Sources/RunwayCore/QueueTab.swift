@@ -15,8 +15,10 @@ public struct QueueTicket: Equatable, Sendable, Identifiable {
     public let packet: String?
     /// Kind of the ticket's latest attempt that didn't merge (`check-failed`…); nil when not errored or the engine is older.
     public var errored: String?
-    /// Why a waiting ticket waits, when status gives a `reason`.
+    /// Why the ticket is where it is (the engine's `reason`); nil from an older engine.
     public var reason: String? = nil
+    /// What the queue plan does with it (`run`, `queued`, `prep`, `park`, `waiting`, `blocked`…); nil from an older engine.
+    public var nextStep: String? = nil
     /// The latest attempt was a claude session the engine can reopen (`discuss --resume`), a done ticket's too;
     /// false from an older engine.
     public var resumable = false
@@ -31,6 +33,18 @@ public struct QueueSections: Equatable, Sendable {
     public let done: [QueueTicket]
 }
 
+/// The finish verdict from status: `finish`, `wait` or `off`, and why.
+public struct QueueFinish: Equatable, Sendable {
+    public let verdict: String
+    public let reason: String
+}
+
+/// The one banner over the board: what runs next (or why nothing does) and where finish stands.
+public struct QueueBanner: Equatable, Sendable {
+    public let headline: String?
+    public let finish: String?
+}
+
 /// The `status --json` document (version 1), as far as the board reads it.
 public struct QueueStatus: Equatable, Sendable {
     public let tickets: [QueueTicket]
@@ -39,6 +53,28 @@ public struct QueueStatus: Equatable, Sendable {
     public var reviewResumable = false
     /// That review's session id, so a pane left open on an older review isn't mistaken for this one.
     public var reviewSession: String? = nil
+    /// The ticket the next tick would run; nil when nothing can run, or from an older engine.
+    public var runNow: String? = nil
+    /// One line on why nothing runs, when `runNow` is nil.
+    public var idleReason: String? = nil
+    public var finish: QueueFinish? = nil
+    /// The engine sent the queue plan (it always writes `run_now`, null or not). False from an older engine.
+    public var hasPlan = false
+
+    /// The banner text. Nil from an older engine that sends no plan fields.
+    public var banner: QueueBanner? {
+        guard hasPlan || finish != nil else { return nil }
+        var headline: String? = idleReason
+        if let id = runNow {
+            let title = tickets.first { $0.id == id }?.title ?? ""
+            headline = "Runs next: " + (title.isEmpty ? id : "\(id) \(title)")
+        }
+        let finishLine = finish.map { f -> String in
+            let word = f.verdict == "wait" ? "waits" : f.verdict
+            return f.reason.isEmpty ? "Finish \(word)" : "Finish \(word): \(f.reason)"
+        }
+        return QueueBanner(headline: headline, finish: finishLine)
+    }
 
     /// Ticket ids in one of status's groups (`waiting`, `running`, `ready_auto`, `ready_prep`, `blocked`, `done`), in queue order.
     public func group(_ key: String) -> [String] { groups[key] ?? [] }
@@ -57,12 +93,20 @@ public struct QueueStatus: Equatable, Sendable {
                                packet: raw["packet"] as? String,
                                errored: (raw["errored"] as? String).flatMap { $0.isEmpty ? nil : $0 },
                                reason: (raw["reason"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                               nextStep: (raw["next_step"] as? String).flatMap { $0.isEmpty ? nil : $0 },
                                resumable: raw["resumable"] as? Bool ?? false)
         }
         var groups: [String: [String]] = [:]
         for (key, value) in rawGroups { groups[key] = value as? [String] ?? [] }
+        let finish = (root["finish"] as? [String: Any]).flatMap { raw -> QueueFinish? in
+            guard let verdict = raw["verdict"] as? String else { return nil }
+            return QueueFinish(verdict: verdict, reason: raw["reason"] as? String ?? "")
+        }
         return QueueStatus(tickets: tickets, groups: groups, reviewResumable: root["review_resumable"] as? Bool ?? false,
-                           reviewSession: root["review_session"] as? String)
+                           reviewSession: root["review_session"] as? String,
+                           runNow: root["run_now"] as? String,
+                           idleReason: (root["idle_reason"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                           finish: finish, hasPlan: root.keys.contains("run_now"))
     }
 
     /// Tickets waiting on a go or no (the `waiting` group, not tickets that merely need prep).

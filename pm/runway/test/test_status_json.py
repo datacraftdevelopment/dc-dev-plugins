@@ -83,6 +83,21 @@ class StatusJson(unittest.TestCase):
         self.assertIsNone(d["idle_reason"])
         json.dumps(d)
 
+    def test_status_text_shows_one_finish_line_with_verdict_and_reason(self):
+        import contextlib, io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            runway.cmd_status({"tracker": "markdown"}, self.tracker)
+        lines = [l for l in buf.getvalue().splitlines() if l.startswith("Finish:")]
+        self.assertEqual(lines, ["Finish: wait (a ticket is claimed)"])
+
+    def test_status_text_finish_line_when_off(self):
+        import contextlib, io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            runway.cmd_status({"tracker": "markdown", "finish": "off"}, self.tracker)
+        self.assertIn("Finish: off (finish is off)", buf.getvalue())
+
     def test_idle_reason_when_nothing_can_run(self):
         root = Path(tempfile.mkdtemp())
         d = root / ".scratch" / "eff" / "issues"
@@ -132,14 +147,15 @@ class StatusJson(unittest.TestCase):
     def test_cli_json(self):
         self.assertEqual(json.loads(self.run_cli("--json"))["groups"]["done"], ["eff/01"])
 
-    def test_text_output_unchanged(self):
+    def test_text_output_adds_only_the_finish_line(self):
         self.assertEqual(self.run_cli(), (
             "\nWaiting on you (1)\n  eff/03                   Title 03-ask  [Joe, go/no-go]\n"
             "\nRunning (1)\n  eff/02                   Title 02-running\n"
             "\nReady (auto) (2)\n  eff/04                   Title 04-auto-b\n  eff/05                   Title 05-auto-a\n"
             "\nReady (needs prep) (1)\n  eff/06                   Title 06-prep\n"
             "\nBlocked (1)\n  eff/07                   Title 07-blocked\n"
-            "\nDone (1)\n  eff/01                   Title 01-done-thing\n"))
+            "\nDone (1)\n  eff/01                   Title 01-done-thing\n"
+            "\nFinish: wait (a ticket is claimed)\n"))
 
 
 class FakeLinear:
