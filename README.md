@@ -98,9 +98,9 @@ Update everything later with:
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
 
-### Not a plugin: `factory/`
+### Runway
 
-[`factory/`](factory/README.md) holds the software-factory research and the Runway experiments, plus the factory site (`factory/site/`). It isn't listed in `marketplace.json` and none of the `make-*.sh` cuts or Codex builds ship it. Only Runway's engine and `runway` skill ship, inside pm (`pm/runway/`, `pm/skills/runway/`; folded in from the old `factory` plugin at pm 0.26.0).
+Runway, the unattended ticket loop, its Mac app and the software-factory research moved to the private `datacraftdevelopment/runway` repo at pm 0.29.0 (2026-10-14), history and open issues included. The marketplace lists it as `runway`, sourced from that repo the way `fm-lens` is.
 
 ## Adding a new plugin
 

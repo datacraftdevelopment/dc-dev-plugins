@@ -8,12 +8,7 @@ unchanged, plus the two header lines pm reads and two notes for this repo.
 plugins). Its issues are public too. No client names, no credentials and nothing
 under NDA go into an issue or a comment.
 
-**Runway works this repo's GitHub issues** (`"tracker": "github"` in
-`runway.json`, since 2026-10-08; it was on Linear, team DAT, before). It runs
-open `ready-for-agent` issues and preps a decision packet on `ready-for-human`
-ones; Joe approves with a `go` comment or label. Until #11 lands, publish a spec
-from `/to-spec` without `ready-for-agent`, or Runway will try to build the spec
-itself.
+**Runway no longer works this repo.** It moved to the private `datacraftdevelopment/runway` repo on 2026-10-14, with its open issues.
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 

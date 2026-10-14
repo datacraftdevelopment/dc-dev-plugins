@@ -14,4 +14,4 @@ When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the 
 
 Edit the right-hand column to match whatever vocabulary you actually use.
 
-Runway reads `ready-for-agent` and `ready-for-human` as its gates, and adds two labels of its own: `go` (Joe's approval on a `ready-for-human` ticket) and `needs-human` (parked, waiting on Joe).
+Runway's own labels (`go`, `needs-human`) moved with it to the runway repo on 2026-10-14.
