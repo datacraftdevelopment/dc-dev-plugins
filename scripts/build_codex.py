@@ -16,7 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = '.dc-codex-build.json'
 PLUGINS = {
-    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, delivery checks, the credential guard, macOS UI tests and Runway, the unattended ticket loop.'),
+    'pm': ('DataCraft PM', 'Outcome tickets, subagent orchestration, session handoffs, delivery checks, the credential guard and macOS UI tests.'),
     'design-dc': ('DataCraft Design', 'Design handoffs, HTML artifacts, Excalidraw, and design-system workflows.'),
     'fm-dc': ('DataCraft FileMaker', 'FileMaker development, APIs, XML analysis, patching, and verification.'),
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
