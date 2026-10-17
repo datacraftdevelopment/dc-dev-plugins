@@ -60,7 +60,7 @@ check "pipeline that stages, even a safe file"   block "git log --oneline | head
 check "add piped"                               block "git add README.md | cat"
 check "xargs feeds git add"                     block "printf README.md | xargs git add"
 check "shell-wrapped git in a pipeline"         block "git status | sh -c 'git add .env'"
-check "repository-changing git in a pipeline"   block "git stash | cat"
+check "stage piped"                             block "git stage README.md | cat"
 check "backgrounded commit"                     block "git commit -m x &"
 check "commit with staged .env"                 block "git commit -m x"
 git reset -q .env
@@ -84,6 +84,9 @@ check "two read-only git in one pipeline"       allow "git log --oneline | head 
 check "git inside a grep pattern, piped"        allow "grep -rn \"git log\" . | head"
 check "a bare git argument still means wrapped" block "printf x | grep git"
 check "read-only git backgrounded"              allow "git status &"
+check "non-staging git piped (0.28.3)"          allow "git stash | cat"
+check "worktree list piped"                     allow "git worktree list | head"
+check "remote get-url piped"                    allow "git remote get-url origin | cat"
 
 cd /
 notrepo=$(mktemp -d) && cd "$notrepo"
