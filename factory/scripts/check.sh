@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Runway check_cmd for dc-dev-plugins: every suite must pass.
-#   repo tests, every factory/experiments/*/test/test_*.sh (and test_*.py), the
-#   the engine's own tests (pm/runway/test/test_*.py), and
+#   repo tests, every factory/experiments/*/test/test_*.py, and
 #   `swift test` in factory/app once factory/app/Package.swift exists.
+# The experiments' shell suites and the engine's own tests left with the engine (pm 0.29.0);
+# they live in the private runway repo now.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -35,12 +36,7 @@ echo "== pytest tests"
 "$PY" -m pytest tests -q
 
 shopt -s nullglob
-for t in factory/experiments/*/test/test_*.sh; do
-  echo "== bash $t"
-  bash "$t"
-done
-
-py_tests=(factory/experiments/*/test/test_*.py pm/runway/test/test_*.py)
+py_tests=(factory/experiments/*/test/test_*.py)
 if (( ${#py_tests[@]} )); then
   echo "== pytest ${py_tests[*]}"
   "$PY" -m pytest -q "${py_tests[@]}"

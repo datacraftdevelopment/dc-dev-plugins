@@ -49,15 +49,6 @@ final class ChoresTests: XCTestCase {
         XCTAssertNil(always.showIfCommand(checkout: "/co", repo: nil))
     }
 
-    func testTheShippedChoresListParses() throws {
-        let file = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()  // factory/app
-            .deletingLastPathComponent().deletingLastPathComponent()  // repo root
-            .appendingPathComponent("pm/runway/chores.json")
-        let data = try XCTUnwrap(FileManager.default.contents(atPath: file.path))
-        XCTAssertEqual(ChoreList.parse(data).chores.map(\.id), ["codex-refresh", "retired-plugins", "tracker-setup"])
-    }
-
     func testShowIfReadsExitOneAsNotNeededAndAnyOtherFailureAsStillShown() {
         XCTAssertTrue(Chore.needed(probe: CommandResult(status: 0, stdout: "", stderr: "")))
         XCTAssertFalse(Chore.needed(probe: CommandResult(status: 1, stdout: "", stderr: "")))
