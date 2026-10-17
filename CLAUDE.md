@@ -61,9 +61,9 @@ Develop **in place** in each plugin's subfolder — this repo is the single sour
 
 Per-plugin dev cruft (`.venv/`, `sandbox/`) is gitignored via each plugin's own nested `.gitignore`, so it never publishes.
 
-## `factory/` — research, experiments, site and app (none of it ships)
+## `factory/` — moved out
 
-`factory/` is the software-factory research and the Runway experiments (was `_Tools/SoftwareFactory`, folded in 2026-10-07 by subtree merge, history kept), plus the factory site in `factory/site/`. Nothing in `factory/` ships. Runway's engine and skill were in pm from 2026-10-09 until pm 0.29.0, and now live in the private runway repo as `runway@runway`. The research, experiments, site and app never ship, and the `make-*.sh` cuts copy none of it. The experiments' tests and `factory/scripts/check.sh` still point at the engine in `pm/runway/`, which is gone, so they no longer run here; the old `factory/experiments/01-runway/runway.py` and `03-linear/schedule.sh` are forwarding stubs for LaunchAgents installed before the move. `factory/CLAUDE.md` governs work inside it. Practice repos stay outside git in `~/Agentic-Mini/_Sandbox/runway/`.
+`factory/` (the software-factory research, the Runway experiments, the factory site and the Runway app), the Runway specs and `GLOSSARY.md` moved to the private runway repo with the engine (pm 0.29.0, 2026-10-17). Nothing Runway-shaped is left here; work on it there.
 
 ## Tracking (`_pm/`, local-only)
 
