@@ -15,6 +15,8 @@ invoked through Ringer, and either may lead an orchestrated run from a fresh
 session as a manager-only seat. Manual fresh sessions remain normal; automatic succession
 is an opt-in experiment.
 
+Runway moved to its own plugin, `runway@runway`, in the private runway repo.
+
 Provides:
 
 - **Default loop** — `whats-next` opens a session, the work happens in it,
