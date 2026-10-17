@@ -118,13 +118,18 @@ class CredentialGuardTests(unittest.TestCase):
             self.assertEqual(self.guard(command).returncode, 2)
         self.assertEqual(self.guard(f'pushd "{self.repo}" && git add .env', self.outer).returncode, 2)
 
-    def test_read_only_git_may_be_piped_but_staging_may_not(self):
+    def test_non_staging_git_may_be_piped_but_staging_may_not(self):
         for command in ('git status | head -5', 'git log --oneline | head -1 && git diff --stat | tail -1',
-                        'git -c core.quotepath=off ls-files | wc -l', 'git status &'):
+                        'git -c core.quotepath=off ls-files | wc -l', 'git status &', 'git stash | cat',
+                        'git worktree list | head', 'git remote get-url origin | cat',
+                        'git fetch origin 2>&1 | tail -3', 'git push origin HEAD &',
+                        'git -C . worktree list | head && git -C . remote -v | cat'):
             with self.subTest(command=command):
                 self.assertEqual(self.guard(command).returncode, 0)
         for command in ('git log | head -1; git add README.md', 'git add README.md | cat',
-                        'printf README.md | xargs git add', 'git stash | cat', 'git commit -m x &'):
+                        'printf README.md | xargs git add', 'git commit -m x &', 'git stage README.md | cat',
+                        'git worktree list | head; git add .env', 'git fetch | cat && git commit -am x',
+                        'git a README.md | cat', 'GIT_DIR=x git status | cat'):
             with self.subTest(command=command):
                 self.assertEqual(self.guard(command).returncode, 2)
 

@@ -258,10 +258,11 @@ def inspect_segment(segment, cwd):
 
 
 def git_kind(segment):
-    """None when the segment runs no Git, 'read' for a literal read-only Git command
-    (READ_ONLY_GIT, after -C/-c global options), 'other' for anything else that could
-    reach Git: a staging, committing or repository-changing subcommand, an unknown option,
-    or Git wrapped in another command (xargs, sh -c ...)."""
+    """None when the segment runs no Git, 'stage' for a literal add/stage/commit,
+    'read' for any other known subcommand (after -C/-c global options; it may change
+    the repository but selects no files to stage), and 'other' for anything that could
+    reach Git unseen: an unknown option or subcommand, a GIT_ environment change, or
+    Git wrapped in another command (xargs, sh -c ...)."""
     args = list(segment)
     while args and (args[0] in ('command', 'builtin', 'env', 'sudo', 'nohup') or re.match(r'^\w+=', args[0])):
         if args[0].startswith(('GIT_', 'CDPATH=')): return 'other'
@@ -283,7 +284,8 @@ def git_kind(segment):
         elif value.startswith('-'):
             return 'other'
         else:
-            return 'read' if value in READ_ONLY_GIT else 'other'
+            if value in ('add', 'stage', 'commit'): return 'stage'
+            return 'read' if value in OTHER_GIT else 'other'
     return 'other'
 
 
@@ -291,9 +293,9 @@ def inspect(command, cwd):
     command = mask_heredocs(command)
     tokens, subs = shell_tokens(command)
     stack, segment = [], []
-    # A pipeline or a background job is allowed when every Git command in it only reads
-    # (status, log, diff, ls-files ...): nothing in it can stage or commit, so there is no
-    # candidate set to inspect. Anything else that reaches Git in one still blocks.
+    # A pipeline or a background job is allowed unless a Git command in it stages or
+    # commits (or could, unseen): only add/stage/commit select files, and a pipe can feed
+    # or reorder them past inspection. worktree, remote, fetch, push and the rest are fine.
     piped, kinds = False, []
     def finish():
         nonlocal cwd, segment
@@ -321,9 +323,9 @@ def inspect(command, cwd):
         else: segment.append(token)
     finish()
     if stack: raise Unresolved('unbalanced shell group')
-    if piped and 'other' in kinds:
-        raise Unresolved('pipeline or background Git command that stages, commits or changes the repository; '
-                         'use separate literal commands (read-only Git may be piped)')
+    if piped and ('stage' in kinds or 'other' in kinds):
+        raise Unresolved('pipeline or background Git command that stages or commits; '
+                         'run the add or commit as its own literal command (other Git may be piped)')
 
 
 def main():
