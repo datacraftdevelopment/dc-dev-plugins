@@ -60,18 +60,19 @@ session → `stepping-away`. When ready work remains, `stepping-away` offers to
 open a fresh session for it. Each session's context ends with the session, which
 is what keeps usage flat.
 
-**Sibling sessions for independent tickets.** This is the default way to run
-work in parallel, ahead of `orchestrate`'s subagents; the `sibling-sessions`
-skill owns the screen, the launch prompt and the merge rule. When two or three
-ready tickets have nothing to do with each other, the session may offer to open
-each in its own fresh session. Each sibling is an ordinary
-session: its own worktree and branch, Joe in the loop, the ticket owned through
-to its own merge (rebase on the base branch, green on the rebased tree, merge on
-Joe's word). Nobody watches them: the launching session does not poll, wait for
-reports or integrate, because that babysitting was the expensive part of the
-lane pattern (pm-018, pm-021). Screen first: disjoint files, one database writer
-at most, no shared port or dev server. Three at once is the ceiling on a 16 GB
-machine, and each one is a window Joe has to answer.
+**Subsessions for independent tickets.** This is the default way to run work
+in parallel, ahead of `orchestrate`'s subagents; the `subsessions` skill owns
+the screen, the brief and the merge rule. When two or three ready tickets have
+nothing to do with each other, the session may start each in its own
+subsession. Each subsession is an ordinary session: its own worktree and branch,
+the ticket worked through to green on the rebased tree. The main session
+manages them so Joe talks to one session: it answers or relays their
+questions, merges on Joe's word, and archives each one when it is done. It acts
+on their messages, never on a polling loop, because polling was the expensive
+part of the lane pattern (pm-018, pm-021). Where the host can't carry messages
+back, they run as unmanaged siblings and nobody watches them. Screen first:
+disjoint files, one database writer at most, no shared port or dev server.
+Three at once is the ceiling on a 16 GB machine.
 
 **Orchestration is opt-in.** Use `orchestrate` when Joe asks for it, or when
 there is a real batch of independent tickets, each worth an hour or more, and he
@@ -201,8 +202,8 @@ a future mistake; otherwise the code, ticket and evidence are enough.
 
 - `whats-next`: read a compact handoff and ready outcome; do the authorized work
   in that session.
-- `sibling-sessions`: two or three independent tickets, each in its own ordinary
-  session through its own merge; nobody watches the others.
+- `subsessions`: two or three independent tickets, each in its own subsession
+  that the main session starts, steers, merges and archives.
 - `orchestrate`: opt-in. Scaffold, dispatch the ready graph, integrate and verify.
 - `checkpoint`: record a consequential change of direction when needed.
 - `stepping-away`: close the record, keep a concise next-work handoff, release

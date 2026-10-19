@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class PMModelPolicyTests(unittest.TestCase):
     def test_source_declares_session_and_review_tiers(self):
         manifest = json.loads((ROOT / 'pm/.claude-plugin/plugin.json').read_text())
-        self.assertEqual(manifest['version'], '0.29.0')
+        self.assertEqual(manifest['version'], '0.29.1')
 
         workflow = (ROOT / 'pm/WORKFLOW.md').read_text()
         flat_workflow = ' '.join(workflow.split())
@@ -69,27 +69,31 @@ class PMModelPolicyTests(unittest.TestCase):
         workflow = flat('pm/WORKFLOW.md')
         self.assertIn('Default loop', workflow)
         self.assertIn('Orchestration is opt-in', workflow)
-        self.assertIn('Sibling sessions', workflow)
-        self.assertIn('Nobody watches them', workflow)
+        self.assertIn('Subsessions for independent tickets', workflow)
+        self.assertIn('never on a polling loop', workflow)
         self.assertIn('Do the work in this session', flat('pm/skills/whats-next/SKILL.md'))
         away = flat('pm/skills/stepping-away/SKILL.md')
         self.assertIn('offer to open a fresh session', away)
         self.assertIn('never running', away)
         starter = flat('pm/template/CLAUDE.md')
         self.assertIn('Do not orchestrate by default', starter)
-        self.assertIn('sibling sessions', starter)
+        self.assertIn('subsessions', starter)
 
-        sibling = (ROOT / 'pm/skills/sibling-sessions/SKILL.md').read_text()
-        header = sibling.split('---')[1]
-        self.assertIn('name: sibling-sessions', header)
+        sub = (ROOT / 'pm/skills/subsessions/SKILL.md').read_text()
+        header = sub.split('---')[1]
+        self.assertIn('name: subsessions', header)
         self.assertIn('implement sibling sessions if appropriate', header)
-        flat_sibling = ' '.join(sibling.split())
-        for rule in ('nobody watches them', 'Disjoint files',
-                     'At most one database writer', 'Three siblings at once is the ceiling',
-                     'created and pending', 'Merge on the user\'s word'):
-            self.assertIn(rule, flat_sibling)
-        self.assertIn('sibling-sessions', flat('pm/skills/whats-next/SKILL.md'))
-        self.assertIn('sibling-sessions', flat('pm/skills/stepping-away/SKILL.md'))
+        flat_sub = ' '.join(sub.split())
+        for rule in ('Act on events, not on a timer', 'Disjoint files',
+                     'At most one database writer',
+                     'Three subsessions at once is the ceiling',
+                     'created and pending', "Merge on the user's word",
+                     'archive or stop the subsession', 'no polling',
+                     'A second failed review parks the ticket'):
+            self.assertIn(rule, flat_sub)
+        self.assertNotIn('sibling-sessions/', flat('pm/skills/whats-next/SKILL.md'))
+        self.assertIn('subsessions', flat('pm/skills/whats-next/SKILL.md'))
+        self.assertIn('subsessions', flat('pm/skills/stepping-away/SKILL.md'))
 
     def test_codex_build_preserves_model_economy_boundary(self):
         with tempfile.TemporaryDirectory(prefix='pm model policy ') as tmp:
@@ -101,7 +105,7 @@ class PMModelPolicyTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             pm = Path(tmp) / 'pm'
             manifest = json.loads((pm / '.codex-plugin/plugin.json').read_text())
-            self.assertTrue(manifest['version'].startswith('0.29.0+codex.'))
+            self.assertTrue(manifest['version'].startswith('0.29.1+codex.'))
 
             workflow = (pm / 'WORKFLOW.md').read_text()
             flat_workflow = ' '.join(workflow.split())
@@ -127,7 +131,7 @@ class PMModelPolicyTests(unittest.TestCase):
             self.assertIn('docs/agents/worker-env.md', orchestrate)
             self.assertIn('closed only by Joe', orchestrate)
 
-            self.assertTrue((pm / 'skills/sibling-sessions/SKILL.md').is_file())
+            self.assertTrue((pm / 'skills/subsessions/SKILL.md').is_file())
 
             grill = (pm / 'skills/fast-grill/SKILL.md').read_text()
             self.assertIn('engine `claude`, model `claude-fable-5`', grill)
