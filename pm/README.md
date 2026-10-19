@@ -6,7 +6,7 @@ when extra stages help, and the record rule: `docs/` is shared record,
 `_pm/` is personal log. pm
 fits around Matt Pocock's skill set. The default is one session working one
 meaningful outcome ticket with Joe in the loop. Independent tickets run as
-sibling sessions. Orchestration is opt-in: one orchestrator and bounded Ringer
+subsessions the main session manages. Orchestration is opt-in: one orchestrator and bounded Ringer
 subagents working a dependency graph (up to six active workers), with worker
 assignments kept inside the parent ticket. Planning and additional review address concrete uncertainty;
 verification remains required and proportional. Ordinary interactive sessions
@@ -22,9 +22,12 @@ Provides:
 - **Default loop** — `whats-next` opens a session, the work happens in it,
   `stepping-away` closes it and offers a fresh session for the next ready work.
 
-- **`sibling-sessions`** — the default way to parallelize: two or three
-  independent ready tickets, each in its own ordinary session that owns its
-  ticket through its own merge. No orchestrator, no report-in.
+- **`subsessions`** — the default way to parallelize: two or three
+  independent ready tickets, each in its own subsession. The main session
+  starts them, answers or relays their questions, merges on the user's word
+  and archives them, acting on their messages rather than polling. Replaces
+  `sibling-sessions` (0.29.0); on hosts without subsession messaging it falls
+  back to unmanaged siblings.
 
 - **`orchestrate`** — opt-in, for a real batch while the user is away: prepare shared scaffolding, dispatch ready worker nodes,
   integrate and verify. One outcome may use several subagents without extra
@@ -156,7 +159,7 @@ pm/
 ├── stacks.json              ← stack table: which plugins a Vercel, Supabase or FileMaker repo gets (0.23)
 ├── skills/
 │   ├── discovery/ · whats-next/ · checkpoint/ · stepping-away/
-│   ├── sibling-sessions/ · orchestrate/ · session-succession/
+│   ├── subsessions/ · orchestrate/ · session-succession/
 │   ├── verify-before-done/ · okf/ · granola-transcript/
 │   ├── fast-grill/ · ship-acceptance/
 │   └── board/                ← scripts/board.py renders _pm/board.html (0.22)
