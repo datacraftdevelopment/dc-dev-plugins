@@ -88,7 +88,8 @@ class PMModelPolicyTests(unittest.TestCase):
                      'At most one database writer',
                      'Three subsessions at once is the ceiling',
                      'created and pending', "Merge on the user's word",
-                     'archive or stop the subsession', 'no polling'):
+                     'archive or stop the subsession', 'no polling',
+                     'A second failed review parks the ticket'):
             self.assertIn(rule, flat_sub)
         self.assertNotIn('sibling-sessions/', flat('pm/skills/whats-next/SKILL.md'))
         self.assertIn('subsessions', flat('pm/skills/whats-next/SKILL.md'))

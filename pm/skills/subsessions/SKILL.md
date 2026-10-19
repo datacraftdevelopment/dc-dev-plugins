@@ -59,8 +59,8 @@ Work in your own worktree on branch <name>. Set it up from
 docs/agents/worker-env.md if the repo has one.
 Report to the main session, not the user: a short message when you are blocked,
 when you have a question, and when the ticket is green and ready to merge
-(branch, head commit, what the checks proved). Do not wait on or message the
-other subsessions.
+(branch, head commit, what the checks proved). The main session will send you
+review findings to fix. Do not wait on or message the other subsessions.
 Merge only when the main session says so. Close with stepping-away.
 Handoff: <this session's file>.
 ```
@@ -86,7 +86,15 @@ Act on events, not on a timer. Each turn a subsession wakes you:
   with your recommendation, naming the subsession. Relay their answer back.
 - **Blocked.** Unblock it (commit a missing file, settle an interface, reorder
   the waves) or park its ticket with `Waiting on:` and tell the user once.
-- **Ready to merge.** Read its report and diff by path. The first ready merges
+- **Green.** Before anything merges, get an adversary review of the
+  subsession's diff from a different model, through Ringer (the
+  `cross-review-gate` skill on the Codex seat). The reviewer reads the diff,
+  the ticket and the check output, nothing else. Send its findings to the same
+  subsession to fix; it keeps its context, so the fix is not a cold start.
+  After the fix, review once more. A second failed review parks the ticket
+  with `Waiting on:` and its findings, the same rule Runway uses. Don't review
+  inside a Claude subsession: the point is a second model's eyes.
+- **Ready to merge** (review passed). Read its report and diff by path. The first ready merges
   first; later ones rebase onto it, and a conflict is that subsession's to
   resolve. Merge on the user's word, or under a merge rule the user gave
   earlier in this session. Push, deploy and client messages keep their own
@@ -121,8 +129,9 @@ The normal loop, reporting to the main session:
    reasoning, not work.
 3. Rebase on the base branch, run the project's checks on the rebased tree,
    and report to the main session.
-4. Merge when the main session says so.
-5. `stepping-away`. The main session removes its worktree and archives it.
+4. Fix what the adversary review finds, re-run the checks, report again.
+5. Merge when the main session says so.
+6. `stepping-away`. The main session removes its worktree and archives it.
 
 ## 6. Hosts without subsession messaging
 
