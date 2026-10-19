@@ -1,6 +1,6 @@
 ---
 name: bc-client-face
-description: "The DataCraft Basecamp client-face conventions — how a client project is laid out in Basecamp (client's side: New requests + Questions for you; Joe's side: Shipped / Active / Backlog as the status), what a Work item is (a cluster of repo tickets with a Ref footer), how tickets carry the join (Client-ref lines, or [bc:<id>] tokens in a repo that keeps TASKS.md as its tracker), and the plain-English voice. Load BEFORE creating, moving, commenting on, or editing anything in a repo that has a .basecamp/config.json — everything there is client-visible. Also load when the user says \"fold this request\", \"ship this to Basecamp\", \"what shipped\", \"client face\", \"put this in Basecamp\", or asks how Basecamp fits the workflow. Do NOT load for repos without .basecamp/config.json, and do not use it for CLI syntax — that is the /basecamp skill's job."
+description: "The DataCraft Basecamp client-face conventions — how a client project is laid out in Basecamp (client's side: New requests + Questions for you; Joe's side: Shipped / Active / Backlog as the status), what a Work item is (a cluster of repo tickets with a Ref footer), how tickets carry the join (Client-ref lines, or [bc:<id>] tokens in a repo that keeps TASKS.md as its tracker), and the plain-copy rule every word written there follows. Load BEFORE creating, moving, commenting on, or editing anything in a repo that has a .basecamp/config.json — everything there is client-visible. Also load when the user says \"fold this request\", \"ship this to Basecamp\", \"what shipped\", \"client face\", \"put this in Basecamp\", or asks how Basecamp fits the workflow. Do NOT load for repos without .basecamp/config.json, and do not use it for CLI syntax — that is the /basecamp skill's job."
 ---
 
 # bc-client-face — the conventions
@@ -57,8 +57,17 @@ Enabling tools, client access, and reading the email-in address are **browser-on
 
 ## Voice — read before writing a single word into Basecamp
 
-Audience is the client. **Outcome-first, plain English.** No file paths, tables, columns,
-framework names, or status-machine jargon. "You can now download everything
+Audience is the client, who does not work in software. **Every line follows the
+plain-copy rule in `references/plain-copy.md`: read it before the first write of a
+session, and run its sweep on every title, description, comment and Doc entry before
+it lands.** If the repo has `docs/plain-copy-rule.md`, read that too; it names this
+client's own words and wins where it is more specific.
+
+The rule in one line: write plainly what happens, in complete sentences, using only
+the client's own words and the names on their screens. No metaphors, idioms, coined
+labels, fragments without a verb, or our words (export, sync, API, sandbox, deploy…).
+The test is reading the line aloud to the client on the phone: if they would ask
+"what does that mean?", rewrite it. "You can now download everything
 LiveAuctioneers needs in one click", not "generate the LA CSV via the export handler."
 **Show, don't link:** anything visible ships with inline screenshots, reports with a
 sample PDF (sandbox data only), attached via `basecamp attach` and embedded as
@@ -97,5 +106,6 @@ Basecamp without authorization covering that update; an explicit request already
 ## References
 
 - `references/best-practices.md` — the full conventions writeup (generic part).
+- `references/plain-copy.md` — the plain-copy rule and the sweep every Basecamp write gets.
 - `references/quirks.md` — every API/CLI gotcha hit so far, newest first.
 - Design home: `_Tools/Basecamp` (`datacraftdevelopment/dc-basecamp`) — ADRs 0001–0004, discovery log.

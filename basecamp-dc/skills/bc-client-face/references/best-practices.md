@@ -21,7 +21,7 @@ In-repo markdown stays the detailed, technical source of truth that drives dev w
 
 - **Audience:** the developer (Joe) + the client (non-technical).
 - **Plain English, outcome-first.** Describe *what the user can now do*, not how it's built. No file paths, table/column names, framework terms, or status-machine jargon.
-- **Reference voice:** the plain-language client emails (e.g. `docs/2026-05-25-kelsey-email-plain.md`). Friendly, concrete, "you can now…".
+- **The plain-copy rule** (`plain-copy.md`) governs every word: complete sentences, the client's own words and screen names, no figures of speech, and the sweep before anything lands.
 
 | ✅ Write this | ❌ Not this |
 |---|---|
@@ -89,7 +89,7 @@ Decided 2026-06-03. Plain-language product updates live in a single living Basec
 
 Being worked out — don't hard-code a workflow around these yet:
 
-- **In-flight visibility** — does the client see a **Status:** line on Active items, or only agreed + shipped? (AgentTest showed Status lines; Kelsey's reaction decides.)
+- **In-flight visibility** — does the client see a **Status:** line on Active items, or only agreed + shipped? (AgentTest showed Status lines; the client's reaction decides.)
 - **Triage cadence and owner** — before each meeting, or daily by an agent; whose approval closes a raw request.
 - **Email-in** — forwarded threads carry several asks; does triage split them, and does the client see the split. The email-in address is UI-only.
 - **Feedback** — where client feedback on shipped work is captured (comment on the checked item is the lean default).
