@@ -6,6 +6,17 @@ Non-obvious gotchas worth remembering. Check before re-inventing fixes.
 
 > Format: short heading, one or two sentences. Date-stamped. Add new entries at the top. The point is fast scanning, not exhaustive documentation.
 
+## 2026-10-19 — CLI 0.10 to 0.13 and the connector change some of the entries below
+
+Read from the 0.13.2 help text and release notes, not yet tried on a live project.
+- **Rich text is Markdown by default since 0.12.0.** Pass `--format html` to send HTML (fetched Doc bodies, `<bc-attachment>` tags).
+- **`basecamp todo`, `basecamp comment` and `basecamp done` are gone in 0.13.x.** Use `todos create`, `comments create`, `todos complete`.
+- **`-` reads stdin since 0.10.0** (`--content -`, `--description -`, `api post/put --data -`). This replaces the `-d "$(cat file.json)"` workaround.
+- **`files update` says it keeps the untouched field** when only `--title` or `--content` is passed. Keep passing `--title` until that is seen on a live Doc.
+- **Dock tools and client access now have commands**: `basecamp tools enable <id>`, `basecamp people clients enable --in <project>` (0.11.0), and the connector's `enable_dock_tool`. The "UI-only" entries below predate them. Try the command first, and fall back to the browser if it is refused (clients need a plan that supports them).
+- **`auth status` now names who is signed in**, and `basecamp me` exists. This replaces "there is no whoami".
+- **The connector** (Basecamp's hosted MCP server) does the same jobs with HTML-only input and record ids instead of project ids; see `routes.md`. The Doc image-duplication quirk applies to it too: it is the same API.
+
 ## 2026-09-10 — Round-tripping a Doc duplicates its images
 
 - **`files show` → edit → `files update` leaves a loose copy of every image.** The API returns each `<bc-attachment>` with its rendered `<figure><img><figcaption>` inside; send that back and Basecamp keeps the attachment *and* re-emits the inner figure as a separate `<figure dir="auto">` after it. Each save adds another set (a client's *What shipped*: 23 attachments had become 43 figures after a week of prepends). Before sending, empty every attachment — `re.sub(r'(<bc-attachment\b[^>]*>).*?(</bc-attachment>)', r'\1\2', html, flags=re.S)` — and drop any remaining top-level `<figure>`. Check after: `<figure` count == `<bc-attachment` count.

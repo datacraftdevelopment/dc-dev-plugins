@@ -7,8 +7,8 @@ stay in `.basecamp/config.json` — never in this file.
 ## Where the close-out steps are
 
 The installed **`bc-close-out`** skill (basecamp-dc plugin) — open it by name.
-Conventions and voice live in **`bc-client-face`**; CLI syntax in the basecamp
-CLI's own **`/basecamp`** skill. `bc-close-out` loads both before it writes.
+Conventions and voice live in **`bc-client-face`**, which also says whether to go
+through the basecamp CLI or the Basecamp connector. `bc-close-out` loads it before it writes.
 
 ## Evidence the steps consume
 
@@ -38,7 +38,7 @@ Declining is a normal outcome.
 ## What counts as done
 
 - **done** — `bc-close-out` finished and its own verification passed (a fresh
-  `basecamp api get` shows the move, comment, and new Doc entry for a full
+  read (`basecamp api get`, or the connector's `get_*`) shows the move, comment, and new Doc entry for a full
   close-out; for a partial close-out, it confirms the Status comment).
 - **skipped** — the user declined, or nothing client-facing moved.
 - **blocked** — missing config ids, a missing mapping nobody could resolve,

@@ -10,8 +10,12 @@ the client face (one client so far), some use another tracker (TC uses Jira), mo
 - The **basecamp CLI** (`brew install basecamp/tap/basecamp` or per basecamp.com), authenticated on this machine
   (`basecamp setup` / `basecamp auth`; `basecamp accounts use` picks the default account — one login per machine, so
   the TC machine and the DataCraft machine each authenticate to their own account).
-- The CLI's own **`/basecamp` skill** for command syntax — installed by `basecamp setup` into `~/.claude/skills/basecamp`,
-  or as `basecamp@37signals` from `/plugin marketplace add basecamp/claude-plugins`. Keep one of the two, not both.
+  **Version 0.12.0 or later** (`basecamp --version`; `basecamp upgrade` updates it in place). Older CLIs have no
+  `--format html`, which the close-out needs.
+- The CLI's own **`basecamp` skill** for command syntax — `basecamp setup claude` installs it as the
+  `basecamp-cli@37signals` plugin (renamed from `basecamp@37signals` in CLI 0.13.0; `basecamp setup claude` switches an old install).
+- **Or the Basecamp connector** (Basecamp's hosted MCP server) instead of, or as well as, the CLI. Every skill here works
+  through either one; `skills/bc-client-face/references/routes.md` says which to use and maps each step to both.
 - `python3` on PATH (stdlib only).
 
 ## What it adds

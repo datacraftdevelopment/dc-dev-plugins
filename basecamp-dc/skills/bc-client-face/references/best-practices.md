@@ -49,7 +49,7 @@ In-repo markdown stays the detailed, technical source of truth that drives dev w
 
 ## ✅ How Claude works with Basecamp (CLI)
 
-Edits are made through the Basecamp CLI (the `/basecamp` skill). Per-repo `.basecamp/config.json` pins the project and default list so commands don't need `--in`:
+Edits are made through the Basecamp CLI (the CLI's `basecamp` skill) or the Basecamp connector; `routes.md` says which, and maps each command below to its connector tool. Commands below are for CLI 0.12.0+. Per-repo `.basecamp/config.json` pins the project and default list so commands don't need `--in`:
 
 ```json
 { "project_id": "<id>", "todolist_id": "<active-list-id>" }
@@ -58,20 +58,22 @@ Edits are made through the Basecamp CLI (the `/basecamp` skill). Per-repo `.base
 Common commands:
 
 ```bash
-basecamp todo "Plain-English title" --description "..." --json   # add to default (Active) list
-basecamp todo "..." --list <backlog-id> --json                    # add to Backlog
+basecamp todos create "Plain-English title" --description "..." --json   # add to default (Active) list
+basecamp todos create "..." --list <backlog-id> --json                    # add to Backlog
 basecamp todos list --json                                        # list the default list
 basecamp recordings todos --in <project> --json \
   --jq '.data[] | select(.parent.title=="New Requests")'          # the client's raw requests (loose, no list)
-basecamp comment <id> "Folded into **[title](url)**" --json       # trace a request to its Work item
+basecamp comments create <id> "Folded into **[title](url)**" --json     # trace a request to its Work item
 basecamp todos position <id> --to 1 --list <shipped-id> --json    # ship: move to Shipped (stays unchecked)
-basecamp done <id>                                                # the client's move at the meeting (or fold-close a request)
-basecamp files update <doc-id> --content "..." --title "..." --json  # ALWAYS pass --title too: --content alone resets it to "Untitled"
+basecamp todos complete <id>                                      # the client's move at the meeting (or fold-close a request)
+basecamp files update <doc-id> --content - --format html --title "..." --json < new.html  # pass --title too (older CLIs reset it); --format html for HTML
 basecamp todolists list --todoset <work-set-id> --json            # find list IDs (two sets → --todoset required)
 basecamp files doc create "Title" "Markdown body" --json          # create a Doc (Markdown converted since CLI 0.7)
 ```
 
 Projects with two to-do sets make `todo` and `todolists list` ambiguous — pin `todolist_id` in `.basecamp/config.json` or pass `--list` / `--todoset`. Full list of gotchas: `docs/quirks.md`.
+
+Since CLI 0.12.0 rich text is Markdown unless you pass `--format html`; send fetched or attachment-bearing bodies as HTML. Since 0.10.0 `-` reads a body from stdin (`--content -`, `--description -`, `--data -`).
 
 Always pass `--json` (or `--md` when showing results to a human). Filter with the built-in `--jq`, never an external `jq`.
 
@@ -81,7 +83,7 @@ Decided 2026-06-03. Plain-language product updates live in a single living Basec
 
 - Write entries like the client emails: "you can now…", outcomes not implementation. No file paths, table names, or jargon.
 - **Append to the TOP** of the existing doc — don't create a new doc per update. Update via the CLI:
-  `basecamp files update <doc_id> --content "<full new HTML>"`
+  `basecamp files update <doc_id> --title "…" --content - --format html < new.html` (connector: `update_document`), cleaned with `doc_roundtrip.py` first
 - **Documents accept Markdown as of CLI 0.7.2** (verified 2026-09-02: `files doc create` with a Markdown body rendered as `<h2>`, `<ul>`, `<strong>`). The June note that Docs needed hand-written HTML is obsolete. For long bodies pass `"$(cat file.md)"` to avoid shell-quoting issues.
 - **Two docs per client project:** *How this project works* (the explainer, written once) and *What shipped* (append newest on top; replaces the message board for batch summaries — ADR-0002).
 

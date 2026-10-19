@@ -12,9 +12,11 @@ a shipped item, or a session ending, authorizes nothing on its own. If the
 client update has not been authorized, prepare the concrete update and ask
 before sending it.
 
-**Load before writing.** Read the basecamp CLI's own `/basecamp` skill (command
-syntax) and `bc-client-face` (conventions, voice, safety rules). No write
-happens before both are loaded.
+**Load before writing.** Read `bc-client-face` (conventions, voice, safety rules)
+and pick the route with its `references/routes.md`: the CLI when `basecamp
+--version` is 0.12.0 or later, otherwise the Basecamp connector. On the CLI route
+also load the CLI's own `basecamp` skill for syntax. No write happens before that.
+Each step below gives the CLI call first and the connector call after it.
 
 **Gate.** Nothing here runs in a repo without the config:
 
@@ -39,15 +41,19 @@ Exit 2 → tell the user exactly which ids are missing and stop. Exit 1 → no c
 
 ## Procedure
 
-1. **Read the item** — `basecamp api get /buckets/<project>/todos/<id>.json --json`. Note `description` (it can go missing on a move) and whether every `Ref:` id in the cluster is live.
-   - **Partly shipped cluster:** stay in Active; post a `Status:` comment instead of moving. Re-read the comment through `api get` and verify its text, then report done; no Doc entry is needed yet.
+1. **Read the item** — `basecamp api get /buckets/<project>/todos/<id>.json --json` (connector: `get_todo`). Note `description` (it can go missing on a move) and whether every `Ref:` id in the cluster is live.
+   - **Partly shipped cluster:** stay in Active; post a `Status:` comment instead of moving. Re-read the comment (`api get`, or the connector's `list_comments`) and verify its text, then report done; no Doc entry is needed yet.
 2. **Move to Shipped**, unchecked:
    `basecamp todos position <id> --to 1 --list <lists.shipped> --json`
-   Then re-read with `api get`; if `description` came back empty, restore it with
-   `basecamp api put /buckets/<project>/todos/<id>.json -d '{"content":"<title>","description":"<html>"}'`.
+   (connector: `reposition_todo` with `position: 1`, `parent_id: <lists.shipped>`).
+   Then re-read; if `description` came back empty, restore it with
+   `basecamp api put /buckets/<project>/todos/<id>.json -d '{"content":"<title>","description":"<html>"}'`
+   (connector: `update_todo` with `description`).
 3. **Comment** on the item — one line, outcome-first, attachments embedded if visible:
-   `basecamp attach <files> --json` → paste the `<bc-attachment>` tags into
-   `basecamp api post /buckets/<project>/recordings/<id>/comments.json -d '{"content":"<html>"}'` (inline JSON; `-d @file` is rejected).
+   `basecamp attach <files> --json` → put the `<bc-attachment>` tags in `/tmp/bc-comment.html`, then
+   `basecamp comments create <id> - --format html < /tmp/bc-comment.html --json`.
+   Connector: `create_attachment` per file → `<bc-attachment sgid="<attachable_sgid>"></bc-attachment>`
+   in the HTML passed to `create_comment`.
 4. **Prepend to *What shipped*** — the quirk-safe way. Fetch the body **fresh
    from the API** (`api get`; the `files show` command can serve a stale cached
    copy and must not feed a write):
@@ -62,10 +68,15 @@ Exit 2 → tell the user exactly which ids are missing and stop. Exit 1 → no c
    printf '%s\n' "<h2>YYYY-MM-DD — <outcome title></h2><p>…</p>" > /tmp/bc-entry.html
    python3 "$S" prepend --entry /tmp/bc-entry.html < /tmp/bc-body.html > /tmp/bc-new.html
    python3 "$S" check < /tmp/bc-new.html          # no <figure> outside an attachment, or it refuses
-   basecamp files update <docs.what_shipped> --title "What shipped" --content "$(cat /tmp/bc-new.html)" --json
+   basecamp files update <docs.what_shipped> --title "What shipped" --content - --format html < /tmp/bc-new.html --json
    basecamp api get /buckets/<project>/documents/<docs.what_shipped>.json --jq '.content' > /tmp/bc-verify.html
    ```
-   Always pass `--title`. Verify by **content, not timestamp**: `/tmp/bc-verify.html`
+   **Connector route:** `get_document` → write its `content` to `/tmp/bc-body.html`,
+   run the same empty check, `prepend` and `check`, pass `/tmp/bc-new.html` unchanged
+   as `content` to `update_document`, then `get_document` again into `/tmp/bc-verify.html`
+   and run `check` on it.
+   Always pass `--title` (CLI). Without `--format html`, CLI 0.12.0+ reads the body as
+   Markdown. Verify by **content, not timestamp**: `/tmp/bc-verify.html`
    must contain the new entry's heading and the entries that were already there
    (`updated_at` alone proves nothing about what landed).
 5. **Repo side** — the ticket keeps its `Client-ref:` line (or the `TASKS.md`
@@ -75,7 +86,7 @@ Exit 2 → tell the user exactly which ids are missing and stop. Exit 1 → no c
 ## Never
 
 - Never write to Basecamp without authorization covering that client update; existing authorization remains valid.
-- Never `basecamp done` a Shipped item. Acceptance is the client's check-off at the meeting.
+- Never complete a Shipped item (`todos complete`, `complete_todo`). Acceptance is the client's check-off at the meeting.
 - Never edit a New request. Comment and tick it, or leave it.
 - Never send a fetched Doc body back without `doc_roundtrip.py clean`.
-- Never feed a write from a `files show` / `todos show` body — fetch fresh with `api get`.
+- Never feed a write from a `files show` / `todos show` body — fetch fresh with `api get` or the connector's `get_*`.
