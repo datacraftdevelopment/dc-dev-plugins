@@ -54,7 +54,7 @@ def context(cfg):
     if docs:
         parts.append("Docs: " + ", ".join(f"{k} {v}" for k, v in docs.items() if v) + ".")
     parts.append("Everything written there is client-visible. Load the bc-client-face skill before "
-                 "creating, moving, or editing anything in Basecamp; confirm writes with `basecamp api get`.")
+                 "creating, moving, or editing anything in Basecamp; confirm writes with a fresh read (`basecamp api get`, or the connector's get_* tools).")
     return " ".join(parts)
 
 
