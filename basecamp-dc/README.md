@@ -18,7 +18,7 @@ the client face (one client so far), some use another tracker (TC uses Jira), mo
 
 | Piece | Job |
 |---|---|
-| `skills/bc-client-face` | The conventions: client's side / Joe's side, Shipped-Active-Backlog as the status, clusters with `Ref:` footers, `[bc:<id>]` tokens, the plain-English voice, the safety rules. Ships copies of `best-practices.md` and `quirks.md`. |
+| `skills/bc-client-face` | The conventions: client's side / Joe's side, Shipped-Active-Backlog as the status, clusters with `Ref:` footers, `[bc:<id>]` tokens, the plain-copy rule (`references/plain-copy.md`) every Basecamp write is swept against, the safety rules. Ships copies of `best-practices.md` and `quirks.md`. |
 | `skills/bc-close-out` | Ship a task: move to Shipped unchecked, comment, prepend to *What shipped* without duplicating images. Runs only on the user's yes — session close never writes by itself. |
 | `skills/bc-setup` | Opt-in seam to pm: with a valid config present, install `docs/agents/client-face.md` from `templates/` when absent (hand edits win, symlink destinations refused). pm's `stepping-away` reads that contract; pm never names Basecamp. |
 | `hooks/session-start.sh` | When the repo has the config, one paragraph of context (project, list ids). Finds the root via `CLAUDE_PROJECT_DIR`, the event cwd, or its git toplevel. Silent otherwise. |

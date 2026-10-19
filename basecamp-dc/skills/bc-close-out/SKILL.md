@@ -32,7 +32,9 @@ Exit 2 → tell the user exactly which ids are missing and stop. Exit 1 → no c
   explicitly keeps `docs/TASKS.md` as its tracker carries the same id
   as a `[bc:<id>]` token on the task line.) No mapping → never guess an id; ask
   which Work item it is, or record the step skipped.
-- One plain-English sentence of what the client can now do (voice: `bc-client-face`).
+- One plain-English sentence of what the client can now do, swept against the
+  plain-copy rule (`bc-client-face/references/plain-copy.md`) before it is posted. The
+  same sweep covers the *What shipped* entry.
 - Screenshots / sample PDF if the change is visible (**show, don't link**).
 
 ## Procedure
