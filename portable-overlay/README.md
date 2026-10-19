@@ -7,7 +7,7 @@ subagent.
 
 | File | What it is |
 |---|---|
-| `pm/WORKFLOW.md` | The shared binding of `SDLC.md`: the default loop, sibling sessions, when to review. No orchestrator. |
+| `pm/WORKFLOW.md` | The shared binding of `SDLC.md`: the default loop, subsessions, when to review. No orchestrator. |
 | `pm/agents/adversary-reviewer.md` | Read-only subagent that tries to break a change against its acceptance lines. |
 | `pm/skills/adversary-review/` | When to run that reviewer, what to hand it, what to do with findings. |
 | `pm/skills/ship-acceptance/` | Hand-cut from the private skill: Markdown record only, no JSON validator and no Execution agreement. |
