@@ -24,7 +24,7 @@ just done. A small change gets a short design doc agreed in chat. Bugs go to
 `systematic-debugging`.
 
 **Foggy work,** several unknowns that depend on each other, starts with
-`/pm-sp:wayfinder`, which Joe types (it never starts itself): decision tickets resolved one at a time until the way is clear.
+`wayfinder`, which runs when Joe names it ("use wayfinder") and never on its own: decision tickets resolved one at a time until the way is clear.
 Its tickets are questions, never builds. Its destination is a set of chunks
 in order, written to the map and `docs/inbox.md`; each chunk then takes the
 flow above, about a session each. It is the only place pm-sp uses tickets.

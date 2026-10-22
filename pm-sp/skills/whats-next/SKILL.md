@@ -60,8 +60,8 @@ Watch-outs: <a plan with no commits in a while, a ledger and git that disagree, 
 
 New work with no design yet goes to `brainstorming`. Work that is genuinely
 foggy, with several unknowns that depend on each other, starts with
-wayfinder, which the user types (`/pm-sp:wayfinder`; Claude can't start it):
-recommend it, don't invoke it; its destination is a set of chunks, a brainstorm each.
+wayfinder, which runs only when the user names it: recommend it, don't
+start it; its destination is a set of chunks, a brainstorm each.
 
 ## 3. Write the Intent
 

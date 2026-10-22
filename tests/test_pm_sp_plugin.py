@@ -151,6 +151,9 @@ class PmSpPluginTests(unittest.TestCase):
         self.assertIn('the usual destination is a set of chunks', wayfinder)
         self.assertIn('pm-sp:brainstorming', wayfinder)
         self.assertIn('/pm-sp:scaffold', wayfinder)
+        # Joe starts it by name, not slash command; it still never starts on its own.
+        self.assertNotIn('disable-model-invocation', wayfinder)
+        self.assertIn('Use only when the user names it', wayfinder)
         self.assertNotIn('never resolve more than one ticket per session', wayfinder)
         # Sibling skills are called by their plugin name, or the Skill tool may not find them.
         self.assertNotRegex(wayfinder, r'Skill tool[^.]*"(?!pm-sp:)[a-z-]+"')

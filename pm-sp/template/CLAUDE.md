@@ -63,7 +63,7 @@ around the session.
 - **Parallel lanes** go to `nested-sessions`, only when the plan marks lanes
   with disjoint files and the user wants them moving at once.
 - **Foggy work** with several unknowns that depend on each other: suggest
-  `/pm-sp:wayfinder` (the user types it; it never starts on its own). Its tickets are decisions, never builds; its destination is a set of
+  `wayfinder` (it runs when the user names it, never on its own). Its tickets are decisions, never builds; its destination is a set of
   chunks in order, and each chunk gets its own brainstorm.
 - **Bugs:** `systematic-debugging`. Reproduce before fixing.
 - **Model economy.** Subagents and nested sessions always name their model:

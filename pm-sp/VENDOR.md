@@ -70,6 +70,8 @@ licensed (`LICENSE.mattpocock`).
    tickets and research in `docs/maps/<effort>/`), not on a throwaway branch.
 2. `prototype`: the context pointer goes in the design doc or the wayfinder
    ticket, not an implementation issue.
+3. `wayfinder` drops `disable-model-invocation`, so naming it ("use
+   wayfinder") starts it, and its description says to run only when named.
 
 ## The visual companion
 
