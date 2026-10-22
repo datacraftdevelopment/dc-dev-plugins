@@ -253,8 +253,8 @@ document as that builder yourself.
 
 **Second opinion** (pm-sp): for a project, or when the repo's
 `CLAUDE.md` asks for it, also send the document through
-pm-sp:second-opinion in design mode, so a model from another vendor
-reads it as the builder. Sort its questions into the same three piles,
+pm-sp:second-opinion in design mode, so Sol (another vendor) and a
+fresh Opus read it as builders. Sort their questions into the same three piles,
 in the same single round.
 
 <HARD-GATE>

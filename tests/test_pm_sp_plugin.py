@@ -142,6 +142,10 @@ class PmSpPluginTests(unittest.TestCase):
         self.assertIn('/pm-sp:scaffold', wayfinder)
         self.assertNotIn('never resolve more than one ticket per session', wayfinder)
         self.assertTrue((SP / 'templates/issue-tracker-github.md').is_file())
+        # One record: wayfinder maps live in docs/maps/, never a .scratch/ folder.
+        for path in SP.rglob('*.md'):
+            self.assertNotIn('.scratch', path.read_text(), path)
+        self.assertIn('docs/maps/<effort>/map.md', (SP / 'template/docs/agents/issue-tracker.md').read_text())
 
 
 if __name__ == '__main__':

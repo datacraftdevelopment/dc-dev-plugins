@@ -16,6 +16,11 @@ enough to write the Intent for it, write it, and start.
 The shared record first, the personal log second (`WORKFLOW.md`: `docs/` is
 truth, `_pm/` is log).
 
+First bring the record up to date: if the branch has an upstream and the
+working tree is clean, `git pull --ff-only`, so a wayfinder map or plan moved
+forward on another computer shows here. If the pull can't fast-forward, say so
+and read what's local.
+
 - **Plans in flight.** `docs/plans/*.md`, newest first. For each, find how far
   it got: its ledger at `.superpowers/sdd/<plan-name>/progress.md` when this
   checkout has one (it's gitignored, so another machine or worktree won't), and

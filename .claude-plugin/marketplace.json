@@ -13,7 +13,7 @@
     {
       "name": "pm-sp",
       "source": "./pm-sp",
-      "description": "pm on Superpowers: Joe's PM layer around a trimmed, vendored copy of obra/superpowers (brainstorming with visuals, plans run in one session by subagents, branch finishing, TDD, debugging) without its session-start hook, plus Matt Pocock's wayfinder, grilling, domain-modeling, codebase-design, prototype, research and pr. Adds whats-next / stepping-away / checkpoint, nested-sessions for plan lanes, second-opinion (Astra via Ringer), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. Install instead of pm, never alongside it; needs no other plugin."
+      "description": "pm on Superpowers: Joe's PM layer around a trimmed, vendored copy of obra/superpowers (brainstorming with visuals, plans run in one session by subagents, branch finishing, TDD, debugging) without its session-start hook, plus Matt Pocock's wayfinder, grilling, domain-modeling, codebase-design, prototype, research and pr. Adds whats-next / stepping-away / checkpoint, nested-sessions for plan lanes, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. Install instead of pm, never alongside it; needs no other plugin."
     },
     {
       "name": "design-dc",

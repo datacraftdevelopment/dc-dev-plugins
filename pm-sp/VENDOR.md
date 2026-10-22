@@ -65,7 +65,9 @@ licensed (`LICENSE.mattpocock`).
 1. `wayfinder`: the missing-tracker hint points at `/pm-sp:scaffold`; a
    paragraph makes pm-sp's usual destination a set of chunks in order, each
    brainstormed in its own session; and a session may take the next ticket
-   after recording the last, instead of one ticket per session.
+   after recording the last, instead of one ticket per session; research
+   findings go where the tracker doc says (pm-sp's local tracker keeps maps,
+   tickets and research in `docs/maps/<effort>/`), not on a throwaway branch.
 2. `prototype`: the context pointer goes in the design doc or the wayfinder
    ticket, not an implementation issue.
 

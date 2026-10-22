@@ -27,7 +27,7 @@ What assumes it:
   verifier are both Ringer tasks; also needs a one-time Codex computer-use
   approval per target app (see `pm/UI-TEST.md`).
 - `pm-sp` skill `second-opinion` — sends a design doc (read as its builder)
-  or a finished branch to the Astra seat as one Ringer task; `pm-sp` also
+  or a finished branch to Sol as one Ringer task, alongside a fresh Opus; `pm-sp` also
   carries `ui-test`.
 
 Where it lives (none of it ships in this repo):

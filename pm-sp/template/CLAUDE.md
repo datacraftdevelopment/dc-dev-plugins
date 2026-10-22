@@ -23,9 +23,8 @@ FileMaker, web, SaaS or pure consulting.
 ├── .gitignore
 ├── docs/                ← SHARED record: collaborators and clients read it
 │   ├── inbox.md         ← loose ideas, one line each, no status
-│   ├── adr/             ← decisions (domain-modeling's format)
 │   ├── agents/
-│   │   └── issue-tracker.md ← local tracker for wayfinder maps, under .scratch/
+│   │   └── issue-tracker.md ← where wayfinder keeps maps: docs/maps/
 │   └── quirks.md        ← technical gotchas, fast capture
 └── _pm/                 ← PERSONAL log: per person, append-only, never authoritative
     ├── README.md
@@ -58,8 +57,8 @@ around the session.
   never a session. Decisions the plan didn't settle are made and written in the
   ledger as rulings; only irreversible, security, outside-the-worktree or
   hopelessly broken steps stop to ask.
-- **Second opinion from another vendor** (`second-opinion`, Astra through
-  Ringer): on project-sized design docs during brainstorming's builder check,
+- **Second opinion** (`second-opinion`, Sol through Ringer plus a fresh
+  Opus): on project-sized design docs during brainstorming's builder check,
   and on the finished branch before it merges. Not after every task.
 - **Parallel lanes** go to `nested-sessions`, only when the plan marks lanes
   with disjoint files and the user wants them moving at once.
@@ -68,7 +67,8 @@ around the session.
   chunks in order, and each chunk gets its own brainstorm.
 - **Bugs:** `systematic-debugging`. Reproduce before fixing.
 - **Model economy.** Ordinary sessions run Opus in Claude Code and Sol in
-  Codex. Astra and Fable are review seats, called only through Ringer.
+  Codex. The same two read each design and branch fresh as the second
+  opinion; no premium review seat.
 
 ## The taxonomy: known folders, created on first write
 
@@ -83,7 +83,8 @@ written into it (`mkdir -p`, then write): presence means it was needed.
 | `docs/notes/` | Scratch, meeting notes, ad-hoc analysis | first ad-hoc doc that isn't workflow |
 | `knowledge/` | Curated project knowledge, always an OKF bundle (`okf` skill) | facts turn entity-shaped, or a second consumer needs them |
 | `resources/` | Material **you bring in** from outside (`design-handoff/`, `research/`, `history/` as needed) | first external file arrives |
-| `.scratch/<effort>/` | A wayfinder map and its decision tickets (`docs/agents/issue-tracker.md`) | `/wayfinder` charts its first map |
+| `docs/adr/` | Durable decisions, in domain-modeling's format | the first ADR |
+| `docs/maps/<effort>/` | A wayfinder map, its decision tickets and research notes (`docs/agents/issue-tracker.md`) | `/wayfinder` charts its first map |
 | `.superpowers/` | Gitignored working state: plan ledgers, review packages, brainstorming mockups | the first plan run or visual brainstorm |
 | `docs/agents/client-face.md` | Optional: names a client-facing tracker and its close-out steps; `stepping-away` follows it | the client-face tool's own setup writes it |
 | `_pm/transcripts/` | Meeting transcripts, **gitignored** | first transcript kept (`granola-transcript`) |

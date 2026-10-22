@@ -82,14 +82,12 @@ project must be a repository.
 
 ## 5. Wire the shared record
 
-- **`docs/adr/`** ships in the template for new-folder modes. In-place
-  mode: create it (with its one-line README copied from
-  `${CLAUDE_PLUGIN_ROOT}/template/docs/`) if absent. `docs/specs/` and
-  `docs/plans/` are created the first time brainstorming or writing-plans
-  writes into them.
+- **No empty folders.** `docs/specs/`, `docs/plans/`, `docs/maps/` and
+  `docs/adr/` are created the first time something is written into them
+  (brainstorming, writing-plans, wayfinder, domain-modeling).
 - **The tracker — local markdown by default (0.17).** The template ships
   `docs/agents/issue-tracker.md` preset to the local-markdown
-  convention under `.scratch/`; `/pm-sp:wayfinder` reads it, for
+  convention, with maps in `docs/maps/`; `/pm-sp:wayfinder` reads it, for
   the rare foggy effort. Ask no tracker question. In-place mode: copy it from
   `${CLAUDE_PLUGIN_ROOT}/template/docs/agents/issue-tracker.md` **only if
   absent** — an existing file is that repo's decision, never overwritten. Say

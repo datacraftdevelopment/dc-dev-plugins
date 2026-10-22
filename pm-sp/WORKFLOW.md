@@ -9,7 +9,7 @@ is a commit, never a session.
 ```
 whats-next                        open: where things stand, write the Intent
   brainstorming                   new work: talk it through, mockups, approaches,
-    + second-opinion (design)     design doc with ## Acceptance; Astra reads it as the builder
+    + second-opinion (design)     design doc with ## Acceptance; Sol and Opus read it as builders
   [Joe says go to plan]
   writing-plans                   one plan, checkbox tasks, lanes when files are disjoint
   subagent-driven-development     run the whole plan in this session (or executing-plans, inline)
@@ -51,8 +51,8 @@ every path is a guess. `stepping-away` surfaces the rulings Joe should see.
 ## Model economy
 
 Ordinary sessions run `claude-opus-5` in Claude Code and `gpt-5.6-sol` in
-Codex. `gpt-6-astra` and `claude-fable-5` are review seats, called only
-through Ringer, and only at two points: the design doc (`second-opinion`
+Codex. The second opinion is the same two models as fresh readers, Sol through
+Ringer and Opus as a context-free subagent, and only at two points: the design doc (`second-opinion`
 design mode, for project-sized designs) and the finished branch
 (`second-opinion` branch mode). Superpowers' own task reviewers and final
 reviewer run as ordinary subagents. Tests are the continuous check; a green

@@ -46,7 +46,8 @@ chunks), `grilling`, `domain-modeling`, `codebase-design`, `prototype`,
 - `checkpoint`: mid-session re-aim when the session can't break.
 - `nested-sessions`: two or three plan lanes at once, each in a background
   session this one starts, steers and archives.
-- `second-opinion`: Astra through Ringer, on a design doc (as its builder) and
+- `second-opinion`: Sol through Ringer plus a fresh Opus, on a design doc (as
+  its builders) and
   on a finished branch.
 - `ship-acceptance`: the design doc's Acceptance checks against the real
   candidate and production, recorded in `docs/shipped/`.

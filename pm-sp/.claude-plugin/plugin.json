@@ -1,7 +1,7 @@
 {
   "name": "pm-sp",
-  "version": "0.2.0",
-  "description": "pm on Superpowers: Joe's project-management layer wrapped around a trimmed copy of Jesse Vincent's Superpowers (brainstorming with the visual companion, writing-plans, subagent-driven-development, finishing a branch, TDD, debugging, verification) without its session-start takeover, and the Matt Pocock skills it uses for foggy work (wayfinder, grilling, domain-modeling, codebase-design, prototype, research, pr), so no other plugin is needed. pm-sp adds the session layer (whats-next, stepping-away, checkpoint), nested-sessions for plan lanes, second-opinion (Astra via Ringer on designs and branches), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. An alternative to pm: install one or the other, and nothing else alongside.",
+  "version": "0.2.2",
+  "description": "pm on Superpowers: Joe's project-management layer wrapped around a trimmed copy of Jesse Vincent's Superpowers (brainstorming with the visual companion, writing-plans, subagent-driven-development, finishing a branch, TDD, debugging, verification) without its session-start takeover, and the Matt Pocock skills it uses for foggy work (wayfinder, grilling, domain-modeling, codebase-design, prototype, research, pr), so no other plugin is needed. pm-sp adds the session layer (whats-next, stepping-away, checkpoint), nested-sessions for plan lanes, second-opinion (Sol via Ringer plus a fresh Opus, on designs and branches), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. An alternative to pm: install one or the other, and nothing else alongside.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

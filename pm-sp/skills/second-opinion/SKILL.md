@@ -1,26 +1,34 @@
 ---
 name: second-opinion
-description: "A model from another vendor (Astra, through Ringer) reads a design doc as its builder or reviews a finished branch, so no plan or merge rests on one model approving its own work. Use from brainstorming's builder check, from finishing-a-development-branch, when the repo's CLAUDE.md asks for a cross-model review, or when the user says \"second opinion\", \"get Astra on this\" or \"cross-review\"."
+description: "Two fresh readers, Sol (through Ringer) and Opus, read a design doc as its builders or review a finished branch, so no plan or merge rests on the model that wrote it approving its own work. Use from brainstorming's builder check, from finishing-a-development-branch, when the repo's CLAUDE.md asks for a cross-model review, or when the user says \"second opinion\", \"get Sol on this\" or \"cross-review\"."
 ---
 
 # Second opinion
 
-One Ringer task to the cross-vendor seat, at the two points where a second pair
+Two fresh readers, one from another vendor, at the two points where a second pair
 of eyes pays: before a design becomes a plan, and before a branch merges. Not
 per task, not per green test run. The plan's own tests and Superpowers' own
 reviewers stay the continuous layer; this is the different-vendor check on top.
 
-## The seat
+## The readers
 
-Engine `codex`, model `gpt-6-astra` at medium effort (`gpt-5.6-sol` when Astra
-is quota-blocked). Every call goes through Ringer, never an inline Codex call;
-the `ringer` skill owns spec, check, engine and watch surface. Ringer runs on
-the Mac only, and `ringer` and `codex` resolve only in `zsh -lc`. From a cloud
-session, dispatch through Remote Control on the Mac, or say the seat isn't
-reachable and continue unseated (below).
+Both get the same packet and run at the same time; neither sees the other's
+answer.
+
+- **Sol,** the other vendor: one Ringer task, engine `codex`, model
+  `gpt-5.6-sol` at medium effort. Every call goes through Ringer, never an
+  inline Codex call; the `ringer` skill owns spec, check, engine and watch
+  surface. Ringer runs on the Mac only, and `ringer` and `codex` resolve only in
+  `zsh -lc`. From a cloud session, dispatch through Remote Control on the Mac,
+  or say Sol isn't reachable and continue with Opus alone (below).
+- **Opus,** the same vendor with none of this session's context: a fresh
+  subagent on `claude-opus-5` (or Ringer's Claude seat when the work is already
+  going through Ringer). Fresh is the point: it hasn't watched the design or the
+  code get written.
 
 The packet is read-only context and the question, nothing else: no transcript,
-no unrelated history.
+no unrelated history. Merge the two answers before acting: a point both raise
+counts once, and a point only one raises is still a point.
 
 ## Design mode
 
@@ -28,9 +36,9 @@ Called from brainstorming's builder check, for a project-sized design doc.
 
 - **Packet:** the design doc's path, the repo path, and the instruction to read
   it as the person who will build it and list what they would still need to ask.
-- **Check:** every question has a same-line reason; the seat also flags any
+- **Check:** every question has a same-line reason; each reader also flags any
   decision it thinks is hard to reverse (`door:`).
-- **Back in brainstorming:** sort its questions with the builder check's into
+- **Back in brainstorming:** sort their questions with the builder check's into
   the same three piles (answered already, minor, theirs). Doors always go to
   the user's pile. One round, together with the builder check's questions.
 
@@ -41,9 +49,9 @@ Called from finishing-a-development-branch, or when asked, on a finished branch.
 - **Packet:** base and head commits, the diff, the design doc and plan the
   branch answers to, `REVIEW.md` if the repo has one, and the test output at the
   head commit. Use the `cross-review-gate` skill's kit for the mechanics.
-- **Verdict:** findings with severity and file:line, each tied to the design,
+- **Verdict (each reader):** findings with severity and file:line, each tied to the design,
   the plan or `REVIEW.md`; a finding with no reference is noted, not acted on.
-  The seat also checks for a lowered bar: new suppressions, skipped or deleted
+  Both also check for a lowered bar: new suppressions, skipped or deleted
   tests, stub implementations, loosened thresholds or check config.
 - **After:** fix what it finds in this session (the session keeps its context,
   so it isn't a cold start), rerun the tests, and send the fix once more. A
@@ -52,10 +60,12 @@ Called from finishing-a-development-branch, or when asked, on a finished branch.
 
 ## Unseated
 
-If the task fails with a quota, auth or model-availability error, switch to
-Sol once and say so. If Sol fails too, or the user says "no seat this time",
-continue without it and mark the result `(unseated)` where the design doc or
-the finishing message records it. Never present an unseated result as reviewed.
+If Sol fails with a quota, auth or model-availability error, or Ringer isn't
+reachable, retry once, then continue with Opus alone and mark the result
+`(Opus only)` where the design doc or the finishing message records it: one
+vendor read it, not two. If both fail, or the user says "no second opinion this
+time", mark it `(unseated)`. Never present a one-reader or unseated result as a
+full second opinion.
 
 ## What this replaces
 
