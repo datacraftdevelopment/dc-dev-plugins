@@ -22,7 +22,9 @@ PLUGINS = {
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
 }
 # Local plugins with no Codex edition.
-CLAUDE_ONLY = set()
+# pm-sp has no Codex edition yet: its vendored Superpowers skills, nested-sessions and
+# the session layer are untested under Codex.
+CLAUDE_ONLY = {'pm-sp'}
 # Plugin source folders that differ from the plugin name.
 SOURCES = {}
 # Codex leaves these paths of a plugin out. pm's gate kit and review policy install
