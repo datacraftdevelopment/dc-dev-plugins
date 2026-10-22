@@ -7,7 +7,7 @@ description: Verify a deliverable against the Acceptance checks in its approved 
 
 Own the last handoff: approved design → independently executed acceptance → delivery record. A plan can finish with every task green; this procedure decides whether the design's outcome was delivered.
 
-**In pm-sp the "intent" is the approved design doc** in `docs/specs/`, written by `brainstorming`. Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that design doc. Older repos with `docs/intent/<slug>.md` files work the same way.
+**In pm-sp the "intent" is the approved design doc** in `docs/specs/`, written by `brainstorming`. Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that design doc. Older repos with `docs/intent/<slug>.md` files work the same way. Execution agreements, `dc-autonomy-v1` and Evidence requirements below come from pm's older intents; a pm-sp design doc has none of them unless it adds an `## Evidence requirements` block, so the single-evidence procedure applies by default.
 
 ## 1. Pin what will be checked
 

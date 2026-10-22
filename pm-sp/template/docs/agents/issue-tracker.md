@@ -26,7 +26,7 @@ Read the file at the referenced path. The user will normally pass the path or th
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
+Used by `/pm-sp:wayfinder`. The **map** is a file with one **child** file per ticket.
 
 - **Map**: `docs/maps/<effort>/map.md`, the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body.
 - **Child ticket**: `docs/maps/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
@@ -34,7 +34,7 @@ Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
 - **Frontier**: scan `docs/maps/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
 - **Claim**: set `Status: claimed` and save before any work.
 - **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.
-- **Sync**: the map travels by git. After charting and after each resolved ticket, commit only `docs/maps/<effort>/` (`wayfinder: <ticket title>`) and push it to the default branch, so the other computer and cloud sessions see it on their next pull. Never mix code into a map commit. If the session is on a feature branch, commit the map on the default branch from a worktree, or say it is waiting to be pushed.
+- **Sync**: the map travels by git. After charting and after each resolved ticket, commit only `docs/maps/<effort>/` (`wayfinder: <ticket title>`) and push it to the default branch (standing permission: map files only, never code), so the other computer and cloud sessions see it on their next pull. Never mix code into a map commit. If the session is on a feature branch, commit the map on the default branch from a worktree, or say it is waiting to be pushed.
 - **Research findings**: write them next to the ticket, `docs/maps/<effort>/research/<slug>.md`, instead of a throwaway branch.
 
 ## One header line pm-sp reads

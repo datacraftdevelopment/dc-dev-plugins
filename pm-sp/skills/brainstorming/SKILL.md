@@ -29,7 +29,8 @@ Before you start implementing, you must, in order:
    human partner pick one (see Lay out the approaches).
 2. Write the design doc, short or full (see Size the Work).
 3. Get their approval of that doc.
-4. Invoke the pm-sp:writing-plans skill.
+4. Ask whether to plan it now, and invoke the pm-sp:writing-plans skill
+   only when they say go (pm-sp; see the HARD-GATE below).
 
 Two things aren't implementing: a spike they said yes to (see Spike to
 feel things out), and doing what they asked once they've opted out of

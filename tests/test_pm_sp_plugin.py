@@ -52,14 +52,17 @@ class PmSpPluginTests(unittest.TestCase):
             self.assertLess(len(path.read_bytes()), 20000, path)
 
     def test_cross_references_resolve(self):
-        skills = VENDORED | MATT | OWN
-        for path in [*(SP / 'skills').rglob('*'), SP / 'WORKFLOW.md', SP / 'template/CLAUDE.md']:
+        skills = VENDORED | MATT | OWN | {p.stem for p in (SP / 'agents').glob('*.md')}
+        for path in [*(SP / 'skills').rglob('*'), SP / 'WORKFLOW.md', SP / 'template/CLAUDE.md',
+                     *(SP / 'templates').glob('*.md')]:
             if not path.is_file() or path.suffix not in {'.md', '.sh', ''}:
                 continue
             text = path.read_text(errors='ignore')
             self.assertNotIn('superpowers:', text.replace('pm-sp:', ''), path)
             self.assertNotIn('setup-matt-pocock-skills', text, path)
             self.assertNotIn('mattpocock-skills:', text, path)
+            # A bare pm: reference names the sibling plugin, which a pm-sp machine doesn't have.
+            self.assertNotRegex(text, r'(?<![\w-])pm:[a-z]', path)
             for name in re.findall(r'pm-sp:([a-z-]+)', text):
                 if name == 'scaffold':
                     continue
@@ -135,12 +138,22 @@ class PmSpPluginTests(unittest.TestCase):
         self.assertIn('MIT License', (SP / 'LICENSE.mattpocock').read_text())
         self.assertIn('5beb35b', vendor)
 
+    def test_models_are_pinned(self):
+        # Joe's Fable allowance was once spent by subagents inheriting the session's model.
+        sdd = (SP / 'skills/subagent-driven-development/SKILL.md').read_text()
+        self.assertIn("never on `fable`", sdd)
+        nested = (SP / 'skills/nested-sessions/SKILL.md').read_text()
+        self.assertIn('claude --bg --model sonnet', nested)
+        self.assertNotRegex(nested, r'claude --bg (?!--model)')
+
     def test_wayfinder_ends_in_chunks(self):
         wayfinder = (SP / 'skills/wayfinder/SKILL.md').read_text()
         self.assertIn('the usual destination is a set of chunks', wayfinder)
         self.assertIn('pm-sp:brainstorming', wayfinder)
         self.assertIn('/pm-sp:scaffold', wayfinder)
         self.assertNotIn('never resolve more than one ticket per session', wayfinder)
+        # Sibling skills are called by their plugin name, or the Skill tool may not find them.
+        self.assertNotRegex(wayfinder, r'Skill tool[^.]*"(?!pm-sp:)[a-z-]+"')
         self.assertTrue((SP / 'templates/issue-tracker-github.md').is_file())
         # One record: wayfinder maps live in docs/maps/, never a .scratch/ folder.
         for path in SP.rglob('*.md'):

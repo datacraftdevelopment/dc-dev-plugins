@@ -63,8 +63,13 @@ everything git ignores (`.env`, dependencies, `_pm/`, the plan's ledger). Then
 start each lane as a named background session, from Bash:
 
 ```bash
-claude --bg --name <lane-name> "<brief>"
+claude --bg --model sonnet --name <lane-name> "<brief>"
 ```
+
+**Always pass `--model`.** Without it a lane runs this machine's default
+model, and if that is Fable, every lane spends Fable. `sonnet` by default;
+`opus` for a lane that is mostly design judgment; never `fable` or `haiku`.
+The lane's own subagents follow subagent-driven-development's pm-sp tiers.
 
 It prints the session's short id; name it after the lane so messages can
 address it by name. If the host has its own control for starting a nested

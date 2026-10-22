@@ -207,6 +207,15 @@ Carry out the choice, then remove the worktree.
 **Otherwise:** The host environment owns this workspace — leave it in
 place. If your platform provides a workspace-exit tool, use it.
 
+## Step 7: Ship and close (pm-sp)
+
+After a merge (Option 1), or once the PR is merged: if the branch answers a
+design doc with an `## Acceptance` section, offer pm-sp:ship-acceptance to
+check those criteria against the merged candidate and record it in
+`docs/shipped/`. Then, if the session is winding down, pm-sp:stepping-away
+closes it; if not, pm-sp:whats-next picks the next chunk. Offer, don't run:
+your human partner may ship later or hand off.
+
 ## Quick Reference
 
 | Option | Merge | Push | Keep Worktree | Cleanup Branch |

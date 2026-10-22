@@ -65,15 +65,19 @@ chunks), `grilling`, `domain-modeling`, `codebase-design`, `prototype`,
 - `granola-transcript`, `okf`: utilities.
 
 **`/pm-sp:scaffold`** stands up a project from `template/`: `CLAUDE.md` with
-the workflow rules, `docs/` (inbox, adr, quirks, a local tracker for
-wayfinder), `_pm/` with the skeleton and sessions. It runs the skeleton
+the workflow rules, `docs/` (inbox, quirks, a local tracker for
+wayfinder; other folders appear on first write), `_pm/` with the skeleton and sessions. It runs the skeleton
 interview. Also adds a stack's plugins to a repo (`stack vercel`).
 
 ## What it assumes
 
-Ringer on the Mac for `second-opinion` and `ui-test` (the README of the
-marketplace explains). Without it, those run unseated and say so. Nothing
-else: no other plugin.
+No other plugin. On the machine:
+
+- **Ringer** and its library skills (`ringer`, `cross-review-gate`) on the Mac,
+  for `second-opinion`'s Sol reader and `ui-test` (the marketplace README
+  explains). Without them, second-opinion runs Opus alone and says so.
+- **Node**, for brainstorming's visual companion (a small local server).
+- **git** with a remote, so wayfinder maps and plans travel between computers.
 
 ## Not carried over from pm
 

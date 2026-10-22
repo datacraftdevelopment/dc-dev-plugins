@@ -19,3 +19,6 @@ _pm/transcripts/
 # Plan ledgers, review packages and brainstorming mockups (pm-sp's
 # Superpowers skills): local working state, not the shared record.
 .superpowers/
+
+# Plan worktrees (using-git-worktrees).
+.worktrees/

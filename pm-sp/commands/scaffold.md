@@ -96,9 +96,9 @@ project must be a repository.
 - **The inbox.** `docs/inbox.md` ships in the template (loose ideas, one
   line each, no status). In-place mode: copy it if absent, same rule.
 - **`.gitignore`** — the template's covers new-folder modes. In-place mode:
-  ensure `.env`, `account.md`, `_pm/transcripts/` and `.superpowers/` (the
+  ensure `.env`, `account.md`, `_pm/transcripts/`, `.worktrees/` and `.superpowers/` (the
   plan ledgers and brainstorming mockups) are ignored (append
-  additively; pm's `credential-guard` hook blocks staging them, but the
+  additively; pm-sp's `credential-guard` hook blocks staging them, but the
   ignore is the belt to that brace).
 - **Verification block** — the template `CLAUDE.md` already carries
   `## Verifying your work`. In-place mode: if `CLAUDE.md` exists without

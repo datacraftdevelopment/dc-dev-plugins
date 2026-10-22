@@ -41,7 +41,7 @@ What ships:
 
 ```
 /plugin marketplace add datacraftdevelopment/dc-dev-plugins
-/plugin install pm
+/plugin install pm-sp@dc-dev-plugins
 ```
 
 `ui-test` was its own plugin until pm 0.25.0. In the text below,

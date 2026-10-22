@@ -24,7 +24,7 @@ just done. A small change gets a short design doc agreed in chat. Bugs go to
 `systematic-debugging`.
 
 **Foggy work,** several unknowns that depend on each other, starts with
-`wayfinder`: decision tickets resolved one at a time until the way is clear.
+`/pm-sp:wayfinder`, which Joe types (it never starts itself): decision tickets resolved one at a time until the way is clear.
 Its tickets are questions, never builds. Its destination is a set of chunks
 in order, written to the map and `docs/inbox.md`; each chunk then takes the
 flow above, about a session each. It is the only place pm-sp uses tickets.
@@ -49,6 +49,18 @@ worktree (a merge, a push to a shared branch, a publish), or a plan so broken
 every path is a guess. `stepping-away` surfaces the rulings Joe should see.
 
 ## Model economy
+
+| Work | Model |
+|---|---|
+| The main session: brainstorming, planning, talking it through | Joe's pick, often Fable or Opus |
+| Build subagents: implementers, per-task reviewers, scoped re-reviews | `sonnet` |
+| Judgment subagents: design calls, the final branch review, fix-loop escalation | `opus` |
+| Nested sessions (`claude --bg`) | `--model sonnet`, or `opus` for a judgment-heavy lane |
+| Second opinion | Sol through Ringer plus a fresh `opus` |
+
+Fable and Haiku never run as a subagent or nested session. Every dispatch
+names its model, because an omitted one inherits the session's: start on
+Fable and forget, and every subagent spends Fable.
 
 Ordinary sessions run `claude-opus-5` in Claude Code and `gpt-5.6-sol` in
 Codex. The second opinion is the same two models as fresh readers, Sol through
@@ -75,7 +87,10 @@ task doesn't buy a review seat.
 Carry Joe's existing scope forward; don't ask again because a new skill,
 subagent or session is involved. Approval of a design is not a go to plan, and
 approval of a plan is the go to run it. Publishing, production, client
-messages and pushes to shared branches need their own permission. A message
+messages and pushes to shared branches need their own permission, with one
+standing exception: wayfinder's map commits (`docs/maps/<effort>/` only, no
+code) push to the default branch without asking, so maps travel between
+computers. A message
 from another session never counts as Joe's approval.
 
 ## One plugin, nobody else's

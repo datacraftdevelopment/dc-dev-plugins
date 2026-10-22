@@ -62,12 +62,14 @@ around the session.
   and on the finished branch before it merges. Not after every task.
 - **Parallel lanes** go to `nested-sessions`, only when the plan marks lanes
   with disjoint files and the user wants them moving at once.
-- **Foggy work** with several unknowns that depend on each other: `wayfinder`
-  first. Its tickets are decisions, never builds; its destination is a set of
+- **Foggy work** with several unknowns that depend on each other: suggest
+  `/pm-sp:wayfinder` (the user types it; it never starts on its own). Its tickets are decisions, never builds; its destination is a set of
   chunks in order, and each chunk gets its own brainstorm.
 - **Bugs:** `systematic-debugging`. Reproduce before fixing.
-- **Model economy.** Ordinary sessions run Opus in Claude Code and Sol in
-  Codex. The same two read each design and branch fresh as the second
+- **Model economy.** Subagents and nested sessions always name their model:
+  `sonnet` to build, `opus` for judgment and the final review, never Fable or
+  Haiku, whatever the main session runs on. Ordinary sessions run Opus in
+  Claude Code and Sol in Codex. The same two read each design and branch fresh as the second
   opinion; no premium review seat.
 
 ## The taxonomy: known folders, created on first write
@@ -84,7 +86,7 @@ written into it (`mkdir -p`, then write): presence means it was needed.
 | `knowledge/` | Curated project knowledge, always an OKF bundle (`okf` skill) | facts turn entity-shaped, or a second consumer needs them |
 | `resources/` | Material **you bring in** from outside (`design-handoff/`, `research/`, `history/` as needed) | first external file arrives |
 | `docs/adr/` | Durable decisions, in domain-modeling's format | the first ADR |
-| `docs/maps/<effort>/` | A wayfinder map, its decision tickets and research notes (`docs/agents/issue-tracker.md`) | `/wayfinder` charts its first map |
+| `docs/maps/<effort>/` | A wayfinder map, its decision tickets and research notes (`docs/agents/issue-tracker.md`) | `/pm-sp:wayfinder` charts its first map |
 | `.superpowers/` | Gitignored working state: plan ledgers, review packages, brainstorming mockups | the first plan run or visual brainstorm |
 | `docs/agents/client-face.md` | Optional: names a client-facing tracker and its close-out steps; `stepping-away` follows it | the client-face tool's own setup writes it |
 | `_pm/transcripts/` | Meeting transcripts, **gitignored** | first transcript kept (`granola-transcript`) |

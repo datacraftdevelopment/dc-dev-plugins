@@ -23,7 +23,7 @@ managed settings       lock        the admin's layer; mapped here, not deployed
 
 | Piece | What it does |
 |---|---|
-| hook `credential-guard` (`hooks/`, `scripts/credential_guard.py`, `scripts/credential-policy.json`) and skill `credential-guard` | Machine-wide, no per-repo setup: a PreToolUse hook on Bash that blocks `git add`, `git stage` and `git commit` when a credential-shaped file would be staged or committed. In pm until 0.24.0, the sdlc plugin from 2026-10-07, and back in pm from 0.25.0. Tests: `bash pm/hooks/test-credential-guard.sh` and `tests/test_sdlc_credential_guard.py`. pm's Codex edition carries this guard, ui-test and the rest of pm, and leaves out `gate-hooks` and `review-policy`. |
+| hook `credential-guard` (`hooks/`, `scripts/credential_guard.py`, `scripts/credential-policy.json`) and skill `credential-guard` | Machine-wide, no per-repo setup: a PreToolUse hook on Bash that blocks `git add`, `git stage` and `git commit` when a credential-shaped file would be staged or committed. In pm until 0.24.0, the sdlc plugin from 2026-10-07, and back in pm from 0.25.0. Tests: `bash pm-sp/hooks/test-credential-guard.sh` and `tests/test_sdlc_credential_guard.py`. pm's Codex edition carries this guard, ui-test and the rest of pm, and leaves out `gate-hooks` and `review-policy`. |
 | skill `gate-hooks` | Installs the gate kit into a repo and writes its rules with the user. |
 | `kit/sdlc_gate.py` | The gate. A PreToolUse and Stop hook: production commands, protected paths, a test lock for fix tasks, a commit backstop, and protection for its own files. It also provides the `lock`, `unlock`, `status` and `check` commands. The lock and the decision log are kept in `.git/sdlc-gate/`, where `git clean` cannot remove them. |
 | `scripts/install_gates.py` | Copies the kit into `<repo>/.claude/`, merges the hook entries into `settings.json`, backs up what it replaces. Safe to repeat. |
@@ -80,7 +80,7 @@ The kits still use Claude Code features only, and nothing in them needs Ringer.
 
 ```
 /plugin marketplace update dc-dev-plugins
-/plugin install pm@dc-dev-plugins
+/plugin install pm-sp@dc-dev-plugins
 ```
 
 Then, in a repo, ask for a gate or a review policy and the skills take it from

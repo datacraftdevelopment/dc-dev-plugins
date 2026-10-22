@@ -138,6 +138,12 @@ ledger.
 
 ## Model Selection
 
+**pm-sp's tiers** (pm-sp): cheap and standard = `sonnet`; most capable =
+`opus`. Never dispatch a subagent on `haiku` (it takes more turns than it
+saves), and never on `fable`, even when this session runs on Fable:
+brainstorming may run on Fable, the build never does. Name the model on every
+dispatch; an omitted model inherits this session's.
+
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
 **Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
