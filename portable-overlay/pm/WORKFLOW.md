@@ -7,7 +7,7 @@ Everything else is added only when a named uncertainty calls for it.
 ```
 whats-next ──► the work, in this session ──► stepping-away ──► fresh session
                   │
-                  ├─ two or three independent items?   subsessions
+                  ├─ two or three independent items?   nested sessions
                   ├─ a risk the checks don't settle?   adversary-review
                   └─ delivering an intent?             ship-acceptance
 ```
@@ -22,19 +22,19 @@ and handoffs short.
 `verify-before-done` applies to every completion claim: run the check fresh,
 read the output, report the claim and the evidence together.
 
-## Work in parallel: subsessions
+## Work in parallel: nested sessions
 
 Two or three ready items that have nothing to do with each other can each run
-in their own subsession: own worktree, own branch, worked through to green.
+in their own nested session: own worktree, own branch, worked through to green.
 The main session starts them, answers or relays their questions, merges on the
 user's word and archives them, so the user talks to one session. The
-`subsessions` skill owns the screen (disjoint files, one database writer at
+`nested-sessions` skill owns the screen (disjoint files, one database writer at
 most, no shared port or dev server) and the brief. Three at once is the
 ceiling.
 
-The main session acts on its subsessions' messages and never polls. A
+The main session acts on its nested sessions' messages and never polls. A
 coordinating session that polled and integrated cost more than it saved when
-it was tried. Where the host can't carry messages back, the subsessions run as
+it was tried. Where the host can't carry messages back, the nested sessions run as
 unmanaged siblings and nobody watches them.
 
 ## Add process only to resolve an uncertainty

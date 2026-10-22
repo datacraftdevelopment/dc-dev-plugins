@@ -103,7 +103,7 @@ and resource-release checks. Installation/scaffolding alone never opts this proj
 - **One session, one outcome.** `whats-next` opens, the work happens in that
   session, `stepping-away` closes and offers a fresh session for the next ready
   work. Do not orchestrate by default. Two or three independent ready tickets
-  can run as **subsessions** (pm `subsessions` skill): each its own
+  can run as **nested sessions** (pm `nested-sessions` skill): each its own
   ordinary session on its own branch, started, steered and archived by the
   main session so the user talks to one session.
 - **Outcome-sized tickets.** `orchestrate` is opt-in, for a real batch of
