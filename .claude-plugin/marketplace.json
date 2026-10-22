@@ -11,6 +11,11 @@
       "description": "DataCraft PM, the hands-on way of working: outcome-sized tickets, one session per outcome by default, subsessions the main session manages for independent tickets, opt-in orchestration with up to six subagents, proportionate verification, delivery acceptance and concise handoffs. Also carries what the sdlc and ui-test plugins used to: the credential guard (a PreToolUse hook that blocks staging or committing credential-shaped files), gate-hooks (one gate script in a repo's .claude/: production gate, protected paths, a test lock for fix tasks, a commit and Stop backstop), review-policy with its read-only policy-reviewer agent, and ui-test (agent-run UI tests for macOS apps: a Codex computer-use runner under Ringer, executed checks on the receipt, a separate verifier). Also Runway, the unattended ticket loop (engine in runway/, plus the runway skill), folded in from the factory plugin at 0.26.0. Its Codex edition carries the credential guard, ui-test and runway, not gate-hooks or review-policy. Existing project requirements and permissions remain binding."
     },
     {
+      "name": "pm-sp",
+      "source": "./pm-sp",
+      "description": "pm on Superpowers: Joe's PM layer around a trimmed, vendored copy of obra/superpowers (brainstorming with visuals, plans run in one session by subagents, branch finishing, TDD, debugging) without its session-start hook, plus Matt Pocock's wayfinder, grilling, domain-modeling, codebase-design, prototype, research and pr. Adds whats-next / stepping-away / checkpoint, nested-sessions for plan lanes, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. Install instead of pm, never alongside it; needs no other plugin."
+    },
+    {
       "name": "design-dc",
       "source": "./design-dc",
       "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact \u2192 locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
