@@ -65,7 +65,7 @@ Each agent gets:
 
 ### 3. Dispatch in Parallel
 
-Issue all three subagent dispatches in the same response — they run in parallel:
+Issue all three subagent dispatches in the same response — they run in parallel. Name the model on each (pm-sp): `sonnet` for fixes and implementation, `opus` when the problem needs design judgment; never the inherited session model.
 
 ```text
 Subagent (general-purpose): "Fix agent-tool-abort.test.ts failures"

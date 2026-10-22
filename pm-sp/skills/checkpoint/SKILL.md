@@ -18,7 +18,7 @@ the record describes the present, not how we got here.
    before and after, then append through the binding:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root . reaim --session <bound-path> --id <bound-id> --entry-file <reaim-text-file>
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root "<bound-root>" reaim --session <bound-path> --id <bound-id> --entry-file <reaim-text-file>
    ```
 
    One line, such as: *Re-aimed 14:30: the import has to keep the legacy IDs;

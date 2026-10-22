@@ -31,7 +31,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 **2. Dispatch code reviewer subagent:**
 
-Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
+Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md). Name its model (pm-sp): `sonnet` for a task review, `opus` for a whole-branch review; never the inherited session model.
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built

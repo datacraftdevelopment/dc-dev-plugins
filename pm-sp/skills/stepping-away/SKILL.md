@@ -71,10 +71,12 @@ and the design docs first, by subject: a repeat adds `· re-raised YYYY-MM-DD
 
 ## 6. Close the record
 
-Write the drafted sections into an entry file, then close by the binding:
+Write the drafted sections into an entry file, then close by the binding
+(`<bound-root>` is the absolute root `whats-next` kept, even if the session
+has since moved into a worktree):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root . close --session <bound-path> --id <bound-id> --entry-file <entry-text-file>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root "<bound-root>" close --session <bound-path> --id <bound-id> --entry-file <entry-text-file>
 ```
 
 It checks identity, appends the entry and writes `Closed:` last. A repeat

@@ -38,6 +38,14 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
 4. `writing-plans`: an optional `## Lanes` section for `nested-sessions`.
 5. `finishing-a-development-branch`: Step 1b, a pm-sp second-opinion on the
    branch before the options.
+6. Models named at every dispatch: `subagent-driven-development`'s tier map
+   (sonnet / opus, never fable or haiku), `executing-plans`' final review,
+   brainstorming's builder check, `dispatching-parallel-agents`,
+   `requesting-code-review`.
+7. Script paths: both executors say their `scripts/` mean
+   `${CLAUDE_PLUGIN_ROOT}/skills/.../scripts/`, run from the project worktree.
+8. `finishing-a-development-branch`: Step 7 offers ship-acceptance and
+   stepping-away. `brainstorming`'s opening checklist asks before planning.
 
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.
@@ -68,10 +76,13 @@ licensed (`LICENSE.mattpocock`).
    after recording the last, instead of one ticket per session; research
    findings go where the tracker doc says (pm-sp's local tracker keeps maps,
    tickets and research in `docs/maps/<effort>/`), not on a throwaway branch.
-2. `prototype`: the context pointer goes in the design doc or the wayfinder
-   ticket, not an implementation issue.
+2. `prototype`: the decision is recorded in the design doc or wayfinder
+   ticket; all prototype code goes to a throwaway branch, never into the
+   product (the plan writes the real code).
 3. `wayfinder` drops `disable-model-invocation`, so naming it ("use
    wayfinder") starts it, and its description says to run only when named.
+   Map Notes can no longer authorize implementation.
+4. `research` and `codebase-design`'s design-it-twice name their models.
 
 ## The visual companion
 

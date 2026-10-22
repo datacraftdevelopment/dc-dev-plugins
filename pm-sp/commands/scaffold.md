@@ -68,6 +68,10 @@ created the first time something is written into them.
 
 ## 4. Git
 
+First check `python3 --version` reports 3.9 or newer. The credential guard
+and the session helpers need it; if it's missing or older, say so and stop
+before any git or session step.
+
 The workflow's first artifacts (design docs in `docs/specs/` from
 `brainstorming`, plans in `docs/plans/`) are *committed* files, so the
 project must be a repository.

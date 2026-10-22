@@ -1,6 +1,7 @@
 # Builder Check Prompt
 
-Dispatch a fresh general-purpose subagent with this prompt once the
+Dispatch a fresh general-purpose subagent with `model: opus` (pm-sp: named
+explicitly, never the inherited session model) with this prompt once the
 written design exists. Fill in the domain and the document path.
 
 ```

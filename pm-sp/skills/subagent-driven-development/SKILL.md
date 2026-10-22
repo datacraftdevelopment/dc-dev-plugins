@@ -100,6 +100,11 @@ digraph process {
 
 ## Setup
 
+**Script paths (pm-sp).** `scripts/<name>` here and in the prompts and
+references means
+`"${CLAUDE_PLUGIN_ROOT}/skills/subagent-driven-development/scripts/<name>"`,
+run from the project worktree root, never the plugin's folder.
+
 Ensure the work happens in an isolated workspace: use
 pm-sp:using-git-worktrees to create one or verify the existing one.
 Never start implementation on a main/master branch without your human
@@ -139,10 +144,8 @@ ledger.
 ## Model Selection
 
 **pm-sp's tiers** (pm-sp): cheap and standard = `sonnet`; most capable =
-`opus`. Never dispatch a subagent on `haiku` (it takes more turns than it
-saves), and never on `fable`, even when this session runs on Fable:
-brainstorming may run on Fable, the build never does. Name the model on every
-dispatch; an omitted model inherits this session's.
+`opus`. Never `haiku`, and never on `fable`, even when this session is on
+Fable. Name the model on every dispatch.
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
@@ -244,7 +247,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`bash scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
+**DONE:** Generate the review package (`bash scripts/review-package PLAN_FILE BASE HEAD`, from the project worktree root, see Script paths — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
 
 **Any other status** (DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED): read
 [references/handling-reports.md](references/handling-reports.md) and follow

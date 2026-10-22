@@ -140,11 +140,53 @@ class PmSpPluginTests(unittest.TestCase):
 
     def test_models_are_pinned(self):
         # Joe's Fable allowance was once spent by subagents inheriting the session's model.
-        sdd = (SP / 'skills/subagent-driven-development/SKILL.md').read_text()
-        self.assertIn("never on `fable`", sdd)
+        # Every place that dispatches a subagent or session names the model it expects.
+        expected = {
+            'skills/subagent-driven-development/SKILL.md': ['cheap and standard = `sonnet`', 'most capable =\n`opus`', 'never on `fable`'],
+            'skills/executing-plans/SKILL.md': ['dispatch the reviewer with `model: opus`'],
+            'skills/brainstorming/builder-check-prompt.md': ['`model: opus`'],
+            'skills/requesting-code-review/SKILL.md': ['`sonnet` for a task review, `opus` for a whole-branch review'],
+            'skills/dispatching-parallel-agents/SKILL.md': ['`sonnet` for fixes and implementation'],
+            'skills/codebase-design/DESIGN-IT-TWICE.md': ['`model: opus`'],
+            'skills/research/SKILL.md': ['`model: sonnet`'],
+            'skills/nested-sessions/SKILL.md': ['claude --bg --model sonnet'],
+            'skills/second-opinion/SKILL.md': ['`claude-opus-5`', '`gpt-5.6-sol`'],
+        }
+        for rel, needles in expected.items():
+            text = (SP / rel).read_text()
+            for needle in needles:
+                self.assertIn(needle, text, rel)
         nested = (SP / 'skills/nested-sessions/SKILL.md').read_text()
-        self.assertIn('claude --bg --model sonnet', nested)
         self.assertNotRegex(nested, r'claude --bg (?!--model)')
+        # No skill hands out the model nobody should spend below the main session.
+        for path in (SP / 'skills').rglob('*.md'):
+            self.assertNotRegex(path.read_text(), r'model: (fable|haiku)|--model (fable|haiku)', path)
+
+    def test_session_closes_from_a_worktree(self):
+        # The session binds an absolute root, so close works after the plan moves into a worktree.
+        with tempfile.TemporaryDirectory() as tmp:
+            root, elsewhere = Path(tmp) / 'repo', Path(tmp) / 'repo-worktree'
+            root.mkdir(); elsewhere.mkdir()
+            script = str(SP / 'scripts/session.py')
+            opened = subprocess.run([sys.executable, script, '--root', str(root), 'open', '--name', 'joe',
+                                     '--intent', 'Build it.'], capture_output=True, text=True)
+            bound = json.loads(opened.stdout)
+            entry = elsewhere / 'entry.md'
+            entry.write_text('## Shipped\n\n- the thing\n')
+            closed = subprocess.run([sys.executable, script, '--root', str(root), 'close', '--session', bound['path'],
+                                     '--id', bound['id'], '--entry-file', str(entry)],
+                                    capture_output=True, text=True, cwd=elsewhere)
+            self.assertEqual(closed.returncode, 0, closed.stderr)
+            self.assertIn('Closed:', (root / bound['path']).read_text())
+        for rel in ['skills/stepping-away/SKILL.md', 'skills/checkpoint/SKILL.md']:
+            self.assertIn('--root "<bound-root>"', (SP / rel).read_text(), rel)
+        self.assertIn('ROOT="$(git rev-parse --show-toplevel)"', (SP / 'skills/whats-next/SKILL.md').read_text())
+
+    def test_prototype_and_wayfinder_never_build(self):
+        proto = (SP / 'skills/prototype/SKILL.md').read_text()
+        self.assertNotIn('Fold any validated decision into the real code', proto)
+        self.assertNotIn('promote the winning variant', (SP / 'skills/prototype/UI.md').read_text())
+        self.assertNotIn('carrying execution into the map itself', (SP / 'skills/wayfinder/SKILL.md').read_text())
 
     def test_wayfinder_ends_in_chunks(self):
         wayfinder = (SP / 'skills/wayfinder/SKILL.md').read_text()

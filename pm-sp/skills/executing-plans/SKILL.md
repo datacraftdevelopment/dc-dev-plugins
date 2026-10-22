@@ -106,6 +106,13 @@ digraph process {
 
 ## Setup
 
+**Script paths (pm-sp).** This skill's `scripts/<name>` means
+`"${CLAUDE_PLUGIN_ROOT}/skills/executing-plans/scripts/<name>"`, and
+`../subagent-driven-development/scripts/<name>` means
+`"${CLAUDE_PLUGIN_ROOT}/skills/subagent-driven-development/scripts/<name>"`.
+Run each with the project's worktree root as the current directory, never
+from the plugin's folder.
+
 Ensure the work happens in an isolated workspace: use
 pm-sp:using-git-worktrees to create one or verify the existing one.
 Never start implementation on a main/master branch without your human
@@ -236,8 +243,8 @@ Run `../subagent-driven-development/scripts/review-package PLAN_FILE MERGE_BASE 
 (MERGE_BASE = the commit the branch started from, e.g.
 `git merge-base main HEAD`) and review from the file it prints.
 
-**With a subagent tool:** dispatch the reviewer on the most capable
-available model — the whole-branch review is a judgment task — using
+**With a subagent tool:** dispatch the reviewer with `model: opus`, named explicitly, never the
+inherited session model (pm-sp) — the whole-branch review is a judgment task — using
 pm-sp:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md), with the
 package path, the plan and spec paths, the plan's Review Focus section

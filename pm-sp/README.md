@@ -76,6 +76,9 @@ No other plugin. On the machine:
 - **Ringer** and its library skills (`ringer`, `cross-review-gate`) on the Mac,
   for `second-opinion`'s Sol reader and `ui-test` (the marketplace README
   explains). Without them, second-opinion runs Opus alone and says so.
+- **Python 3.9+** as `python3` on Claude Code's Bash PATH: the always-on
+  credential guard and the session and delivery helpers need it (check with
+  `python3 --version`). `ui-test` also needs Pillow (see `UI-TEST.md`).
 - **Node**, for brainstorming's visual companion (a small local server).
 - **git** with a remote, so wayfinder maps and plans travel between computers.
 

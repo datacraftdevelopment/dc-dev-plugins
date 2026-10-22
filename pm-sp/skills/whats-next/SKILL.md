@@ -71,10 +71,13 @@ to one session. Once the pick is settled (a named task counts), open the
 session record:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root . open --name <handle> --intent '<session intent>'
+ROOT="$(git rev-parse --show-toplevel)"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root "$ROOT" open --name <handle> --intent '<session intent>'
 ```
 
-Keep the returned `path` and `id` in this conversation and in any handoff
+Keep the absolute `ROOT` with the returned `path` and `id` (pm-sp): the plan
+may move this session into a worktree, and close and re-aim must still find
+the same file. Keep all three in this conversation and in any handoff
 summary; they bind this conversation to this session. Never pick a session file
 by its ordinal. On resume, reread that file's Intent and latest re-aim.
 

@@ -97,10 +97,7 @@ Surface the URL (and the `?variant=` keys). The user will flip through whenever 
 
 ### 6. Capture the answer and clean up
 
-Once a variant has won, capture the answer (which variant and why), then capture the prototype the way the [SKILL](SKILL.md) describes. Fold the winner into the real code and move the rest onto the throwaway branch, not into main:
-
-- **Sub-shape A**: fold the winner into the existing page; drop the losing variants and the switcher from main.
-- **Sub-shape B**: promote the winning variant to a real route; drop the throwaway route and the switcher from main.
+Once a variant has won, capture the answer (which variant and why) in the design doc or wayfinder ticket, then capture the prototype the way the [SKILL](SKILL.md) describes: every variant and the switcher go onto the throwaway branch, and main keeps none of them. Building the winner for real (into the existing page for sub-shape A, as a real route for sub-shape B) is plan work, after the design and the plan are approved (pm-sp).
 
 The full set of variants is the primary source, so it lands on the throwaway branch, not the bin, since variant components and the switcher left in the main branch rot fast and confuse the next reader.
 
