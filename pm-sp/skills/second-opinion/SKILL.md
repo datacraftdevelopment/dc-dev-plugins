@@ -61,4 +61,4 @@ the finishing message records it. Never present an unseated result as reviewed.
 
 pm's `fast-grill`. Grilling rounds are gone from the default flow; brainstorming
 asks the questions and its builder check settles the technical ones. Run
-Matt Pocock's `grilling` by hand when you want to be stress-tested on purpose.
+`grilling` by hand when you want to be stress-tested on purpose.

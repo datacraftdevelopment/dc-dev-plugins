@@ -1,12 +1,12 @@
 # Issue tracker: Local Markdown
 
 Preset by the pm-sp plugin: local markdown is the default tracker. In
-pm-sp it is used only by Matt Pocock's `wayfinder`, for foggy efforts;
+pm-sp it is used only by `wayfinder`, for foggy efforts;
 build work lives in design docs and plans, not tickets.
-Switch to GitHub Issues or another tracker by re-running
-`/setup-matt-pocock-skills`, which owns this file's format. The conventions
-below are Matt Pocock's local-markdown tracker, unchanged, plus one
-descriptive header line pm-sp reads.
+Switch to GitHub Issues by copying pm-sp's
+`templates/issue-tracker-github.md` over this file. The conventions below
+are Matt Pocock's local-markdown tracker, unchanged, plus one descriptive
+header line pm-sp reads.
 
 Issues and specs for this repo live as markdown files in `.scratch/`.
 

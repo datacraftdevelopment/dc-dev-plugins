@@ -9,15 +9,18 @@ around it. **Read [`WORKFLOW.md`](./WORKFLOW.md) first.**
 pm-sp is an alternative to `pm`, not an add-on: **install one or the other on
 a machine, never both.** They share the credential-guard hook (it would run
 twice) and several skill names (`whats-next`, `stepping-away`, `checkpoint`,
-`ship-acceptance`, …). Don't install upstream Superpowers alongside it either:
-pm-sp already carries the parts it uses, and upstream's session-start hook is
-the takeover pm-sp leaves out.
+`ship-acceptance`, …). Don't install upstream Superpowers or Matt Pocock's skills
+alongside it either: pm-sp carries the parts it uses, and the rest of those
+packs would pull sessions toward their own flows.
 
 ```
 /plugin install pm-sp@dc-dev-plugins
 ```
 
 ## What's in it
+
+pm-sp is the only plugin a pm-sp machine needs: **don't install Superpowers or
+Matt Pocock's skills alongside it.** The parts of them it uses are copied in.
 
 **The workflow (vendored Superpowers, v7.0.1, see [`VENDOR.md`](./VENDOR.md)):**
 `brainstorming` (with the browser visual companion), `writing-plans`,
@@ -28,6 +31,11 @@ the takeover pm-sp leaves out.
 `dispatching-parallel-agents`. Without Superpowers' session-start hook, so
 nothing takes over a session: skills fire when their description fits or when
 named.
+
+**Shaping foggy work (vendored Matt Pocock skills, see [`VENDOR.md`](./VENDOR.md)):**
+`wayfinder` (decision tickets until the way is clear, ending in a set of
+chunks), `grilling`, `domain-modeling`, `codebase-design`, `prototype`,
+`research`, and `pr` for PR bodies.
 
 **The session layer (pm-sp's own):**
 
@@ -63,10 +71,8 @@ interview. Also adds a stack's plugins to a repo (`stack vercel`).
 ## What it assumes
 
 Ringer on the Mac for `second-opinion` and `ui-test` (the README of the
-marketplace explains). Without it, those run unseated and say so. Matt
-Pocock's skills stay installed for `wayfinder`, `grilling`, `domain-modeling`,
-`codebase-design`, `prototype`, `research`, `pr` and `retro`; `WORKFLOW.md`
-lists which of his to leave alone because pm-sp overlaps them.
+marketplace explains). Without it, those run unseated and say so. Nothing
+else: no other plugin.
 
 ## Not carried over from pm
 

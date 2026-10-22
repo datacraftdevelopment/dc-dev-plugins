@@ -35,8 +35,9 @@ truth, `_pm/` is log).
 - `_pm/skeleton.md`, the project's macro why.
 - The last one to three files in `_pm/sessions/`, most recent first, especially
   their open threads and Intent vs. outcome.
-- A wayfinder map, if the repo has one (Matt Pocock's `wayfinder`): its
-  frontier is decision work, not build work.
+- A wayfinder map, if the repo has one (`wayfinder`): its frontier is
+  decision work, not build work. A cleared map's chunks are brainstorm
+  candidates, in the order it set.
 
 ## 2. Propose
 
@@ -52,8 +53,8 @@ Watch-outs: <a plan with no commits in a while, a ledger and git that disagree, 
 ```
 
 New work with no design yet goes to `brainstorming`. Work that is genuinely
-foggy, with several unknowns that depend on each other, goes to Matt Pocock's
-`wayfinder` first; its destination is a brainstorm per piece.
+foggy, with several unknowns that depend on each other, goes to
+`wayfinder` first; its destination is a set of chunks, a brainstorm each.
 
 ## 3. Write the Intent
 

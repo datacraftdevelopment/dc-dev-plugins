@@ -23,7 +23,7 @@ FileMaker, web, SaaS or pure consulting.
 ├── .gitignore
 ├── docs/                ← SHARED record: collaborators and clients read it
 │   ├── inbox.md         ← loose ideas, one line each, no status
-│   ├── adr/             ← decisions (Matt Pocock's domain-modeling format)
+│   ├── adr/             ← decisions (domain-modeling's format)
 │   ├── agents/
 │   │   └── issue-tracker.md ← local tracker for wayfinder maps, under .scratch/
 │   └── quirks.md        ← technical gotchas, fast capture
@@ -63,8 +63,9 @@ around the session.
   and on the finished branch before it merges. Not after every task.
 - **Parallel lanes** go to `nested-sessions`, only when the plan marks lanes
   with disjoint files and the user wants them moving at once.
-- **Foggy work** with several unknowns that depend on each other: Matt Pocock's
-  `wayfinder` first; each piece it clears gets its own brainstorm.
+- **Foggy work** with several unknowns that depend on each other: `wayfinder`
+  first. Its tickets are decisions, never builds; its destination is a set of
+  chunks in order, and each chunk gets its own brainstorm.
 - **Bugs:** `systematic-debugging`. Reproduce before fixing.
 - **Model economy.** Ordinary sessions run Opus in Claude Code and Sol in
   Codex. Astra and Fable are review seats, called only through Ringer.

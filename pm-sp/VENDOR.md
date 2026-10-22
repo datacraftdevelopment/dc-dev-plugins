@@ -1,4 +1,10 @@
-# Vendored: Superpowers
+# Vendored: Superpowers and Matt Pocock's skills
+
+pm-sp carries what it uses from two outside packs, so a pm-sp machine installs
+no other plugin. Each copy is upstream text except the changes listed, and
+each change is marked `pm-sp` in place.
+
+## Superpowers
 
 pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
 (<https://github.com/obra/superpowers>), MIT licensed (`LICENSE.superpowers`).
@@ -16,7 +22,7 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
   `systematic-debugging`'s pressure-test and creation-log files (they test the
   skill, they don't run it).
 
-## What was changed, and only this
+### What was changed, and only this
 
 1. Cross-references `superpowers:<skill>` became `pm-sp:<skill>`; the one
    reference to `writing-skills` became plain prose; `executing-plans` no
@@ -36,6 +42,33 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.
 
+## Matt Pocock's skills
+
+From **mattpocock/skills** (<https://github.com/mattpocock/skills>), MIT
+licensed (`LICENSE.mattpocock`).
+
+- **Upstream:** commit `5beb35b` (2026-10-19); the seven skills are identical
+  to release 1.3.1.
+- **Copied** (git-tracked files only, without the Codex `agents/openai.yaml`
+  files): `wayfinder`, `grilling`, `domain-modeling`, `codebase-design`,
+  `prototype`, `research`, `pr` (with its `CREDITS.md`, which credits Dex
+  Horthy's `show-me`). `templates/issue-tracker-github.md` is his
+  `setup-matt-pocock-skills` GitHub tracker doc, without its PR-triage
+  section.
+- **Left out:** the ticket-per-session flow (`to-spec`, `to-tickets`,
+  `implement`, `implement-spec`, `triage`), the parts Superpowers already
+  covers (`tdd`, `diagnosing-bugs`, `code-review`), `grill-me`, `handoff`,
+  `retro`, `setup-matt-pocock-skills` and the rest.
+
+### What was changed, and only this
+
+1. `wayfinder`: the missing-tracker hint points at `/pm-sp:scaffold`; a
+   paragraph makes pm-sp's usual destination a set of chunks in order, each
+   brainstormed in its own session; and a session may take the next ticket
+   after recording the last, instead of one ticket per session.
+2. `prototype`: the context pointer goes in the design doc or the wayfinder
+   ticket, not an implementation issue.
+
 ## The visual companion
 
 Brainstorming's browser companion (`skills/brainstorming/scripts/`) runs a
@@ -49,8 +82,8 @@ cloud session.
 
 Roughly monthly, or when a release note matters:
 
-1. Clone upstream at the new tag and diff its copies of the skills above
-   against the previous vendored commit.
-2. Apply upstream changes here, keeping the five changes above.
+1. Clone each upstream at its new release and diff its copies of the skills
+   above against the previously vendored commit.
+2. Apply upstream changes here, keeping the changes listed above.
 3. Update the commit line at the top, bump pm-sp's version, run
    `python3 -m pytest tests/test_pm_sp_plugin.py -q` from the marketplace root.

@@ -67,7 +67,7 @@ and the design docs first, by subject: a repeat adds `· re-raised YYYY-MM-DD
   The bar: if this note vanished, would the next engineer repeat the mistake or
   redo the investigation? If not, write nothing.
 - **ADR:** only for a durable choice not already recorded in a design doc.
-  `docs/adr/`, Matt Pocock's `domain-modeling` format.
+  `docs/adr/`, in `domain-modeling`'s format.
 
 ## 6. Close the record
 

@@ -40,7 +40,7 @@ delivery (`ship-acceptance`). What was missing was the enforcement side:
 
 | Course play | Where it lives |
 |---|---|
-| Intent, spec, plan, CLAUDE.md, skills, parallel sessions, self-checks, ship | `pm`, the `mattpocock-skills` plugin, the library |
+| Intent, spec, plan, CLAUDE.md, skills, parallel sessions, self-checks, ship | `pm-sp` (vendored Superpowers and Matt Pocock skills), the library |
 | Hooks that block during the build, and hooks that ask for approval (lessons 6, 8, 11) | `gate-hooks` |
 | AI in pull request review: the policy file and the reviewer (lesson 10) | `review-policy` |
 | Continuous evaluations in CI (lesson 9) | parked |

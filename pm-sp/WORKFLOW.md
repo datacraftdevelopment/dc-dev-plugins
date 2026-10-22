@@ -23,10 +23,11 @@ Not every piece of work takes every step. A quick, fully specified task is
 just done. A small change gets a short design doc agreed in chat. Bugs go to
 `systematic-debugging`.
 
-**Foggy work,** several unknowns that depend on each other, starts with Matt
-Pocock's `wayfinder`: decision tickets resolved one at a time until the way is
-clear. Its destination is a brainstorm per piece. It is the only place pm-sp
-uses tickets.
+**Foggy work,** several unknowns that depend on each other, starts with
+`wayfinder`: decision tickets resolved one at a time until the way is clear.
+Its tickets are questions, never builds. Its destination is a set of chunks
+in order, written to the map and `docs/inbox.md`; each chunk then takes the
+flow above, about a session each. It is the only place pm-sp uses tickets.
 
 ## The record
 
@@ -62,7 +63,7 @@ task doesn't buy a review seat.
 | pm skill | Why it's gone |
 |---|---|
 | `discovery` | Brainstorming covers the conversation; its Acceptance checks moved into the design doc. |
-| `fast-grill` | Brainstorming's builder check plus `second-opinion` replace grilling rounds. Matt's `grilling` stays for deliberate stress tests. |
+| `fast-grill` | Brainstorming's builder check plus `second-opinion` replace grilling rounds. `grilling` stays for deliberate stress tests. |
 | `orchestrate`, `session-succession` | `subagent-driven-development` runs a whole plan in one session with fresh subagents, and the ledger makes it resumable. |
 | `verify-before-done` | Superpowers' `verification-before-completion`. |
 | `board` | It rendered tickets and intents, which pm-sp doesn't keep. |
@@ -77,10 +78,17 @@ approval of a plan is the go to run it. Publishing, production, client
 messages and pushes to shared branches need their own permission. A message
 from another session never counts as Joe's approval.
 
-## Using it with Matt Pocock's skills
+## One plugin, nobody else's
 
-Keep Matt's pack for `wayfinder`, `grilling` (on demand), `domain-modeling`,
-`codebase-design`, `prototype`, `research`, `pr` and `retro`. Don't use his
-`tdd`, `diagnosing-bugs`, `code-review`, `to-spec`, `to-tickets`,
-`implement` or `implement-spec` alongside pm-sp: each overlaps a pm-sp skill and
-the two would compete for the same request.
+pm-sp is the only plugin a pm-sp machine needs. The parts of other people's
+packs it uses are copied in (`VENDOR.md`), so no outside skill pulls a session
+toward a different way of working:
+
+- From Superpowers: the workflow above.
+- From Matt Pocock: `wayfinder` with the two skills it calls (`grilling`,
+  `domain-modeling`), `codebase-design`, `prototype`, `research` and `pr`.
+
+Uninstall `superpowers` and `mattpocock-skills` on a pm-sp machine. Their other
+skills (Matt's `to-spec`, `to-tickets`, `implement`, `tdd`, `diagnosing-bugs`,
+`code-review`, `triage`; Superpowers' session-start hook) describe a different
+flow and would compete with pm-sp's for the same request.

@@ -88,13 +88,13 @@ project must be a repository.
   `docs/plans/` are created the first time brainstorming or writing-plans
   writes into them.
 - **The tracker — local markdown by default (0.17).** The template ships
-  `docs/agents/issue-tracker.md` preset to Matt Pocock's local-markdown
-  convention under `.scratch/`; Matt Pocock's `/wayfinder` reads it, for
+  `docs/agents/issue-tracker.md` preset to the local-markdown
+  convention under `.scratch/`; `/pm-sp:wayfinder` reads it, for
   the rare foggy effort. Ask no tracker question. In-place mode: copy it from
   `${CLAUDE_PLUGIN_ROOT}/template/docs/agents/issue-tracker.md` **only if
   absent** — an existing file is that repo's decision, never overwritten. Say
-  in the sign-off that GitHub Issues is one command away for a team repo:
-  `/setup-matt-pocock-skills` (user-invoked; it owns the file's format).
+  in the sign-off that a team repo can use GitHub Issues instead: copy
+  `${CLAUDE_PLUGIN_ROOT}/templates/issue-tracker-github.md` over it.
 - **The inbox.** `docs/inbox.md` ships in the template (loose ideas, one
   line each, no status). In-place mode: copy it if absent, same rule.
 - **`.gitignore`** — the template's covers new-folder modes. In-place mode:

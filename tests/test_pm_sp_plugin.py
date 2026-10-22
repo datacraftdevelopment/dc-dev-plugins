@@ -16,13 +16,15 @@ VENDORED = {
     'receiving-code-review', 'test-driven-development', 'systematic-debugging',
     'verification-before-completion', 'dispatching-parallel-agents',
 }
+MATT = {'wayfinder', 'grilling', 'domain-modeling', 'codebase-design', 'prototype', 'research', 'pr'}
 OWN = {
     'whats-next', 'stepping-away', 'checkpoint', 'nested-sessions', 'second-opinion',
     'ship-acceptance', 'credential-guard', 'gate-hooks', 'review-policy', 'ui-test',
     'granola-transcript', 'okf',
 }
 DROPPED = {'discovery', 'fast-grill', 'orchestrate', 'session-succession',
-           'verify-before-done', 'board', 'runway', 'subsessions', 'using-superpowers'}
+           'verify-before-done', 'board', 'runway', 'subsessions', 'using-superpowers',
+           'to-spec', 'to-tickets', 'implement', 'implement-spec', 'triage'}
 
 
 def frontmatter_name(path):
@@ -40,7 +42,7 @@ class PmSpPluginTests(unittest.TestCase):
 
     def test_skill_set(self):
         skills = {p.parent.name for p in (SP / 'skills').glob('*/SKILL.md')}
-        self.assertEqual(skills, VENDORED | OWN)
+        self.assertEqual(skills, VENDORED | MATT | OWN)
         for path in (SP / 'skills').glob('*/SKILL.md'):
             self.assertEqual(frontmatter_name(path), path.parent.name, path)
 
@@ -50,12 +52,14 @@ class PmSpPluginTests(unittest.TestCase):
             self.assertLess(len(path.read_bytes()), 20000, path)
 
     def test_cross_references_resolve(self):
-        skills = VENDORED | OWN
+        skills = VENDORED | MATT | OWN
         for path in [*(SP / 'skills').rglob('*'), SP / 'WORKFLOW.md', SP / 'template/CLAUDE.md']:
             if not path.is_file() or path.suffix not in {'.md', '.sh', ''}:
                 continue
             text = path.read_text(errors='ignore')
             self.assertNotIn('superpowers:', text.replace('pm-sp:', ''), path)
+            self.assertNotIn('setup-matt-pocock-skills', text, path)
+            self.assertNotIn('mattpocock-skills:', text, path)
             for name in re.findall(r'pm-sp:([a-z-]+)', text):
                 if name == 'scaffold':
                     continue
@@ -126,8 +130,18 @@ class PmSpPluginTests(unittest.TestCase):
         self.assertIn('MIT License', (SP / 'LICENSE.superpowers').read_text())
         vendor = (SP / 'VENDOR.md').read_text()
         self.assertIn('2ce8aa1', vendor)
-        for name in VENDORED:
+        for name in VENDORED | MATT:
             self.assertIn(f'`{name}`', vendor)
+        self.assertIn('MIT License', (SP / 'LICENSE.mattpocock').read_text())
+        self.assertIn('5beb35b', vendor)
+
+    def test_wayfinder_ends_in_chunks(self):
+        wayfinder = (SP / 'skills/wayfinder/SKILL.md').read_text()
+        self.assertIn('the usual destination is a set of chunks', wayfinder)
+        self.assertIn('pm-sp:brainstorming', wayfinder)
+        self.assertIn('/pm-sp:scaffold', wayfinder)
+        self.assertNotIn('never resolve more than one ticket per session', wayfinder)
+        self.assertTrue((SP / 'templates/issue-tracker-github.md').is_file())
 
 
 if __name__ == '__main__':
