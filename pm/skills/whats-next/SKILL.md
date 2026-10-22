@@ -76,8 +76,8 @@ user in the loop. That is the default. Reach for
 [orchestrate](../orchestrate/SKILL.md) only when the user asks for it, or when
 there is a real batch of independent tickets, each worth an hour or more, and
 the user will be away; say so and let them choose. Two or three ready tickets
-that are independent of each other go to subsessions first: use the
-[subsessions](../subsessions/SKILL.md) skill, which decides whether it
+that are independent of each other go to nested sessions first: use the
+[nested-sessions](../nested-sessions/SKILL.md) skill, which decides whether it
 is appropriate, starts them and manages them from this session. When orchestrating, worker
 briefs belong under the existing outcome ticket; do not generate a ticket
 for each little task. Keep human questions on the tracker and surface them

@@ -60,15 +60,15 @@ session → `stepping-away`. When ready work remains, `stepping-away` offers to
 open a fresh session for it. Each session's context ends with the session, which
 is what keeps usage flat.
 
-**Subsessions for independent tickets.** This is the default way to run work
-in parallel, ahead of `orchestrate`'s subagents; the `subsessions` skill owns
+**Nested sessions for independent tickets.** This is the default way to run work
+in parallel, ahead of `orchestrate`'s subagents; the `nested-sessions` skill owns
 the screen, the brief and the merge rule. When two or three ready tickets have
 nothing to do with each other, the session may start each in its own
-subsession. Each subsession is an ordinary session: its own worktree and branch,
+nested session (the docs call them background sessions). Each nested session is an ordinary session: its own worktree and branch,
 the ticket worked through to green on the rebased tree. The main session
 manages them so Joe talks to one session: it answers or relays their
 questions, merges on Joe's word, and archives each one when it is done. It acts
-on their messages, never on a polling loop, because polling was the expensive
+on their messages and on idle notices it asks for, never on a polling loop, because polling was the expensive
 part of the lane pattern (pm-018, pm-021). Where the host can't carry messages
 back, they run as unmanaged siblings and nobody watches them. Screen first:
 disjoint files, one database writer at most, no shared port or dev server.
@@ -202,7 +202,7 @@ a future mistake; otherwise the code, ticket and evidence are enough.
 
 - `whats-next`: read a compact handoff and ready outcome; do the authorized work
   in that session.
-- `subsessions`: two or three independent tickets, each in its own subsession
+- `nested-sessions`: two or three independent tickets, each in its own nested session
   that the main session starts, steers, merges and archives.
 - `orchestrate`: opt-in. Scaffold, dispatch the ready graph, integrate and verify.
 - `checkpoint`: record a consequential change of direction when needed.
