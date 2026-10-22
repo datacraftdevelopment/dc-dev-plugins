@@ -1,6 +1,0 @@
-gui/501/com.joe.runway.demo = {
-	active count = 1
-	state = running
-	run interval = 600 seconds
-	last exit status = (never exited)
-}

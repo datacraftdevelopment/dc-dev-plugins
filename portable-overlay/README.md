@@ -30,7 +30,7 @@ tc-plugins                               (plain copy, Joe's credit)
 From 2026-10-04 RCC and TC carry the same pm. From pm 0.25.0 that pm also carries
 what sdlc and ui-test used to be, and the editions follow: one pm in every
 edition, no separate `sdlc` plugin and no split rule (decided 2026-10-09, GitHub
-#6, `factory/decisions.md`). The edition scripts hold no `sdlc` path or version
+#6; the decision log moved to the private runway repo). The edition scripts hold no `sdlc` path or version
 entries. The hand pass into `rcc-plugins`:
 
 - copy the files in this folder over `rcc-plugins/pm/`, and the private

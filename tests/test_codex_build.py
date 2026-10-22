@@ -77,11 +77,10 @@ class CodexBuildTests(unittest.TestCase):
             self.assertTrue((pm / 'requirements.txt').is_file())
             for left_out in ('kit', 'templates', 'agents', 'scripts/install_gates.py'):
                 self.assertFalse((pm / left_out).exists(), left_out)
-            # Runway folded into pm: its skill and engine ride in pm's Codex edition.
+            # Runway moved to its own plugin (runway@runway): pm's Codex edition carries none of it.
             self.assertFalse((out / 'factory').exists())
-            self.assertTrue((pm / 'skills/runway/SKILL.md').is_file())
-            self.assertEqual((pm / 'runway/runway.py').read_bytes(),
-                             (ROOT / 'pm/runway/runway.py').read_bytes())
+            self.assertFalse((pm / 'skills/runway').exists())
+            self.assertFalse((pm / 'runway').exists())
             self.assertIn('PLUGIN_ROOT', (pm / 'hooks/hooks.json').read_text())
             # Exercise the declared Codex hook command and event shape in a path with spaces.
             fixture = out / 'hook fixture'
