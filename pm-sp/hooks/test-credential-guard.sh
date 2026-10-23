@@ -95,6 +95,10 @@ check "read-only git with a pager config"        block "git -c core.pager='git a
 check "read-only git with GIT_PAGER set"         block "GIT_PAGER='git add .env' git log"
 check "add with a variable -C still blocked"     block "git -C \"\$REPO\" add ."
 check "add after --no-pager still inspected"     block "git --no-pager add .env"
+check "dynamic global option (Fable #1)"       block "OPT=-config-env=diff.external=X; git -\"\$OPT\" diff HEAD"
+check "unquoted dynamic global option"           block "git -\$OPT log"
+check "dynamic option via substitution"          block "git -\"\$(printf -- -config-env=core.pager=X)\" log"
+check "exec-path before a read-only call"        block "git --exec-path=/tmp log"
 
 cd /
 notrepo=$(mktemp -d) && cd "$notrepo"

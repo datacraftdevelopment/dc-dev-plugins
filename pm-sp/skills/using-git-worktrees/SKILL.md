@@ -81,6 +81,8 @@ Follow this priority order. Explicit user preference always beats observed files
 
 ```bash
 git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
+# pm-sp: for .superpowers/worktrees/
+git check-ignore -q .superpowers 2>/dev/null
 ```
 
 **If NOT ignored:** Add to .gitignore, commit the change, then proceed.

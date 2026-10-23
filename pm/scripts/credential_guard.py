@@ -30,25 +30,33 @@ READ_ONLY_GIT = set('status log diff show branch rev-parse ls-files ls-tree cat-
 OTHER_GIT = READ_ONLY_GIT | set('config init clone fetch pull push remote worktree tag reflog symbolic-ref fsck gc maintenance prune rm mv reset restore checkout switch clean stash merge rebase revert cherry-pick bisect archive apply am format-patch bundle notes submodule sparse-checkout update-index'.split())
 
 
-# Global options that take their value as the next word.
-GLOBAL_WITH_VALUE = {'-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix', '--config-env'}
-
-
 SAFE_CONFIG = ('user.', 'commit.gpgsign=', 'tag.gpgsign=', 'core.hooksPath=', 'core.quotepath=')
 
 
+# Global options a read-only call may carry. Anything else, or an option built from
+# a variable or substitution (`git -"$OPT" diff`), could run a command.
+SAFE_GLOBAL = {'--no-pager', '-P', '--bare', '--no-replace-objects', '--literal-pathspecs',
+               '--no-optional-locks', '--paginate', '-p'}
+
+
 def read_only_git(args):
-    """True when args (args[0] is git) run a read-only subcommand with no config that
-    could run a command (a pager, an alias, an exec path)."""
+    """True when args (args[0] is git) run a read-only subcommand with no option or
+    config that could run a command (a pager, an alias, an exec path). Only the
+    -C, --git-dir and --work-tree values may be dynamic."""
     i = 1
     while i < len(args):
         value = args[i]; i += 1
+        if value in ('-C', '--git-dir', '--work-tree'): i += 1; continue
+        if value.startswith(('--git-dir=', '--work-tree=')) or (value.startswith('-C') and value != '-c'):
+            continue
+        if any(c in value for c in '$`') or '__CG_' in value: return False
         if value == '-c':
             if i == len(args) or not args[i].startswith(SAFE_CONFIG): return False
+            if any(c in args[i] for c in '$`') or '__CG_' in args[i]: return False
             i += 1; continue
-        if value.startswith(('--config-env', '--exec-path')): return False
-        if value in GLOBAL_WITH_VALUE: i += 1; continue
-        if value.startswith('-'): continue
+        if value.startswith('-'):
+            if value not in SAFE_GLOBAL: return False
+            continue
         return value in READ_ONLY_GIT
     return False
 

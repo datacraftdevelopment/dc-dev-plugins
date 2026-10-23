@@ -166,7 +166,7 @@ approved what those screens look like. Work in this order: a small real
 sample of the data first (an extract from the source system, or JSON shaped
 exactly like it), then the screens, then the build. If a wayfinder map
 already approved the screens, design against that. Otherwise use
-pm-sp:design-handoff in data mode so they shape the screens in Claude
+pm-sp:design-handoff, telling it to use data mode, so they shape the screens in Claude
 Design on that sample; the visual companion is for a small change, or when
 they'd rather stay here. The design doc links the approved screens, and the
 approved export goes in `resources/design-handoff/`.

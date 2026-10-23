@@ -53,10 +53,12 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
    delta; `writing-plans` tags tasks by risk, always looks for lanes, and
    dry-runs the repo's guardrails; `subagent-driven-development` runs lanes
    at once in their own worktrees and reviews per task only for high risk
-   (`references/lanes-and-risk.md`, a pm-sp file); `final-review.md` names
+   (`references/lanes-and-risk.md`, a pm-sp file), and its pm-sp tiers
+   paragraph drops "Name the model on every dispatch" (upstream's "Always
+   specify the model" says it); `final-review.md` names
    the unreviewed tasks; `using-git-worktrees` defaults to
    `.superpowers/worktrees/`; `finishing-a-development-branch` gains Step
-   6b (uncommitted files, follow-ups, processes this session started).
+   5b (uncommitted files, follow-ups, processes this session started).
 
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.

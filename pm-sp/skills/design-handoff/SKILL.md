@@ -42,7 +42,7 @@ Briefly tell the user which mode you picked and why before writing the handoff.
 3. Database schema — `schema.sql`, `schema.prisma`, `prisma/schema.prisma`, `models/`, `*.schema.json`, `drizzle/*`
 4. API specs — `openapi.yaml`, `swagger.json`, Postman collections
 5. ORM models — `models/*.ts`, `src/db/*`
-6. Recent context — current Claude Code conversation, recent commits, docs in `docs/`, notes in `.claude/reports/`
+6. Recent context — current Claude Code conversation, recent commits, docs in `docs/`
 
 ### Concept-mode inputs
 1. The current Claude Code conversation — concept refinement, decisions made, framing language the user has already settled on
@@ -58,7 +58,7 @@ If neither data sources nor a concept can be located, **stop and ask** the user 
 
 1. **Inventory sources.** List what you found. Pick mode and announce it. Ask one clarifying question only if mode is genuinely ambiguous.
 2. **Extract structural context** (mode-dependent — see step 2 sub-steps).
-3. **Extract vocabulary.** The exact terms used. Consistency matters for the eventual Code handoff and for audience tracking.
+3. **Extract vocabulary.** The exact terms used. Consistency matters for the build that follows and for audience tracking.
 4. **Surface constraints / business rules.** What should the deliverable show, block, warn about, attribute, include, or order?
 5. **Identify out-of-scope.** What should Claude Design *not* produce this pass?
 6. **Flag tweak candidates.** Features or moves you're unsure about — list them so Claude Design builds them as Tweak variants rather than committing to v1.

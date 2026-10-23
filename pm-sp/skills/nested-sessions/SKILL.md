@@ -170,7 +170,7 @@ its session:
 claude stop <name> && claude rm <name>
 ```
 
-Before `stop` (pm-sp): run finishing-a-development-branch's Step 6b
+Before `stop` (pm-sp): run finishing-a-development-branch's Step 5b
 checks for that lane: uncommitted files in its worktree and in this checkout
 (designs and plans it wrote), follow-ups left only in its ledger (move them
 to `docs/inbox.md`), and the processes it noted (stop those, and only those).
