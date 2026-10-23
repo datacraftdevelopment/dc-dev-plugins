@@ -47,6 +47,15 @@
       "name": "basecamp-dc",
       "source": "./basecamp-dc",
       "description": "Basecamp client-face layer, opt-in per repo via .basecamp/config.json (inert without it; pm never depends on it). bc-client-face carries the conventions \u2014 client's side (New requests, Questions for you) and Joe's side (Shipped / Active / Backlog as the status), Work items as clusters with Ref footers, [bc:<id>] tokens in TASKS.md, the plain-copy rule every Basecamp write is swept against, quirk safety rules; bc-close-out ships a task (move to Shipped unchecked, comment, prepend to What shipped without duplicating images); a session-start hook surfaces the project when the config is present. Works through the official basecamp CLI (0.12.0+) or the Basecamp connector, whichever the machine has."
+    },
+    {
+      "name": "runway-agent",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/datacraftdevelopment/runway-agent.git",
+        "path": "plugin"
+      },
+      "description": "Runway Agent (source of truth: the public runway-agent repo, plugin/): file shaped work as tickets in the controller's SQLite store with risk set, work them unattended on your own Macs through Herdr with typed receipts, review on the other model, and merge only low risk through a gate written in code. Pairs with pm-sp; works without it."
     }
   ]
 }
