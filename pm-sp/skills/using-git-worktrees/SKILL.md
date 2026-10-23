@@ -68,6 +68,7 @@ Follow this priority order. Explicit user preference always beats observed files
 
 2. **Check for an existing project-local worktree directory:**
    ```bash
+   ls -d .superpowers/worktrees 2>/dev/null  # pm-sp default
    ls -d .worktrees 2>/dev/null     # Preferred (hidden)
    ls -d worktrees 2>/dev/null      # Alternative
    ```
@@ -152,7 +153,7 @@ Ready to implement <feature-name>
 | `.worktrees/` exists | Use it (verify ignored) |
 | `worktrees/` exists | Use it (verify ignored) |
 | Both exist | Use `.worktrees/` |
-| Neither exists | Check instruction file, then default `.worktrees/` |
+| Neither exists | Check instruction file, then default `.worktrees/` (pm-sp: `.superpowers/worktrees/`) |
 | Directory not ignored | Add to .gitignore + commit |
 | Permission error on create | Sandbox fallback, work in place |
 | Tests fail during baseline | Report failures + ask |

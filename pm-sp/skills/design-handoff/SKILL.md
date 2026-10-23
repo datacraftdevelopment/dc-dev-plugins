@@ -111,6 +111,9 @@ Use whichever block applies. Keep sections tight.
 ## Flag as Tweaks (unsure features)
 - ...
 
+## Sample data
+[pm-sp: the path of the data sample, real rows or JSON shaped exactly like them. Upload it with this handoff so the screens are built on it.]
+
 ## Delegation
 Claude Design decides: visual direction, palette, typography, imagery, copy tone, layout, hero treatment, tweak affordances, mobile patterns, and all micro-interactions. Use your taste.
 ```
@@ -222,7 +225,7 @@ After writing the file, reply with this shape (fill in the name; use the seed pr
 >
 > In Claude Design:
 > 1. Open claude.ai/design → new Prototype project
-> 2. Import → upload the handoff file (or paste its contents into the chat)
+> 2. Import → upload the handoff file (or paste its contents into the chat), and in data mode upload the data sample too (pm-sp)
 > 3. Seed prompt:
 >    - Data mode: *"Build [product name]. Core screens only. Use the attached handoff for data model, flows, vocabulary, and constraints. All visual direction is yours — explore freely."*
 >    - Concept mode: *"Build [deliverable type, e.g. presentation deck / interactive page] on [topic]. Use the attached handoff for the conceptual model, narrative arc, vocabulary, and constraints. All visual direction is yours — explore freely."*

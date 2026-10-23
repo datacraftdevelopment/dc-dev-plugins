@@ -11,7 +11,7 @@ The destination varies per effort, and naming it is the first act of charting: i
 
 **Screens come first** (pm-sp). When the destination includes screens, the map's first tickets settle what they look like, before any chunk is brainstormed for build: a `task` ticket, **Data sample** (a small real extract from the source system, or JSON fixtures shaped exactly like it, committed where later sessions can read it), and a `prototype` ticket blocked by it, **Screens**, resolved with `pm-sp:design-handoff`, told to use data mode, so the user shapes the screens in Claude Design on that sample. The user approves the screens on that ticket; its resolution links the approved design, and every chunk with a screen in it designs and builds against it.
 
-**One owner for the map** (pm-sp). The session that charted the map owns it: only that session edits and commits the map. When a decision taken in any other session (a chunk's brainstorm, a build) contradicts the map, that session sends the owner a one-line **map delta** right away (what changed, where it was decided), and the owner updates the map before the next ticket.
+**One owner for the map** (pm-sp). The session that charted the map owns it: only that session edits and commits the map. When a decision taken in any other session (a chunk's brainstorm, a build) contradicts the map, that session sends the owner a one-line **map delta** right away (what changed, where it was decided), and the owner updates the map before the next ticket. The map's Notes name the owner; when that session is gone, the next session to work the map takes it over and rewrites that line.
 
 ## Plan, don't do
 

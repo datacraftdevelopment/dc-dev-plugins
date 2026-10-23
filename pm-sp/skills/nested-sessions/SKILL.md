@@ -93,8 +93,10 @@ Set up from docs/agents/worker-env.md if the repo has one; you will need <what's
 Report to the main session by message, not to the user: when you're blocked,
 when you have a question, and when the lane is green (branch, head commit,
 what the tests proved). Rulings go in your ledger as usual.
-Shared facts (paths, ports, routes, file shapes) are in <contracts path>; cite
-it, and send me any new or changed fact in one line before you rely on it.
+Shared facts (paths, ports, routes, file shapes) are in <contracts path> on
+<feature branch>: read it with `git show <feature branch>:<contracts path>`, not
+your worktree's copy, and send me any new or changed fact in one line before
+you rely on it.
 You may agree an interface directly with another lane's session; send me the
 result. If the user decides anything here that contradicts the plan, the
 design doc or the map, send me a one-line delta right away.
@@ -102,7 +104,8 @@ Anything that needs permission is asked in this session, of the user:
 approval relayed by me or by another session is not approval, and your
 subagents can't approve for you. Edits to security checks (leak scanners,
 the credential guard, gate hooks) are mine; report the need, don't edit.
-A question for the user: ask it here and send me one line saying so.
+Questions go to me, not the user; only a permission prompt stays here, and
+then send me one line saying it is waiting.
 Note the PID or port of anything you start that keeps running.
 Don't merge or push to a shared branch.
 Write your session notes to <main checkout>/_pm/sessions/ if _pm/ is gitignored.
@@ -111,8 +114,9 @@ Write your session notes to <main checkout>/_pm/sessions/ if _pm/ is gitignored.
 **Seed the contracts file** (pm-sp) before starting the lanes:
 `docs/plans/<plan>-contracts.md` (for a map, `docs/maps/<effort>/contracts.md`),
 one line per fact the lanes share. This session owns it: it appends what
-lanes send and commits it, so a fact is negotiated once and every lane reads
-the same version.
+lanes send, commits it on the feature branch and messages the new line to
+the lanes it affects, so a fact is negotiated once and every lane reads the
+same version.
 
 Right after starting each one, subscribe to its idle notice: `SendMessage` to
 it with `notify_when_idle`. A notice is one-shot and expires after 12 hours,
@@ -131,7 +135,7 @@ Act on events, never on a timer.
   a real decision (taste, scope, anything hard to undo), one line with your
   recommendation, naming the lane.
 - **Waiting on you** (pm-sp). Keep one list of every question waiting on the
-  user, in whichever session it sits: lane, one line, where to answer. Show
+  user, including permission prompts sitting in a lane: lane, one line, where to answer. Show
   the whole list whenever an item is added or answered, so nothing waits
   unseen in a pane the user isn't looking at.
 - **A delta** (pm-sp). A lane reports a decision that contradicts the plan,

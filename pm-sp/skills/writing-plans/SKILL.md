@@ -159,7 +159,8 @@ review to it, so the reviews go where the bugs are:
 - **high:** data correctness (what gets read, written, dropped or
   blanked), security and credentials, external contracts (APIs, file
   formats, other systems). Reviewed after the task, every time.
-- **ordinary:** ordinary code. Covered by the whole-branch review at the
+- **ordinary:** code whose mistakes the tests and the final review would
+  catch, and that touches no high-risk area. Covered by the whole-branch review at the
   end of the plan, not one per task.
 - **low:** docs, styling, test-only changes, scaffolding. The
   implementer's tests and self-review, then the whole-branch review.

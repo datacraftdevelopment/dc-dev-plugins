@@ -14,7 +14,7 @@ whats-next                        open: where things stand, write the Intent
   [Joe says go to plan]
   writing-plans                   one plan, tasks tagged by risk, lanes when files are disjoint
   subagent-driven-development     lanes run at once; review scaled by risk (or executing-plans, inline)
-    nested-sessions               only when lanes exist and Joe wants them at once
+    nested-sessions               lanes big enough for a session each (small lanes run in parallel in-session)
   finishing-a-development-branch  tests, second-opinion (branch), merge / PR / keep
   ship-acceptance                 Acceptance checks against the candidate, then production
 stepping-away                     close: session entry, each plan left resumable

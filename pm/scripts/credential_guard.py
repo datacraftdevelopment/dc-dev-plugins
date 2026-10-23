@@ -46,10 +46,15 @@ def read_only_git(args):
     i = 1
     while i < len(args):
         value = args[i]; i += 1
-        if value in ('-C', '--git-dir', '--work-tree'): i += 1; continue
-        if value.startswith(('--git-dir=', '--work-tree=')) or (value.startswith('-C') and value != '-c'):
+        if value in ('-C', '--git-dir', '--work-tree'):
+            # Quoted "$REPO" stays one word; unquoted expansion or braces could split
+            # into a different subcommand (`git -C $(printf '. commit -a -m') status`).
+            if i == len(args) or not one_word(args[i]): return False
+            i += 1; continue
+        if value.startswith(('--git-dir=', '--work-tree=', '-C')):
+            if not one_word(value): return False
             continue
-        if any(c in value for c in '$`') or '__CG_' in value: return False
+        if any(c in value for c in '$`{') or '__CG_' in value: return False
         if value == '-c':
             if i == len(args) or not args[i].startswith(SAFE_CONFIG): return False
             if any(c in args[i] for c in '$`') or '__CG_' in args[i]: return False
@@ -57,8 +62,21 @@ def read_only_git(args):
         if value.startswith('-'):
             if value not in SAFE_GLOBAL: return False
             continue
+        if value == 'grep' and any(opens_pager(a) for a in args[i:]): return False
         return value in READ_ONLY_GIT
     return False
+
+
+def one_word(value):
+    return '__CG_WORDS__' not in value and '{' not in value
+
+
+def opens_pager(arg):
+    """git grep -O / --open-files-in-pager (or an abbreviation) runs a command."""
+    if arg.startswith('--'):
+        name = arg[2:].split('=', 1)[0]
+        return len(name) >= 2 and 'open-files-in-pager'.startswith(name)
+    return arg.startswith('-') and 'O' in arg
 
 
 class Unresolved(ValueError):
@@ -66,7 +84,7 @@ class Unresolved(ValueError):
 
 
 def literal(value):
-    if any(c in value for c in '$`~') or SUB.search(value):
+    if any(c in value for c in '$`~{') or SUB.search(value):
         raise Unresolved('dynamic repository or path argument')
     return value
 
@@ -279,6 +297,8 @@ def inspect_segment(segment, cwd):
             raise Unresolved('unsupported global Git option')
         else:
             if value not in ('add', 'stage', 'commit'):
+                if value == 'grep' and any(opens_pager(a) for a in args[i:]):
+                    raise Unresolved('git grep -O runs a command')
                 if value in OTHER_GIT:
                     return cwd if value in READ_ONLY_GIT else None
                 raise Unresolved('Git alias or unknown subcommand; use its literal expansion')

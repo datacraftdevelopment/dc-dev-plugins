@@ -99,6 +99,15 @@ check "dynamic global option (Fable #1)"       block "OPT=-config-env=diff.exter
 check "unquoted dynamic global option"           block "git -\$OPT log"
 check "dynamic option via substitution"          block "git -\"\$(printf -- -config-env=core.pager=X)\" log"
 check "exec-path before a read-only call"        block "git --exec-path=/tmp log"
+check "unquoted substitution in -C (Astra #1)"   block "git -C \$(printf '. commit -a -m') status"
+check "unquoted variable in -C"                  block "git -C \$DIR log"
+check "unquoted variable in --work-tree"         block "git --work-tree \$D status"
+check "variable in -c"                           block "git -c user.\$CFG log"
+check "attached -c runs a command (Astra #2)"    block "git -cdiff.external='git add -f .env; true' diff --ext-diff"
+check "grep -O opens a pager command"            block "git grep -O'git add -f .env #' x"
+check "grep --open-files abbreviation"           block "git grep --open-files='git add .env' x"
+check "brace expansion in -C"                    block "git -C {.,commit,-am} log"
+check "plain grep still allowed"                 allow "git grep -n readme"
 
 cd /
 notrepo=$(mktemp -d) && cd "$notrepo"
