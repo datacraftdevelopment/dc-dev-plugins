@@ -16,6 +16,15 @@
       "description": "pm on Superpowers: Joe's PM layer around a trimmed, vendored copy of obra/superpowers (brainstorming with visuals, plans run in one session by subagents, branch finishing, TDD, debugging) without its session-start hook, plus Matt Pocock's wayfinder, grilling, domain-modeling, codebase-design, prototype, research and pr. Adds whats-next / stepping-away / checkpoint, nested-sessions for plan lanes, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance, the credential guard, gate-hooks, review-policy and ui-test. Install instead of pm, never alongside it; needs no other plugin."
     },
     {
+      "name": "pm-runway",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/datacraftdevelopment/runway-agent.git",
+        "path": "pm-runway"
+      },
+      "description": "pm-sp plus unattended tickets, in one plugin (source of truth: the public runway-agent repo, pm-runway/). Everything pm-sp has, our own versions of Matt Pocock's to-spec, to-tickets and implement-spec (plus his tdd and code-review), and Runway on Orca: tickets as files, a plain-script loop that starts each build and review as a fresh Orca worker on whichever Mac is free, the reviewer always a different agent from the builder, work moved to the other agent when a subscription hits its usage limit, one branch per chunk gated once to main, a board page and runway-ask to ask what's happening. Uses your own Claude Code and Codex CLI sign-ins; Ringer optional. Install instead of pm-sp or pm, never alongside them."
+    },
+    {
       "name": "design-dc",
       "source": "./design-dc",
       "description": "DataCraft design workflow: design-handoff (the crossing brief for claude.ai/design), html-artifacts (rich editorial HTML instead of long markdown), excalidraw-artifacts (HTML artifact \u2192 locked Excalidraw markup canvas, and annotation readback), design-sync (component-library sync via the built-in DesignSync tool). Pairs with the separate claude-design bridge plugin."
