@@ -30,6 +30,29 @@ READ_ONLY_GIT = set('status log diff show branch rev-parse ls-files ls-tree cat-
 OTHER_GIT = READ_ONLY_GIT | set('config init clone fetch pull push remote worktree tag reflog symbolic-ref fsck gc maintenance prune rm mv reset restore checkout switch clean stash merge rebase revert cherry-pick bisect archive apply am format-patch bundle notes submodule sparse-checkout update-index'.split())
 
 
+# Global options that take their value as the next word.
+GLOBAL_WITH_VALUE = {'-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix', '--config-env'}
+
+
+SAFE_CONFIG = ('user.', 'commit.gpgsign=', 'tag.gpgsign=', 'core.hooksPath=', 'core.quotepath=')
+
+
+def read_only_git(args):
+    """True when args (args[0] is git) run a read-only subcommand with no config that
+    could run a command (a pager, an alias, an exec path)."""
+    i = 1
+    while i < len(args):
+        value = args[i]; i += 1
+        if value == '-c':
+            if i == len(args) or not args[i].startswith(SAFE_CONFIG): return False
+            i += 1; continue
+        if value.startswith(('--config-env', '--exec-path')): return False
+        if value in GLOBAL_WITH_VALUE: i += 1; continue
+        if value.startswith('-'): continue
+        return value in READ_ONLY_GIT
+    return False
+
+
 class Unresolved(ValueError):
     pass
 
@@ -225,6 +248,9 @@ def inspect_segment(segment, cwd):
             raise Unresolved('wrapped Git command; use an explicit literal git -C command')
         return None
     if env_sensitive: raise Unresolved('Git environment changes candidate selection')
+    # A read-only subcommand selects nothing to stage, so its repository, options
+    # and operands need no resolving: `git -C "$REPO" show` is fine.
+    if read_only_git(args): return cwd
     if any('__CG_WORDS__' in arg for arg in args):
         raise Unresolved('unquoted expansion can change Git operands; quote message arguments')
     work = cwd; i = 1
@@ -239,7 +265,7 @@ def inspect_segment(segment, cwd):
         elif value == '-c':
             if i == len(args): raise Unresolved('missing Git config')
             config = args[i]; i += 1
-            if not config.startswith(('user.', 'commit.gpgsign=', 'tag.gpgsign=', 'core.hooksPath=', 'core.quotepath=')):
+            if not config.startswith(SAFE_CONFIG):
                 raise Unresolved('Git config may change repository selection')
         elif value.startswith('-'):
             raise Unresolved('unsupported global Git option')
@@ -263,9 +289,9 @@ def git_kind(segment):
     the repository but selects no files to stage), and 'other' for anything that could
     reach Git unseen: an unknown option or subcommand, a GIT_ environment change, or
     Git wrapped in another command (xargs, sh -c ...)."""
-    args = list(segment)
+    args, env_sensitive = list(segment), False
     while args and (args[0] in ('command', 'builtin', 'env', 'sudo', 'nohup') or re.match(r'^\w+=', args[0])):
-        if args[0].startswith(('GIT_', 'CDPATH=')): return 'other'
+        env_sensitive |= args[0].startswith(('GIT_', 'CDPATH='))
         args.pop(0)
     if not args: return None
     if Path(args[0]).name != 'git':
@@ -274,6 +300,8 @@ def git_kind(segment):
                 args[0] in ('sh', 'bash', 'zsh') and GIT_WORD.search(' '.join(args))):
             return 'other'
         return None
+    if env_sensitive: return 'other'
+    if read_only_git(args): return 'read'
     i = 1
     while i < len(args):
         value = args[i]; i += 1
