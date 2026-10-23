@@ -9,6 +9,10 @@ The destination varies per effort, and naming it is the first act of charting: i
 
 **In pm-sp, the usual destination is a set of chunks** (pm-sp): each one a piece of work that a single brainstorm can design and a single plan can build, in the order to take them. When the way is clear, write the chunks, numbered in order, into the map's Destination and under the effort's name in `docs/inbox.md`; each then goes through `pm-sp:brainstorming` in its own session. Decision tickets are never built; only chunks are.
 
+**Screens come first** (pm-sp). When the destination includes screens, the map's first tickets settle what they look like, before any chunk is brainstormed for build: a `task` ticket, **Data sample** (a small real extract from the source system, or JSON fixtures shaped exactly like it, committed where later sessions can read it), and a `prototype` ticket blocked by it, **Screens**, resolved with `pm-sp:design-handoff` in data mode so the user shapes the screens in Claude Design on that sample. The user approves the screens on that ticket; its resolution links the approved design, and every chunk with a screen in it designs and builds against it.
+
+**One owner for the map** (pm-sp). The session that charted the map owns it: only that session edits and commits the map. When a decision taken in any other session (a chunk's brainstorm, a build) contradicts the map, that session sends the owner a one-line **map delta** right away (what changed, where it was decided), and the owner updates the map before the next ticket.
+
 ## Plan, don't do
 
 Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear, with nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. Produce decisions, not deliverables. In pm-sp, map Notes cannot authorize implementation (pm-sp): when the decisions are settled, write the ordered chunks to the map and `docs/inbox.md`, then hand each chunk to `pm-sp:brainstorming`.
@@ -109,7 +113,7 @@ Two modes. Either way, resolve **one ticket at a time**: record it fully (step 4
 
 User invokes with a loose idea.
 
-1. **Name the destination.** Call the Skill tool twice, for "pm-sp:grilling" and "pm-sp:domain-modeling", to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
+1. **Name the destination.** Call the Skill tool twice, for "pm-sp:grilling" and "pm-sp:domain-modeling", to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first. Ask outright whether it is a **proof of concept or a product** (pm-sp), and write the answer and a short **must work** list into the map's Notes: a POC designs only what the must-work list needs, so nothing gets fully designed and then deferred.
 2. **Map the frontier.** Grill again, **breadth-first** this time: fan out across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. **If this surfaces no fog** (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop and ask the user how they'd like to proceed.
 3. **Create the map** (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
 4. **Create the tickets you can specify now** as child issues of the map, then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Write cross-references in that pass too, with real ids: a placeholder `#<n>` auto-links to an unrelated issue. Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the **Not yet specified** section.

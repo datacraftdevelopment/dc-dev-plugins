@@ -73,7 +73,7 @@ Follow this priority order. Explicit user preference always beats observed files
    ```
    If found, use it. If both exist, `.worktrees` wins.
 
-3. **If there is no other guidance available**, default to `.worktrees/` at the project root.
+3. **If there is no other guidance available**, default to `.worktrees/` at the project root. (pm-sp: default to `.superpowers/worktrees/`, already gitignored, so worktrees stay with the project instead of in a session's temporary folder.)
 
 #### Safety Verification (project-local directories only)
 

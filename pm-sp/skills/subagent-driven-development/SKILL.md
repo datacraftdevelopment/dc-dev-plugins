@@ -145,7 +145,7 @@ ledger.
 
 **pm-sp's tiers** (pm-sp): cheap and standard = `sonnet`; most capable =
 `opus`. Never `haiku`, and never on `fable`, even when this session is on
-Fable. Name the model on every dispatch.
+Fable.
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
@@ -239,7 +239,8 @@ and fix-round diffs need it.
   a pointer to that ledger entry in the dispatch.
 - Record the implementer's agent identity from the dispatch result —
   fix-loop rounds 1-3 resume this agent.
-- Never dispatch multiple implementation subagents in parallel (conflicts).
+- Never dispatch multiple implementation subagents in parallel (conflicts),
+  except across lanes (pm-sp: references/lanes-and-risk.md).
 
 Template: [implementer-prompt.md](implementer-prompt.md)
 
@@ -260,7 +261,8 @@ rush it into implementation.
 ### 3. Review the task
 
 Per-task reviews are task-scoped gates. The broad review happens once, at the
-final whole-branch review. Never skip the task review, and never accept a
+final whole-branch review. Never skip a high-risk review (pm-sp:
+references/lanes-and-risk.md), and never accept a
 report missing either verdict — spec compliance AND task quality are both
 required. Implementer self-review never replaces the task review; both are
 needed.

@@ -46,6 +46,17 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
    `${CLAUDE_PLUGIN_ROOT}/skills/.../scripts/`, run from the project worktree.
 8. `finishing-a-development-branch`: Step 7 offers ship-acceptance and
    stepping-away. `brainstorming`'s opening checklist asks before planning.
+9. From the first field report (dc-dev-plugins #118, 0.2.7):
+   `brainstorming` approves screens before the design (data sample, then
+   Claude Design through `design-handoff`), asks where the data lives first,
+   adds a screens Acceptance check, and takes late changes as a one-line
+   delta; `writing-plans` tags tasks by risk, always looks for lanes, and
+   dry-runs the repo's guardrails; `subagent-driven-development` runs lanes
+   at once in their own worktrees and reviews per task only for high risk
+   (`references/lanes-and-risk.md`, a pm-sp file); `final-review.md` names
+   the unreviewed tasks; `using-git-worktrees` defaults to
+   `.superpowers/worktrees/`; `finishing-a-development-branch` gains Step
+   6b (uncommitted files, follow-ups, processes this session started).
 
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.
@@ -83,6 +94,14 @@ licensed (`LICENSE.mattpocock`).
    wayfinder") starts it, and its description says to run only when named.
    Map Notes can no longer authorize implementation.
 4. `research` and `codebase-design`'s design-it-twice name their models.
+5. `wayfinder` (0.2.7): screens come first (Data sample and Screens
+   tickets), one owner for the map with map deltas from other sessions, and
+   the destination step asks "proof of concept or product?".
+
+`design-handoff` is not vendored: it is Joe's own, copied from this
+marketplace's `design-dc` plugin (0.2.2) with a pm-sp section on where it
+sits and the handoff path moved to `docs/specs/`. `design-dc` stays its
+source; carry fixes across by hand.
 
 ## The visual companion
 

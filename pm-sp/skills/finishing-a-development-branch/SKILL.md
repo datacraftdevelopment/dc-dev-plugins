@@ -173,8 +173,8 @@ Step 2, from before that directory change.
 
 **If `GIT_DIR == GIT_COMMON`:** Normal repo, no worktree to clean up. Done.
 
-**If `WORKTREE_PATH` is under `.worktrees/` or `worktrees/`:** Superpowers
-created this worktree — we own cleanup:
+**If `WORKTREE_PATH` is under `.worktrees/`, `worktrees/` or
+`.superpowers/worktrees/` (pm-sp):** Superpowers created this worktree — we own cleanup:
 
 ```bash
 git worktree remove "$WORKTREE_PATH"
@@ -206,6 +206,21 @@ Carry out the choice, then remove the worktree.
 
 **Otherwise:** The host environment owns this workspace — leave it in
 place. If your platform provides a workspace-exit tool, use it.
+
+## Step 6b: Leave nothing behind (pm-sp)
+
+Before you close, for every option, check three things and settle each one
+with your human partner before saying done:
+
+- **Uncommitted files** in this repo and in any other repo this work wrote
+  to (a planning repo holding the design and plan): `git status --short`
+  in each.
+- **Follow-ups outside git:** anything parked only in a ledger, a session
+  scratchpad or a message goes into `docs/inbox.md`.
+- **Processes this session started** (dev servers, watchers, tunnels):
+  stop them by the PID or port you noted when you started them, and only
+  those. Never kill by name or pattern; another session's server may share
+  it.
 
 ## Step 7: Ship and close (pm-sp)
 
