@@ -20,7 +20,7 @@ MATT = {'wayfinder', 'grilling', 'domain-modeling', 'codebase-design', 'prototyp
 OWN = {
     'whats-next', 'stepping-away', 'checkpoint', 'nested-sessions', 'second-opinion',
     'ship-acceptance', 'credential-guard', 'gate-hooks', 'review-policy', 'ui-test',
-    'granola-transcript', 'okf',
+    'granola-transcript', 'okf', 'design-handoff',
 }
 DROPPED = {'discovery', 'fast-grill', 'orchestrate', 'session-succession',
            'verify-before-done', 'board', 'runway', 'subsessions', 'using-superpowers',

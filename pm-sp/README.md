@@ -37,6 +37,10 @@ named.
 chunks), `grilling`, `domain-modeling`, `codebase-design`, `prototype`,
 `research`, and `pr` for PR bodies.
 
+**Screens (pm-sp's own, from design-dc):** `design-handoff` writes the brief
+that takes a data sample into Claude Design, so the screens are shaped and
+approved before anything is built.
+
 **The session layer (pm-sp's own):**
 
 - `whats-next`: session open. Reads design docs, plans and their ledgers,
