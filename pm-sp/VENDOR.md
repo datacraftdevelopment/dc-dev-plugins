@@ -67,6 +67,11 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
     records `Accepted: <name>, <date>`. A Red Flags row backs it up.
     (pm-sp's own files, same release: a session can open without an Intent
     while the work is fuzzy, and its first re-aim sets it.)
+11. Runway hand-off (0.2.9): `brainstorming` step 5 and its HARD-GATE let an
+    approved design doc go straight to `agent-runway:file-tickets` when the
+    user wants it run as Runway tickets, with no plan; `writing-plans`'
+    description says it is not for that work. Both apply only when the
+    agent-runway plugin is installed beside pm-sp.
 
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.
