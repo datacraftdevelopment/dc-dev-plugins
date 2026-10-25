@@ -7,10 +7,10 @@ is a commit, never a session.
 ## The flow
 
 ```
-whats-next                        open: where things stand, write the Intent
-  brainstorming                   new work: talk it through, mockups, approaches,
+whats-next                        open: where things stand, write the session's Intent
+  brainstorming                   new work: talk it through, Intent accepted, mockups, approaches,
     + design-handoff              screens: data sample, then Claude Design, approved before the doc
-    + second-opinion (design)     design doc with ## Acceptance; Sol and Opus read it as builders
+    + second-opinion (design)     design doc with ## Intent and ## Acceptance; Sol and Opus read it as builders
   [Joe says go to plan]
   writing-plans                   one plan, tasks tagged by risk, lanes when files are disjoint
   subagent-driven-development     lanes run at once; review scaled by risk (or executing-plans, inline)

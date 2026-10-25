@@ -63,7 +63,7 @@ foggy, with several unknowns that depend on each other, starts with
 wayfinder, which runs only when the user names it: recommend it, don't
 start it; its destination is a set of chunks, a brainstorm each.
 
-## 3. Write the Intent
+## 3. Write the Intent, when there is one
 
 Two or three sentences of plain prose: what this session pushes on, why it
 matters, what done-for-this-session looks like, what's out of scope. Scope it
@@ -74,6 +74,12 @@ session record:
 ROOT="$(git rev-parse --show-toplevel)"
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session.py" --root "$ROOT" open --name <handle> --intent '<session intent>'
 ```
+
+When the session starts fuzzy (thinking out loud, exploring, not sure yet
+what to pick), open it without `--intent` and don't make one up to fill the
+slot. The file says the Intent isn't set. Once the work firms up, set it
+with a re-aim (the `checkpoint` command), which becomes the session's aim.
+Some sessions never firm up, and that's fine.
 
 Keep the absolute `ROOT` with the returned `path` and `id` (pm-sp): the plan
 may move this session into a worktree, and close and re-aim must still find

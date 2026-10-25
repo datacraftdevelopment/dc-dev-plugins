@@ -86,6 +86,8 @@ class PmSpPluginTests(unittest.TestCase):
         self.assertNotIn('You MUST use this before any creative work', brainstorming)
         self.assertIn('stop and ask whether to plan it now', brainstorming)
         self.assertIn('## Acceptance', brainstorming)
+        self.assertIn('## Accept the Intent', brainstorming)
+        self.assertIn('`## Intent`', brainstorming)
 
     def test_credential_guard_matches_pm(self):
         for rel in ['hooks/credential-guard.sh', 'hooks/hooks.json', 'scripts/credential_guard.py',
@@ -128,6 +130,20 @@ class PmSpPluginTests(unittest.TestCase):
                                      '--id', bound['id'], '--entry-file', str(entry)], capture_output=True, text=True)
             self.assertEqual(closed.returncode, 0, closed.stderr)
             self.assertIn('Closed:', (Path(tmp) / bound['path']).read_text())
+
+    def test_session_opens_fuzzy_and_reaim_sets_intent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = str(SP / 'scripts/session.py')
+            opened = subprocess.run([sys.executable, script, '--root', tmp, 'open', '--name', 'joe'],
+                                    capture_output=True, text=True)
+            self.assertEqual(opened.returncode, 0, opened.stderr)
+            bound = json.loads(opened.stdout)
+            record = Path(tmp) / bound['path']
+            self.assertIn('## Intent\n\n_Not set at the open', record.read_text())
+            aimed = subprocess.run([sys.executable, script, '--root', tmp, 'reaim', '--session', bound['path'],
+                                    '--id', bound['id'], '--entry', 'Plan the import.'], capture_output=True, text=True)
+            self.assertEqual(aimed.returncode, 0, aimed.stderr)
+            self.assertIn('Plan the import.', record.read_text())
 
     def test_vendored_license_and_provenance(self):
         self.assertIn('MIT License', (SP / 'LICENSE.superpowers').read_text())

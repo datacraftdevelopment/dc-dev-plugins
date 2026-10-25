@@ -10,7 +10,7 @@ _Keep this exact path and ID in the conversation/handoff. Use scripts/session.py
 
 ## Intent
 
-_Set at the session open, before executing. Two or three sentences: what we're pushing on, why it matters, what done-for-this-session looks like, anything explicitly not in scope. Scope it to this session, not the whole day. Reread the Intent and latest re-aim at resume/context recovery, before the next plan task, and at checkpoint._
+_Set at the session open when the work is clear; left unset at a fuzzy start, and then the first re-aim sets it. Two or three sentences: what we're pushing on, why it matters, what done-for-this-session looks like, anything explicitly not in scope. Scope it to this session, not the whole day. Reread the Intent and latest re-aim at resume/context recovery, before the next plan task, and at checkpoint._
 
 _Example:_ Pushing on the search filter UI — Sandy's manual workaround is costing her ~20 min/day, and a working filter unlocks the rest of the search flow. Done for this session is the prototype validated by Sandy. Not touching filter persistence or multi-category yet.
 

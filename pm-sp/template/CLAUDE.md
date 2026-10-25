@@ -49,6 +49,10 @@ around the session.
   Claude Design (`design-handoff`), approved, then build.
 - **Design docs go in `docs/specs/YYYY-MM-DD-<topic>-design.md`, plans in
   `docs/plans/YYYY-MM-DD-<feature>.md`.** Both are committed.
+- **Every design doc opens with `## Intent`:** problem, outcome, who and what
+  it touches, constraints, open questions, in the asker's words, accepted
+  before approaches are laid out. Client work records `Accepted: <name>,
+  <date>`.
 - **Every design doc has `## Acceptance`:** three or four observable checks as
   `- [ ] A1: …` lines. `ship-acceptance` runs them later against the real
   candidate and production.
@@ -109,7 +113,8 @@ change-request job, a longer doc for a six-month engagement.
 
 One file per session, per person, append-only. `whats-next` writes a two or
 three sentence Intent at the open (push, why, done-for-this-session, not in
-scope); `stepping-away` closes with Shipped / Tried-Learned-Decided /
+scope) when the work is clear; a fuzzy start leaves it unset and the first
+re-aim sets it; `stepping-away` closes with Shipped / Tried-Learned-Decided /
 Intent-vs-outcome and a resumable line per plan in flight. Keep the session's
 exact path and ID in the conversation; close by that binding. `checkpoint`
 appends a dated re-aim only when the session can't be broken.

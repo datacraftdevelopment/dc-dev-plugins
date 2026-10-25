@@ -34,7 +34,9 @@ Three sections, leaving the Intent block untouched:
   rulings the plan's ledger recorded that the user should see.
 - **Intent vs. outcome:** did we hit done-for-this-session, did we stay in
   scope? If we crossed it, deliberate pivot or unnoticed drift, and why. With a
-  re-aim, compare against the latest one and note "original → re-aimed".
+  re-aim, compare against the latest one and note "original → re-aimed". An
+  Intent left unset at the open is set by its first re-aim; if no re-aim ever
+  set it, say the session stayed exploratory and skip the drift check.
 
 ## 3. Leave each plan resumable
 

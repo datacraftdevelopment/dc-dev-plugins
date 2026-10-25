@@ -25,11 +25,13 @@ why?
 
 Before you start implementing, you must, in order:
 
-1. Lay out the approaches in a message of their own, and have your
+1. Play back the Intent in their words and have them accept it (pm-sp;
+   see Accept the Intent).
+2. Lay out the approaches in a message of their own, and have your
    human partner pick one (see Lay out the approaches).
-2. Write the design doc, short or full (see Size the Work).
-3. Get their approval of that doc.
-4. Ask whether to plan it now, and invoke the pm-sp:writing-plans skill
+3. Write the design doc, short or full (see Size the Work).
+4. Get their approval of that doc.
+5. Ask whether to plan it now, and invoke the pm-sp:writing-plans skill
    only when they say go (pm-sp; see the HARD-GATE below).
 
 Two things aren't implementing: a spike they said yes to (see Spike to
@@ -203,6 +205,34 @@ they haven't seen the visual companion offer yet, send the offer instead
 (its own message, below) and hold the chunk for the next message. Once
 they've accepted, put a mockup next to the description.
 
+## Accept the Intent
+
+(pm-sp) What they want and how it gets built are two decisions. Settle
+the first before you lay out approaches. Once you understand what they
+want, play it back as the Intent, in five short parts:
+
+- **Problem:** what's wrong or missing today
+- **Outcome:** what's true when it's done
+- **Who and what it touches:** the people and systems affected
+- **Constraints:** what it must do and must not do
+- **Open questions:** what nobody has settled yet
+
+Use their words. Only what they said goes in as theirs; anything you
+filled in is marked as your proposal. Ask them to accept it or correct
+it, and don't lay out approaches until they accept. An approach that
+doesn't serve the accepted Intent is dropped.
+
+**Client work puts the accept on record.** When the work is for a client
+(the repo belongs to a client engagement, or its `CLAUDE.md` says so),
+the design doc records who accepted the Intent and when, as
+`Accepted: <name>, <YYYY-MM-DD>`. That is often the client, relayed by
+your human partner. A changed Intent goes back to whoever accepted it;
+it is never quietly reworded to fit the build. For other work, a yes in
+chat is enough.
+
+A small change gets a one- or two-line Intent. A quick, fully specified
+task skips it.
+
 ## Size the Work
 
 Once you understand what they want and they've picked an approach, say
@@ -228,7 +258,9 @@ order, and brainstorm them one at a time.
 Write a plain document a talented builder in the domain could plan
 from without going back to your human partner. Cover:
 
-- intent and the why
+- **Intent**, first, under the exact heading `## Intent`: the five parts
+  as they accepted them, plus the why; for client work, ending with the
+  `Accepted:` line (pm-sp)
 - goals, non-goals, anti-goals
 - constraints
 - approaches (above)
@@ -309,6 +341,7 @@ pm-sp:writing-plans and no other skill.
 |---------|---------|
 | "I'll offer a menu of what they might want" | Options steer. Ask them to describe it first. |
 | "I'll fill in sensible defaults" | Good. Say them out loud. A default they never heard is one they couldn't reject. |
+| "I know what they want, so I'll go straight to approaches" | Play back the Intent and get it accepted first. What comes before how. |
 | "I've answered their questions, so I'll write the doc" | Lay out the approaches first, in a message of their own. |
 | "I should explain the process first" | Ask your question. The process shows itself. |
 | "They said 'sounds good' to the idea" | Approval covers what you showed them. A design doc you haven't written isn't approved. |

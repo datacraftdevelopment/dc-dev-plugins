@@ -11,6 +11,9 @@ import sys
 import uuid
 
 
+UNSET_INTENT = '_Not set at the open; the work was still fuzzy. The first re-aim sets it._'
+
+
 def now():
     return datetime.now().astimezone().isoformat(timespec='seconds')
 
@@ -22,6 +25,7 @@ def allocate(root, name, intent):
     directory.mkdir(parents=True, exist_ok=True)
     if not directory.resolve().is_relative_to(root):
         raise ValueError('session directory escapes the project')
+    intent = (intent or '').strip() or UNSET_INTENT
     day, session_id = now()[:10], str(uuid.uuid4())
     # O_EXCL handles competing processes on this filesystem. It does not claim
     # a distributed lock across two offline Dropbox replicas.
@@ -71,7 +75,7 @@ def main():
     sub = ap.add_subparsers(dest='command', required=True)
     opening = sub.add_parser('open')
     opening.add_argument('--name', required=True)
-    opening.add_argument('--intent', required=True)
+    opening.add_argument('--intent', help='leave out while the work is fuzzy; the first re-aim sets it')
     for cmd in ('reaim', 'close'):
         parser = sub.add_parser(cmd)
         parser.add_argument('--session', required=True)

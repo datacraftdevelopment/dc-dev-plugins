@@ -59,6 +59,14 @@ pm-sp carries a trimmed copy of Jesse Vincent's **Superpowers**
    the unreviewed tasks; `using-git-worktrees` defaults to
    `.superpowers/worktrees/`; `finishing-a-development-branch` gains Step
    5b (uncommitted files, follow-ups, processes this session started).
+10. `brainstorming` (0.2.8): an Accept the Intent step before the
+    approaches, taken from Anthropic's AI-native SDLC playbook (`intent.md`):
+    the Intent is played back in the user's words (problem, outcome, who and
+    what it touches, constraints, open questions) and accepted before any
+    approach is laid out; the design doc opens with `## Intent`; client work
+    records `Accepted: <name>, <date>`. A Red Flags row backs it up.
+    (pm-sp's own files, same release: a session can open without an Intent
+    while the work is fuzzy, and its first re-aim sets it.)
 
 Everything else is upstream text. Search for `pm-sp` in the copied skills to
 see each change in place.
