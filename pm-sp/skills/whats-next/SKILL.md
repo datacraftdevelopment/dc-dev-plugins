@@ -44,6 +44,11 @@ and read what's local.
   decision work, not build work. Tickets carrying a `Waiting on:` line go
   under *Waiting on you*. A cleared map's chunks are brainstorm candidates,
   in the order it set.
+- **Runway,** only when the agent-runway plugin is installed and its CLI is
+  on PATH (pm-sp): `runway status` once, on its own line. Its needs-you
+  tickets go under *Waiting on you* with Runway's question as it gave it,
+  never answered here; a design already filed as tickets is not a design
+  waiting on a plan.
 
 ## 2. Propose
 

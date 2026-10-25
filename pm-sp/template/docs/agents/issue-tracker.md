@@ -3,7 +3,8 @@
 Preset by the pm-sp plugin. In pm-sp the tracker is used only by `wayfinder`,
 for foggy efforts: its maps and decision tickets live in `docs/maps/`,
 committed with the rest of the project's record. Build work lives in design
-docs and plans, never tickets. Switch to GitHub Issues by copying pm-sp's
+docs and plans, or in Runway tickets when the agent-runway plugin runs it,
+never in tracker tickets. Switch to GitHub Issues by copying pm-sp's
 `templates/issue-tracker-github.md` over this file. The conventions below are
 Matt Pocock's local-markdown tracker, kept in `docs/maps/` instead of a scratch folder,
 plus one descriptive header line pm-sp reads.
