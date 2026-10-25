@@ -1,6 +1,6 @@
 {
   "name": "apple-dc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Build, sign and ship Mac and iOS apps: scaffold a new app (SwiftPM menu bar or window app with Sparkle and move-to-Applications for the Mac, XcodeGen for iOS), make icons for both platforms, cut a Developer ID release (hardened runtime, notarized and stapled DMG and zip, Sparkle appcast, GitHub release), and upload to TestFlight and the App Store. Every skill reads and writes an app-support notebook (apps, machine, lessons) kept outside the repo, so what one app learns the next one uses.",
   "author": {
     "name": "Joe",

@@ -115,6 +115,8 @@ class ScaffoldTests(unittest.TestCase):
         app = self.repo / '_ios'
         self.assertIn('DEVELOPMENT_TEAM: ABCDE12345', (app / 'project.yml').read_text())
         self.assertIn('PRODUCT_BUNDLE_IDENTIFIER: dev.example.tally', (app / 'project.yml').read_text())
+        self.assertIn('PRODUCT_BUNDLE_IDENTIFIER: dev.example.tally.tests', (app / 'project.yml').read_text())
+        self.assertIn('GENERATE_INFOPLIST_FILE: YES', (app / 'project.yml').read_text())
         self.assertIn('<string>ABCDE12345</string>', (app / 'ExportOptions.plist').read_text())
         self.assertTrue((app / 'Sources/TallyApp.swift').is_file())
         self.assertTrue((app / 'Resources/PrivacyInfo.xcprivacy').is_file())

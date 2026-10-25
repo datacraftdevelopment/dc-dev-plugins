@@ -42,6 +42,11 @@ targets:
       - Tests
     dependencies:
       - target: __APP__
+    settings:
+      base:
+        # A test bundle needs its own Info.plist and bundle ID, or it won't sign or load.
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__.tests
 schemes:
   __APP__:
     build:

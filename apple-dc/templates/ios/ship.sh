@@ -49,6 +49,8 @@ devices = json.load(sys.stdin)["devices"]
 phones = [d for runtime, ds in sorted(devices.items()) if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
 print(phones[-1]["udid"] if phones else "")')"
 [ -n "$SIM" ] || die "no iPhone simulator installed (Xcode > Settings > Components)"
+# Boot it first and wait: a cold simulator can leave xcodebuild test hanging for minutes.
+xcrun simctl bootstatus "$SIM" -b >/dev/null || die "the simulator would not boot ($SIM)"
 xcodebuild test -project "$APP.xcodeproj" -scheme "$APP" -destination "id=$SIM" -quiet "${VERSIONS[@]}" \
   || die "tests failed"
 [ "$MODE" = test ] && { echo "Tests passed ($APP $VERSION, build $BUILD)"; exit 0; }
