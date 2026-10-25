@@ -101,6 +101,7 @@ Update everything later with:
 | **design-dc** | `design-handoff`, `html-artifacts`, `excalidraw-artifacts`, `design-sync` | Design handoffs and artifacts. Direct DesignSync requires a host that exposes that tool. |
 | **fm-dc** | `/fm-init` · `fm-scaffold` · `fm-status` · `fm-rollback` · `fm-docs-sync`; skills `fm-core`, `fm-scripts`, `fm-xml`, `fm-saxml`, `fm-patch`, `fm-dataapi`, `fm-odata`, `fm-connections`, `fm-docs`, `baseelements`, `mbs` | Agentic FileMaker development — SaXML patching with verify/rollback, schema analysis, snippet validation, turnkey direct OData + Data API connection tool-skills, BaseElements + MBS. Needs system `python3` + `lxml` and Claris CLI tools. See [`fm-dc/README.md`](fm-dc/README.md). |
 | **basecamp-dc** | `bc-client-face`, `bc-close-out`; session-start hook | Basecamp as the client face, opt-in per repo via `.basecamp/config.json` — inert without it, never a `pm` dependency. Conventions + quirk-safe shipping on top of the official basecamp CLI and its `/basecamp` skill. See [`basecamp-dc/README.md`](basecamp-dc/README.md). |
+| **apple-dc** | `app-support`, `new-apple-app`, `app-icon`, `mac-release`, `app-store` | Build, sign and ship Mac and iOS apps: scaffold (SwiftPM Mac app with Sparkle, or XcodeGen iOS app), icons, Developer ID + notarization + DMG + Sparkle releases, TestFlight and App Store. Every skill reads and writes a private app-support notebook outside the repo, so each app starts from what the last one learned. Claude Code only. See [`apple-dc/README.md`](apple-dc/README.md). |
 
 ### Not a plugin: `factory/`
 
@@ -133,11 +134,16 @@ dc-dev-plugins/
     ├── skills/              ← ddr, fm-patch, fm-xml, fm-connections, ...
     ├── tools/               ← Python tooling (ddr, patch, fmlint, docs)
     └── templates/           ← what /fm-scaffold copies
-└── basecamp-dc/             ← plugin: Basecamp client face (opt-in per repo)
+├── basecamp-dc/             ← plugin: Basecamp client face (opt-in per repo)
+│   ├── .claude-plugin/plugin.json
+│   ├── skills/              ← bc-client-face, bc-close-out
+│   ├── hooks/               ← session-start (silent without .basecamp/config.json)
+│   └── scripts/             ← bc_config.py, doc_roundtrip.py
+└── apple-dc/                ← plugin: build, sign and ship Mac and iOS apps
     ├── .claude-plugin/plugin.json
-    ├── skills/              ← bc-client-face, bc-close-out
-    ├── hooks/               ← session-start (silent without .basecamp/config.json)
-    └── scripts/             ← bc_config.py, doc_roundtrip.py
+    ├── skills/              ← app-support, new-apple-app, app-icon, mac-release, app-store
+    ├── scripts/             ← new-app.py, make-icons.py, doctor.sh
+    └── templates/           ← mac/, ios/, app-support/ (what the scaffold copies)
 ```
 
 ### Complete local Codex refresh

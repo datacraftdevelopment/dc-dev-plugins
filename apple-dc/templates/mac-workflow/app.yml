@@ -1,0 +1,33 @@
+# Every push and PR: the Swift tests and a release dry run (built, signed ad hoc, DMG and zip, appcast written; not
+# notarized, not published). Needs no secrets.
+name: __DIR_SLUG__
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: __DIR__
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Swift tests
+        run: swift test
+      - name: Release dry run
+        run: APP_RELEASE_CHECK_CMD=true bash make-app.sh --release --dry-run
+      - name: Check the dry-run app
+        run: |
+          codesign --verify --deep --strict build/__APP__.app
+          test -d build/__APP__.app/Contents/Frameworks/Sparkle.framework
+          test -s build/release/__APP__.dmg
+          test -s build/release/__APP__.zip
+          hdiutil verify build/release/__APP__.dmg
+          grep -q '<enclosure url="https://github.com/__REPO__/releases/download/v' build/release/appcast.xml
+      - name: The build leaves the tree clean (a real release refuses a dirty one)
+        run: test -z "$(git status --porcelain)"
