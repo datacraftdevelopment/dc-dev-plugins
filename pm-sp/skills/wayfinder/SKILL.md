@@ -7,7 +7,7 @@ A loose idea has arrived, too big for one agent session, and wrapped in fog: the
 
 The destination varies per effort, and naming it is the first act of charting: it shapes every ticket. It might be a spec to hand off and iterate on, or a decision to lock before planning starts. The map is domain-agnostic: engineering work, course content, whatever fits the shape.
 
-**In pm-sp, the usual destination is a set of chunks** (pm-sp): each one a piece of work that a single brainstorm can design and a single plan can build, in the order to take them. When the way is clear, write the chunks, numbered in order, into the map's Destination and under the effort's name in `docs/inbox.md`; each then goes through `pm-sp:brainstorming` in its own session. Decision tickets are never built; only chunks are.
+**In pm-sp, the usual destination is a set of chunks** (pm-sp): each one a piece of work that a single brainstorm can design and a single plan can build, in the order to take them. When the way is clear, write the chunks, numbered in order, into the map's Destination and under the effort's name in `docs/inbox.md`; each then goes through `pm-sp:brainstorming` in its own session. When the user runs the work on Runway instead (the agent-runway plugin installed), a chunk goes to `agent-runway:spec` and then `agent-runway:file-tickets`, and the map stays this layout: either skill can work it. Decision tickets are never built; only chunks are.
 
 **Screens come first** (pm-sp). When the destination includes screens, the map's first tickets settle what they look like, before any chunk is brainstormed for build: a `task` ticket, **Data sample** (a small real extract from the source system, or JSON fixtures shaped exactly like it, committed where later sessions can read it), and a `prototype` ticket blocked by it, **Screens**, resolved with `pm-sp:design-handoff`, told to use data mode, so the user shapes the screens in Claude Design on that sample. The user approves the screens on that ticket; its resolution links the approved design, and every chunk with a screen in it designs and builds against it.
 
@@ -15,7 +15,7 @@ The destination varies per effort, and naming it is the first act of charting: i
 
 ## Plan, don't do
 
-Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear, with nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. Produce decisions, not deliverables. In pm-sp, map Notes cannot authorize implementation (pm-sp): when the decisions are settled, write the ordered chunks to the map and `docs/inbox.md`, then hand each chunk to `pm-sp:brainstorming`.
+Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear, with nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. Produce decisions, not deliverables. In pm-sp, map Notes cannot authorize implementation (pm-sp): when the decisions are settled, write the ordered chunks to the map and `docs/inbox.md`, then hand each chunk to `pm-sp:brainstorming` (or to Runway's spec and file-tickets, as above).
 
 ## Refer by name
 

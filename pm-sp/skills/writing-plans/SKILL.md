@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: Use when you have a spec or requirements for a multi-step task, before touching code. Not for work the user is sending to Runway as tickets: agent-runway:file-tickets takes the spec there, with no plan.
 ---
 
 # Writing Plans

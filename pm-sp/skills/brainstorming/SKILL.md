@@ -32,7 +32,10 @@ Before you start implementing, you must, in order:
 3. Write the design doc, short or full (see Size the Work).
 4. Get their approval of that doc.
 5. Ask whether to plan it now, and invoke the pm-sp:writing-plans skill
-   only when they say go (pm-sp; see the HARD-GATE below).
+   only when they say go (pm-sp; see the HARD-GATE below). If they want
+   it run as Runway tickets instead and the agent-runway plugin is
+   installed, the design doc is the spec: hand it to
+   agent-runway:file-tickets, with no plan.
 
 Two things aren't implementing: a spike they said yes to (see Spike to
 feel things out), and doing what they asked once they've opted out of
@@ -332,7 +335,9 @@ After the design doc is approved, stop and ask whether to plan it now.
 Approval of the design is not a go for the plan: your human partner may
 want to sit on it, hand it to someone else, or take it into a nested
 session. When they say go, the next step is the plan: invoke
-pm-sp:writing-plans and no other skill.
+pm-sp:writing-plans and no other skill. The one exception: they say to
+run it as Runway tickets, and agent-runway:file-tickets takes the design
+doc in place of a plan (pm-sp).
 </HARD-GATE>
 
 ## Red Flags
