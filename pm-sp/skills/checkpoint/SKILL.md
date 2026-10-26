@@ -24,7 +24,7 @@ the record describes the present, not how we got here.
    One line, such as: *Re-aimed 14:30: the import has to keep the legacy IDs;
    done for this session is now the mapping table; the UI drops out.*
 3. **Push the change into the work that hasn't happened.** If the design
-   changed, edit the design doc and say what changed. If the plan's remaining
+   changed, edit the spec and say what changed. If the plan's remaining
    tasks are wrong, revise them in the plan and record the change as a ruling
    in the ledger. A running nested session working an affected lane gets one
    short message with the change. Name every file you touched.
@@ -34,4 +34,4 @@ the record describes the present, not how we got here.
    preference harden into a rule, or a rule soften into a preference.
 
 It doesn't open or close the session, doesn't append a diary (detail goes in
-the design doc, the plan or the ledger), and doesn't commit on its own.
+the spec, the plan or the ledger), and doesn't commit on its own.

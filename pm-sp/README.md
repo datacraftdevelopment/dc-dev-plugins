@@ -1,60 +1,48 @@
-# pm-sp: pm on Superpowers
+# pm-sp: the light pm
 
-Joe's project-management layer, rebuilt around Jesse Vincent's
-[Superpowers](https://github.com/obra/superpowers) as the main workflow.
-Superpowers' skills do the work (brainstorm, design, plan, run the plan in one
-session with subagents, finish the branch); pm-sp's skills hold the session
-around it. **Read [`WORKFLOW.md`](./WORKFLOW.md) first.**
+Joe's personal layer on top of **Agent Runway**. The `agent-runway` plugin
+carries the workflow: shaping (`grill`, `prototype`, `map`, `spec`),
+`file-tickets`, which sorts the shaped work into tickets Runway runs on its
+own and hands-on tickets done in your own session, and the `hands-on` skill
+with the Superpowers skills it builds with (plans, subagents, TDD, debugging,
+verification). pm-sp holds the session around it and adds what only Joe's
+projects need. **Read [`WORKFLOW.md`](./WORKFLOW.md) first.**
 
-pm-sp is an alternative to `pm`, not an add-on: **install one or the other on
-a machine, never both.** They share the credential-guard hook (it would run
-twice) and several skill names (`whats-next`, `stepping-away`, `checkpoint`,
-`ship-acceptance`, …). Don't install upstream Superpowers or Matt Pocock's skills
-alongside it either: pm-sp carries the parts it uses, and the rest of those
-packs would pull sessions toward their own flows.
+pm-sp **requires agent-runway**. The Runway app installs agent-runway on its
+first run (or `runway install-skills`); then:
 
 ```
 /plugin install pm-sp@dc-dev-plugins
 ```
 
+pm-sp is an alternative to `pm`, not an add-on: **install one or the other on
+a machine, never both.** They share the credential-guard hook (it would run
+twice) and several skill names (`whats-next`, `stepping-away`, `checkpoint`,
+`ship-acceptance`, …). Don't install upstream Superpowers or Matt Pocock's
+skills alongside it either: their flows compete with Runway's.
+
 ## What's in it
 
-pm-sp is the only plugin a pm-sp machine needs: **don't install Superpowers or
-Matt Pocock's skills alongside it.** The parts of them it uses are copied in.
+**The session layer (pm-sp's own):**
 
-**The workflow (vendored Superpowers, v7.0.1, see [`VENDOR.md`](./VENDOR.md)):**
-`brainstorming` (with the browser visual companion), `writing-plans`,
-`subagent-driven-development`, `executing-plans`,
-`finishing-a-development-branch`, `using-git-worktrees`,
-`requesting-code-review`, `receiving-code-review`, `test-driven-development`,
-`systematic-debugging`, `verification-before-completion`,
-`dispatching-parallel-agents`. Without Superpowers' session-start hook, so
-nothing takes over a session: skills fire when their description fits or when
-named.
-
-**Shaping foggy work (vendored Matt Pocock skills, see [`VENDOR.md`](./VENDOR.md)):**
-`wayfinder` (decision tickets until the way is clear, ending in a set of
-chunks), `grilling`, `domain-modeling`, `codebase-design`, `prototype`,
-`research`, and `pr` for PR bodies.
+- `whats-next`: session open. Reads specs, plans and their ledgers, recent
+  sessions, what Runway is running and which hands-on tickets wait; proposes
+  the pick-up; writes the Intent.
+- `stepping-away`: session close. Entry against the Intent, a resumable line
+  per plan in flight, inbox capture, next-session offer.
+- `checkpoint`: mid-session re-aim when the session can't break.
+- `second-opinion`: Sol through Ringer plus a fresh Opus, on a project-sized
+  spec (as its builders) and, when asked, on a finished branch.
+- `ship-acceptance`: the spec's Acceptance checks against the real candidate
+  and production, recorded in `docs/shipped/`.
 
 **Screens (pm-sp's own, from design-dc):** `design-handoff` writes the brief
 that takes a data sample into Claude Design, so the screens are shaped and
 approved before anything is built.
 
-**The session layer (pm-sp's own):**
-
-- `whats-next`: session open. Reads design docs, plans and their ledgers,
-  recent sessions; proposes the pick-up; writes the Intent.
-- `stepping-away`: session close. Entry against the Intent, a resumable line
-  per plan in flight, inbox capture, next-session offer.
-- `checkpoint`: mid-session re-aim when the session can't break.
-- `nested-sessions`: two or three plan lanes at once, each in a background
-  session this one starts, steers and archives.
-- `second-opinion`: Sol through Ringer plus a fresh Opus, on a design doc (as
-  its builders) and
-  on a finished branch.
-- `ship-acceptance`: the design doc's Acceptance checks against the real
-  candidate and production, recorded in `docs/shipped/`.
+**Four of Matt Pocock's skills Runway has nothing like** (vendored, see
+[`VENDOR.md`](./VENDOR.md)): `domain-modeling` (glossary and ADRs),
+`codebase-design` (deep modules), `research`, and `pr` for PR bodies.
 
 **Guards and kits (from pm, unchanged in substance):**
 
@@ -69,26 +57,28 @@ approved before anything is built.
 - `granola-transcript`, `okf`: utilities.
 
 **`/pm-sp:scaffold`** stands up a project from `template/`: `CLAUDE.md` with
-the workflow rules, `docs/` (inbox, quirks, a local tracker for
-wayfinder; other folders appear on first write), `_pm/` with the skeleton and sessions. It runs the skeleton
-interview. Also adds a stack's plugins to a repo (`stack vercel`).
+the workflow rules, `docs/` (inbox, quirks, a note on where maps live; other
+folders appear on first write), `_pm/` with the skeleton and sessions. It runs
+the skeleton interview. Also adds a stack's plugins to a repo (`stack vercel`).
 
 ## What it assumes
 
-No other plugin. On the machine:
-
+- **The agent-runway plugin**, and the Runway app on the Mac that runs
+  tickets. Shaping and the hands-on skills work in any session; filing and
+  closing tickets need `runway`.
 - **Ringer** and its library skills (`ringer`, `cross-review-gate`) on the Mac,
   for `second-opinion`'s Sol reader and `ui-test` (the marketplace README
   explains). Without them, second-opinion runs Opus alone and says so.
 - **Python 3.9+** as `python3` on Claude Code's Bash PATH: the always-on
   credential guard and the session and delivery helpers need it (check with
   `python3 --version`). `ui-test` also needs Pillow (see `UI-TEST.md`).
-- **Node**, for brainstorming's visual companion (a small local server).
-- **git** with a remote, so wayfinder maps and plans travel between computers.
+- **git** with a remote, so maps, specs and plans travel between computers.
 
-## Not carried over from pm
+## Not carried over
 
-`discovery`, `fast-grill`, `orchestrate`, `session-succession`,
-`verify-before-done`, `board`, `runway`. `WORKFLOW.md` says why for each.
-Repos with `docs/intent/` files still work with `ship-acceptance`; new
-projects put acceptance in the design doc.
+From pm: `discovery`, `fast-grill`, `orchestrate`, `session-succession`,
+`verify-before-done`, `board`, `runway`. Until 0.3.0 pm-sp also carried
+Superpowers' workflow skills, `wayfinder`, `grilling`, `prototype` and
+`nested-sessions`; `WORKFLOW.md` says where each went. Repos with
+`docs/intent/` files still work with `ship-acceptance`; new projects put
+acceptance in the spec.

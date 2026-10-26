@@ -22,8 +22,8 @@ PLUGINS = {
     'basecamp-dc': ('DataCraft Basecamp', 'Optional Basecamp client workflows and verified close-out procedures.'),
 }
 # Local plugins with no Codex edition.
-# pm-sp has no Codex edition yet: its vendored Superpowers skills, nested-sessions and
-# the session layer are untested under Codex.
+# pm-sp has no Codex edition yet: its session layer and Ringer-backed skills are
+# untested under Codex.
 CLAUDE_ONLY = {'pm-sp'}
 # Plugin source folders that differ from the plugin name.
 SOURCES = {}

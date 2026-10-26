@@ -10,18 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 PM = ROOT / 'pm'
 SP = ROOT / 'pm-sp'
 
-VENDORED = {
-    'brainstorming', 'writing-plans', 'subagent-driven-development', 'executing-plans',
-    'finishing-a-development-branch', 'using-git-worktrees', 'requesting-code-review',
-    'receiving-code-review', 'test-driven-development', 'systematic-debugging',
-    'verification-before-completion', 'dispatching-parallel-agents',
-}
-MATT = {'wayfinder', 'grilling', 'domain-modeling', 'codebase-design', 'prototype', 'research', 'pr'}
+MATT = {'domain-modeling', 'codebase-design', 'research', 'pr'}
 OWN = {
-    'whats-next', 'stepping-away', 'checkpoint', 'nested-sessions', 'second-opinion',
+    'whats-next', 'stepping-away', 'checkpoint', 'second-opinion',
     'ship-acceptance', 'credential-guard', 'gate-hooks', 'review-policy', 'ui-test',
     'granola-transcript', 'okf', 'design-handoff',
 }
+# Moved to the agent-runway plugin at 0.3.0, which pm-sp now requires.
+RUNWAY = {'grill', 'prototype', 'map', 'spec', 'file-tickets', 'hands-on', 'runway', 'take-back', 'setup',
+          'writing-plans', 'subagent-driven-development', 'executing-plans', 'test-driven-development',
+          'systematic-debugging', 'verification-before-completion'}
+MOVED = {'brainstorming', 'wayfinder', 'grilling', 'using-git-worktrees', 'finishing-a-development-branch',
+         'requesting-code-review', 'receiving-code-review', 'dispatching-parallel-agents', 'nested-sessions'}
 DROPPED = {'discovery', 'fast-grill', 'orchestrate', 'session-succession',
            'verify-before-done', 'board', 'runway', 'subsessions', 'using-superpowers',
            'to-spec', 'to-tickets', 'implement', 'implement-spec', 'triage'}
@@ -42,7 +42,7 @@ class PmSpPluginTests(unittest.TestCase):
 
     def test_skill_set(self):
         skills = {p.parent.name for p in (SP / 'skills').glob('*/SKILL.md')}
-        self.assertEqual(skills, VENDORED | MATT | OWN)
+        self.assertEqual(skills, MATT | OWN)
         for path in (SP / 'skills').glob('*/SKILL.md'):
             self.assertEqual(frontmatter_name(path), path.parent.name, path)
 
@@ -52,8 +52,9 @@ class PmSpPluginTests(unittest.TestCase):
             self.assertLess(len(path.read_bytes()), 20000, path)
 
     def test_cross_references_resolve(self):
-        skills = VENDORED | MATT | OWN | {p.stem for p in (SP / 'agents').glob('*.md')}
-        for path in [*(SP / 'skills').rglob('*'), SP / 'WORKFLOW.md', SP / 'template/CLAUDE.md',
+        skills = MATT | OWN | {p.stem for p in (SP / 'agents').glob('*.md')}
+        for path in [*(SP / 'skills').rglob('*'), SP / 'WORKFLOW.md', SP / 'README.md', SP / 'template/CLAUDE.md',
+                     *(SP / 'template').rglob('*.md'), *(SP / 'commands').glob('*.md'),
                      *(SP / 'templates').glob('*.md')]:
             if not path.is_file() or path.suffix not in {'.md', '.sh', ''}:
                 continue
@@ -67,27 +68,32 @@ class PmSpPluginTests(unittest.TestCase):
                 if name == 'scaffold':
                     continue
                 self.assertIn(name, skills, f'{path}: pm-sp:{name}')
+            for name in re.findall(r'agent-runway:([a-z-]+)', text):
+                self.assertIn(name, RUNWAY, f'{path}: agent-runway:{name}')
 
     def test_no_dropped_skill_is_relied_on(self):
-        allowed = {SP / 'WORKFLOW.md', SP / 'README.md', SP / 'VENDOR.md',
-                   SP / 'skills/second-opinion/SKILL.md', SP / 'skills/nested-sessions/SKILL.md'}
+        allowed = {SP / 'WORKFLOW.md', SP / 'README.md', SP / 'VENDOR.md', SP / 'skills/second-opinion/SKILL.md'}
         for path in SP.rglob('*.md'):
             if path in allowed:
                 continue
             text = path.read_text()
-            for name in DROPPED:
-                self.assertNotRegex(text, rf'`{name}`|\({re.escape("../" + name)}/', f'{path}: {name}')
+            for name in DROPPED | MOVED:
+                self.assertNotRegex(text, rf'`{name}`|\({re.escape("../" + name)}/|pm-sp:{name}\b', f'{path}: {name}')
         self.assertFalse((SP / 'template/docs/intent').exists())
+
+    def test_requires_agent_runway(self):
+        manifest = json.loads((SP / '.claude-plugin/plugin.json').read_text())
+        self.assertEqual(manifest['version'], '0.3.0')
+        self.assertIn('Requires the agent-runway plugin', manifest['description'])
+        self.assertIn('requires agent-runway', (SP / 'README.md').read_text())
+        whats_next = (SP / 'skills/whats-next/SKILL.md').read_text()
+        self.assertIn('`runway status` and `runway hands-on`', whats_next)
+        self.assertNotIn('only when the agent-runway plugin is installed', whats_next)
+        self.assertFalse((SP / 'LICENSE.superpowers').exists())
 
     def test_no_session_start_takeover(self):
         hooks = json.loads((SP / 'hooks/hooks.json').read_text())['hooks']
         self.assertEqual(set(hooks), {'PreToolUse'})
-        brainstorming = (SP / 'skills/brainstorming/SKILL.md').read_text()
-        self.assertNotIn('You MUST use this before any creative work', brainstorming)
-        self.assertIn('stop and ask whether to plan it now', brainstorming)
-        self.assertIn('## Acceptance', brainstorming)
-        self.assertIn('## Accept the Intent', brainstorming)
-        self.assertIn('`## Intent`', brainstorming)
 
     def test_credential_guard_matches_pm(self):
         for rel in ['hooks/credential-guard.sh', 'hooks/hooks.json', 'scripts/credential_guard.py',
@@ -146,10 +152,8 @@ class PmSpPluginTests(unittest.TestCase):
             self.assertIn('Plan the import.', record.read_text())
 
     def test_vendored_license_and_provenance(self):
-        self.assertIn('MIT License', (SP / 'LICENSE.superpowers').read_text())
         vendor = (SP / 'VENDOR.md').read_text()
-        self.assertIn('2ce8aa1', vendor)
-        for name in VENDORED | MATT:
+        for name in MATT:
             self.assertIn(f'`{name}`', vendor)
         self.assertIn('MIT License', (SP / 'LICENSE.mattpocock').read_text())
         self.assertIn('5beb35b', vendor)
@@ -158,22 +162,15 @@ class PmSpPluginTests(unittest.TestCase):
         # Joe's Fable allowance was once spent by subagents inheriting the session's model.
         # Every place that dispatches a subagent or session names the model it expects.
         expected = {
-            'skills/subagent-driven-development/SKILL.md': ['cheap and standard = `sonnet`', 'most capable =\n`opus`', 'never on `fable`'],
-            'skills/executing-plans/SKILL.md': ['dispatch the reviewer with `model: opus`'],
-            'skills/brainstorming/builder-check-prompt.md': ['`model: opus`'],
-            'skills/requesting-code-review/SKILL.md': ['`sonnet` for a task review, `opus` for a whole-branch review'],
-            'skills/dispatching-parallel-agents/SKILL.md': ['`sonnet` for fixes and implementation'],
             'skills/codebase-design/DESIGN-IT-TWICE.md': ['`model: opus`'],
             'skills/research/SKILL.md': ['`model: sonnet`'],
-            'skills/nested-sessions/SKILL.md': ['claude --bg --model sonnet'],
             'skills/second-opinion/SKILL.md': ['`claude-opus-5`', '`gpt-5.6-sol`'],
+            'WORKFLOW.md': ['`sonnet`', '`opus`', 'Fable and Haiku never run as a subagent'],
         }
         for rel, needles in expected.items():
             text = (SP / rel).read_text()
             for needle in needles:
                 self.assertIn(needle, text, rel)
-        nested = (SP / 'skills/nested-sessions/SKILL.md').read_text()
-        self.assertNotRegex(nested, r'claude --bg (?!--model)')
         # No skill hands out the model nobody should spend below the main session.
         for path in (SP / 'skills').rglob('*.md'):
             self.assertNotRegex(path.read_text(), r'model: (fable|haiku)|--model (fable|haiku)', path)
@@ -198,25 +195,8 @@ class PmSpPluginTests(unittest.TestCase):
             self.assertIn('--root "<bound-root>"', (SP / rel).read_text(), rel)
         self.assertIn('ROOT="$(git rev-parse --show-toplevel)"', (SP / 'skills/whats-next/SKILL.md').read_text())
 
-    def test_prototype_and_wayfinder_never_build(self):
-        proto = (SP / 'skills/prototype/SKILL.md').read_text()
-        self.assertNotIn('Fold any validated decision into the real code', proto)
-        self.assertNotIn('promote the winning variant', (SP / 'skills/prototype/UI.md').read_text())
-        self.assertNotIn('carrying execution into the map itself', (SP / 'skills/wayfinder/SKILL.md').read_text())
-
-    def test_wayfinder_ends_in_chunks(self):
-        wayfinder = (SP / 'skills/wayfinder/SKILL.md').read_text()
-        self.assertIn('the usual destination is a set of chunks', wayfinder)
-        self.assertIn('pm-sp:brainstorming', wayfinder)
-        self.assertIn('/pm-sp:scaffold', wayfinder)
-        # Joe starts it by name, not slash command; it still never starts on its own.
-        self.assertNotIn('disable-model-invocation', wayfinder)
-        self.assertIn('Use only when the user names it', wayfinder)
-        self.assertNotIn('never resolve more than one ticket per session', wayfinder)
-        # Sibling skills are called by their plugin name, or the Skill tool may not find them.
-        self.assertNotRegex(wayfinder, r'Skill tool[^.]*"(?!pm-sp:)[a-z-]+"')
-        self.assertTrue((SP / 'templates/issue-tracker-github.md').is_file())
-        # One record: wayfinder maps live in docs/maps/, never a .scratch/ folder.
+    def test_maps_live_in_docs_maps(self):
+        # One record: maps live in docs/maps/, never a .scratch/ folder.
         for path in SP.rglob('*.md'):
             self.assertNotIn('.scratch', path.read_text(), path)
         self.assertIn('docs/maps/<effort>/map.md', (SP / 'template/docs/agents/issue-tracker.md').read_text())

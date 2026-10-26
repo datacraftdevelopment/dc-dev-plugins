@@ -28,7 +28,7 @@ _Narrative. What was explored, what didn't work, pivots and why. Be candid — "
 
 ## Intent vs. outcome
 
-_Session-close check (handled by `stepping-away`). Did we hit done-for-this-session? Did we stay in scope? If we drifted: deliberate pivot or unnoticed drift, and what caused it. If the intent itself turned out wrong, say so — that correction belongs in the design doc under `docs/specs/`, not just here._
+_Session-close check (handled by `stepping-away`). Did we hit done-for-this-session? Did we stay in scope? If we drifted: deliberate pivot or unnoticed drift, and what caused it. If the intent itself turned out wrong, say so — that correction belongs in the spec under `docs/specs/`, not just here._
 
 ## Open threads
 

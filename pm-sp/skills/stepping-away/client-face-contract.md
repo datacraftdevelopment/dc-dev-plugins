@@ -10,12 +10,12 @@ The file must answer, in plain prose or short tables:
 
 1. **Where the close-out steps are.** Either inline, or a path or skill name
    the agent can open. pm does not guess.
-2. **What local evidence the steps consume.** At minimum: the design doc or
-   plan and the commit, and a `Client-ref:` line if the design doc has one.
+2. **What local evidence the steps consume.** At minimum: the spec or
+   plan and the commit, and a `Client-ref:` line if the spec has one.
 3. **What to do in each of three cases:**
    - **fully shipped** — every plan task behind the client-facing work is done;
    - **partly shipped** — some are, the rest are still open;
-   - **ticketless** — a change shipped from a session Intent with no design doc or plan.
+   - **ticketless** — a change shipped from a session Intent with no spec or plan.
 4. **What counts as done** for the close-out itself, so `stepping-away` can
    report it or say it was skipped.
 
