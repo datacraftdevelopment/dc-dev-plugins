@@ -19,13 +19,13 @@ not a working folder" — same convention as code-surface containers
 
 ## How the session skills use it
 
-- **`whats-next`** (session open) reads design docs, plans and their
+- **`whats-next`** (session open) reads specs, plans and their
   ledgers, and recent sessions; writes this session's Intent into a new
   session file.
 - **`stepping-away`** (session close) writes the session entry, leaves a
   resumable line per plan in flight, and compares Intent to outcome.
 - **`checkpoint`** (only when a session can't be closed and reopened) adds a
-  dated re-aim and pushes the change into the design doc or plan. Short
+  dated re-aim and pushes the change into the spec or plan. Short
   sessions don't need it: the session boundary is the re-aim.
 
 `_pm/` is portable: internal references stay local; outward references reach
