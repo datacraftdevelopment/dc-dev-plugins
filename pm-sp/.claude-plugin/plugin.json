@@ -1,7 +1,7 @@
 {
   "name": "pm-sp",
-  "version": "0.3.0",
-  "description": "Light pm: Joe's personal layer on top of Agent Runway, which carries the workflow itself (shaping with grill, prototype, map and spec; file-tickets sorting work into Runway tickets and hands-on tickets; the hands-on skill with plans, subagents, TDD, debugging and verification). pm-sp adds the session layer (whats-next, stepping-away, checkpoint), the scaffold, design-handoff for screens first, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance against production, the credential guard, gate-hooks, review-policy, ui-test, okf, granola-transcript, and four Matt Pocock skills Runway has nothing like (domain-modeling, codebase-design, research, pr). Requires the agent-runway plugin. An alternative to pm: install one or the other.",
+  "version": "0.3.1",
+  "description": "Light pm: Joe's personal layer on top of Agent Runway, which carries the shaping (grill, prototype, map and spec) and the hands-on skill (plans, subagents, TDD, debugging, verification). Runway itself is per repo: a repo not added to it never sees tickets or Runway suggestions, and one that is gets a single ask, kept as `runway: yes|no` in the spec. pm-sp adds the session layer (whats-next, stepping-away, checkpoint), the scaffold, design-handoff for screens first, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance against production, the credential guard, gate-hooks, review-policy, ui-test, okf, granola-transcript, and four Matt Pocock skills Runway has nothing like (domain-modeling, codebase-design, research, pr). Requires the agent-runway plugin. An alternative to pm: install one or the other.",
   "author": {
     "name": "Joe",
     "email": "digitaljoed@gmail.com"

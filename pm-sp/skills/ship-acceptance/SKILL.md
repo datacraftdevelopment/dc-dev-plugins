@@ -7,7 +7,7 @@ description: Verify a deliverable against the Acceptance checks in its approved 
 
 Own the last handoff: approved spec → independently executed acceptance → delivery record. Every ticket can merge green; this procedure decides whether the spec's outcome was delivered.
 
-**In pm-sp the "intent" is the approved spec** in `docs/specs/`, written by `agent-runway:spec` (or a design doc from before 0.3.0). Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that spec. Runway's function review already walked each line on each ticket's commit; this skill checks the whole delivery, then production. Older repos with `docs/intent/<slug>.md` files work the same way. Execution agreements, `dc-autonomy-v1` and Evidence requirements below come from pm's older intents; a pm-sp spec has none of them unless it adds an `## Evidence requirements` block, so the single-evidence procedure applies by default.
+**In pm-sp the "intent" is the approved spec** in `docs/specs/`, written by `agent-runway:spec` (or a design doc from before 0.3.0). Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that spec. In a Runway repo, Runway's function review already walked each line on each ticket's commit it ran; this skill checks the whole delivery, then production. Older repos with `docs/intent/<slug>.md` files work the same way. Execution agreements, `dc-autonomy-v1` and Evidence requirements below come from pm's older intents; a pm-sp spec has none of them unless it adds an `## Evidence requirements` block, so the single-evidence procedure applies by default.
 
 ## 1. Pin what will be checked
 

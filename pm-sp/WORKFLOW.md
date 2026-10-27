@@ -1,25 +1,23 @@
 # WORKFLOW: how Joe works, on Agent Runway
 
-pm-sp is the light pm. The workflow itself is Agent Runway's (the
-`agent-runway` plugin): it shapes the work, then sorts it into tickets Runway
-runs on its own and hands-on tickets Joe does in his own session. pm-sp holds
-the session around it and adds what only Joe's projects need. There is no
-choice to make upfront between "a Runway job" and "a hands-on job": the work
-shows which it is once it's shaped.
+pm-sp is the light pm. The shaping skills are Agent Runway's (the
+`agent-runway` plugin). Runway itself is optional, and per repo: a repo that
+isn't added to Runway never uses it. No tickets, no Runway suggestions, no
+asking; the work just runs in the session (brainstorm/spec, plan, build). pm-sp
+holds the session around it and adds what only Joe's projects need.
 
 ## The flow
 
 ```
-whats-next                          open: where things stand, what Runway is doing, what waits on Joe
+whats-next                          open: where things stand, what Runway is doing (if the repo is in it), what waits on Joe
   agent-runway:grill                talk it through, one question at a time
   agent-runway:prototype            see it when seeing beats talking
     + design-handoff                screens: data sample, then Claude Design, approved before the spec
   agent-runway:map                  foggy work only: decisions in order, ending in chunks
   agent-runway:spec                 the spec, with ## Acceptance as - [ ] A1: lines
     + second-opinion (spec)         project-sized specs: Sol and Opus read it as builders
-  agent-runway:file-tickets         one table, two kinds: Runway tickets and hands-on tickets
-    Runway                          runs its tickets: build, check, two fresh reviews, the gate
-    agent-runway:hands-on           Joe's tickets in this session: plan, subagents, TDD, the device check, runway done
+  runway: yes                       Runway repos only, one ask after the spec: file-tickets, Runway builds
+  runway: no / not a Runway repo    hands-on in this session: plan, subagents, TDD, the device check
   ship-acceptance                   Acceptance checks against the candidate, then production
 stepping-away                       close: session entry, what's in flight
 ```
@@ -28,11 +26,14 @@ stepping-away                       close: session entry, what's in flight
 then build: a small real sample of the data, then `design-handoff` takes it
 into Claude Design, and Joe approves the screens before the spec is done.
 
-**Runway or hands-on** is decided per ticket at filing, by one rule: can an
-unattended agent prove every Acceptance line? Yes is a Runway ticket. A line
-that needs a real device or camera, or Joe's eye on how it looks or feels,
-makes it hands-on. A mixed ticket is split. A Runway ticket waits on a
-hands-on one only when it truly needs that work in place.
+**Runway or hands-on.** `runway repo which` prints the repo's name when it's
+added to Runway; if it prints nothing, Runway is out of the picture. In a
+Runway repo the agent-runway skills ask once, after the spec is shaped and
+only when the work is a good fit (several independent, checkable pieces; not
+mostly device or by-eye work): "Run this through the Runway app, or do it
+here?" The answer is kept in the spec's front matter (`runway: yes|no`), so
+nobody asks again. A poor fit is never asked about; it goes hands-on in the
+session.
 
 Not every piece of work takes every step. A quick, fully specified task is
 just done, test-first (`agent-runway:test-driven-development`). Bugs go to
@@ -45,8 +46,8 @@ just done, test-first (`agent-runway:test-driven-development`). Bugs go to
   records), `maps/`, `adr/`, `inbox.md`.
 - `_pm/` is the personal log: `skeleton.md` and one file per session, bound by
   path and Session-ID (`scripts/session.py`).
-- Runway keeps its tickets and their runs on the Runway Mac (`runway status`,
-  `runway hands-on`). Plan ledgers for hands-on work are gitignored under
+- In a Runway repo, Runway keeps its tickets and their runs on the Runway Mac
+  (`runway status`, `runway hands-on`). Plan ledgers for hands-on work are gitignored under
   `.runway/sdd/`; `stepping-away` writes a resumable line per plan in flight
   into the session file.
 

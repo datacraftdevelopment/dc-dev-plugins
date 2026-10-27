@@ -83,7 +83,7 @@ class PmSpPluginTests(unittest.TestCase):
 
     def test_requires_agent_runway(self):
         manifest = json.loads((SP / '.claude-plugin/plugin.json').read_text())
-        self.assertEqual(manifest['version'], '0.3.0')
+        self.assertEqual(manifest['version'], '0.3.1')
         self.assertIn('Requires the agent-runway plugin', manifest['description'])
         self.assertIn('requires agent-runway', (SP / 'README.md').read_text())
         whats_next = (SP / 'skills/whats-next/SKILL.md').read_text()
