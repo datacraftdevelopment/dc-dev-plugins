@@ -90,8 +90,8 @@ a repository.
   `docs/adr/` are created the first time something is written into them
   (Agent Runway's spec, writing-plans and map; domain-modeling).
 - **Maps.** The template ships `docs/agents/issue-tracker.md`, which says
-  maps live in `docs/maps/` (Agent Runway's `map`); build work lives in
-  Runway tickets. Ask no tracker question. In-place mode: copy it from
+  maps live in `docs/maps/` (Agent Runway's `map`); build work is done in
+  the session. Ask no tracker question. In-place mode: copy it from
   `${CLAUDE_PLUGIN_ROOT}/template/docs/agents/issue-tracker.md` **only if
   absent** — an existing file is that repo's decision, never overwritten.
 - **The inbox.** `docs/inbox.md` ships in the template (loose ideas, one
@@ -179,7 +179,7 @@ Confirm what you did in 3–4 lines: what was created (new folder or in-place
 `_pm/`), git state (initialized / existing / declined), renames done,
 skeleton captured, maps note and inbox present, stacks applied (or none), and — in-place —
 every file touched. Then point at the next step: *"Shape the first piece of
-work with Agent Runway (`grill`, then `spec`, which writes `docs/specs/` with
+work with Agent Runway's skills (`grill`, then `spec`, which writes `docs/specs/` with
 its acceptance checks). Then `whats-next` when you start a working session."*
 
 Don't start doing project work — scaffolding ends here.

@@ -34,17 +34,18 @@ counts once, and a point only one raises is still a point.
 ## Spec mode
 
 For a project-sized spec, after `agent-runway:spec` writes it and before
-`agent-runway:file-tickets` files it.
+the build (or, in a Runway repo with `runway: yes`, before
+`agent-runway:file-tickets` files it).
 
 - **Packet:** the spec's path, the repo path, and the instruction to read it as
   the person (or unattended agent) who will build it and list what they would
   still need to ask. Ask them too which Acceptance lines an unattended
-  reviewer couldn't prove (those become hands-on tickets).
+  reviewer couldn't prove (those are done hands-on).
 - **Check:** every question has a same-line reason; each reader also flags any
   decision it thinks is hard to reverse (`door:`).
 - **After:** sort their questions into three piles (answered already, minor,
   the user's). Doors always go to the user's pile. Fix the spec once, one
-  round, then offer `file-tickets`.
+  round, then go on to the plan (or, in a Runway repo with `runway: yes`, offer `file-tickets`).
 
 ## Branch mode
 

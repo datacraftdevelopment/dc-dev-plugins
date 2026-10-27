@@ -13,7 +13,7 @@
     {
       "name": "pm-sp",
       "source": "./pm-sp",
-      "description": "Light pm: Joe's personal layer on top of the agent-runway plugin, which carries the workflow (shaping, Runway and hands-on tickets, plans run by subagents, TDD, debugging, verification). Adds whats-next / stepping-away / checkpoint, the scaffold, design-handoff, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance, the credential guard, gate-hooks, review-policy, ui-test, okf, granola-transcript, and Matt Pocock's domain-modeling, codebase-design, research and pr. Requires agent-runway (installed from its own marketplace). Install instead of pm, never alongside it."
+      "description": "Light pm: Joe's personal layer on top of the agent-runway plugin, which carries the shaping and hands-on skills (plans run by subagents, TDD, debugging, verification). Runway is used only in repos added to it, after one ask. Adds whats-next / stepping-away / checkpoint, the scaffold, design-handoff, second-opinion (Sol via Ringer plus a fresh Opus), ship-acceptance, the credential guard, gate-hooks, review-policy, ui-test, okf, granola-transcript, and Matt Pocock's domain-modeling, codebase-design, research and pr. Requires agent-runway (installed from its own marketplace). Install instead of pm, never alongside it."
     },
     {
       "name": "design-dc",

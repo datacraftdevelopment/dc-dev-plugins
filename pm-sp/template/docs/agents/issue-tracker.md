@@ -1,8 +1,8 @@
 # Maps: local Markdown, in docs/maps/
 
-Preset by the pm-sp plugin. Build work lives in Runway tickets (Runway and
-hands-on) filed from a spec by Agent Runway's `file-tickets`, never in this
-folder. `docs/maps/` holds only maps: Agent Runway's `map` skill charts
+Preset by the pm-sp plugin. Build work is done in the session, or in Runway
+tickets filed from a spec by Agent Runway's `file-tickets` when the repo is in
+Runway and the spec says `runway: yes`; never in this folder. `docs/maps/` holds only maps: Agent Runway's `map` skill charts
 foggy efforts there as decisions to settle one at a time, committed with the
 rest of the project's record.
 

@@ -37,10 +37,15 @@ what I'm doing, never what is true.
 
 ## How we work
 
-The workflow is Agent Runway's (the `agent-runway` plugin), with pm-sp's
-skills around the session. Shaped work becomes tickets of two kinds: Runway
-tickets run on their own; hands-on tickets are done here, in your own
-session.
+The shaping skills are Agent Runway's (the `agent-runway` plugin), with pm-sp's
+skills around the session. If this repo isn't added to Runway (`runway repo
+which` prints nothing), never use it: no tickets, no Runway suggestions, no
+asking. The work just runs in the session (spec, plan, build). If it is in
+Runway, the agent-runway skills ask once, after the spec is shaped and only
+when the work is a good fit (several independent, checkable pieces; not
+mostly device or by-eye work): "Run this through the Runway app, or do it
+here?" The answer is kept in the spec's front matter (`runway: yes|no`), so
+nobody asks again. A poor fit is never asked about; it goes hands-on here.
 
 - **Open with `whats-next`, close with `stepping-away`.** Several sessions a
   day is normal.
@@ -53,23 +58,22 @@ session.
   `docs/plans/YYYY-MM-DD-<feature>.md`.** Both are committed.
 - **Every spec has `## Acceptance`:** three to six observable checks as
   `- [ ] A1: …` lines, each saying how to verify it. Runway's reviewer walks
-  them on every ticket; `ship-acceptance` runs them again against the real
+  them on every ticket it runs; `ship-acceptance` runs them again against the real
   candidate and production.
 - **An approved spec is not a go to file.** Ask; the user may want to sit on
   it.
-- **`file-tickets` sorts the work:** a Runway ticket when an unattended agent
-  can prove every Acceptance line, a hands-on ticket when one needs a real
-  device or camera, or the user's eye on how it looks and feels. Filed only on
-  the user's typed go.
-- **Hands-on tickets** run in this session with `hands-on`: a plan
+- **`file-tickets` is for Runway repos only,** and only when the spec says
+  `runway: yes`. Filed only on the user's typed go.
+- **Hands-on work** (everything in a repo that isn't in Runway, and the poor
+  fits in one that is) runs in this session with `hands-on`: a plan
   (`writing-plans`) run by `subagent-driven-development` or `executing-plans`,
   test-first, the user checks what only they can, then `runway done` on their
   go. Decisions the plan didn't settle are made and written in the ledger as
   rulings; only irreversible, security, outside-the-worktree or hopelessly
   broken steps stop to ask.
 - **Second opinion** (`second-opinion`, Sol through Ringer plus a fresh
-  Opus): on project-sized specs before they're filed. Runway's two fresh
-  reviews cover every ticket.
+  Opus): on project-sized specs before they're built. In a Runway repo,
+  Runway's two fresh reviews also cover every ticket it runs.
 - **Foggy work** with several unknowns that depend on each other: suggest
   `map` (never started on its own). It holds decisions, never builds; its
   destination is a set of chunks in order, and each chunk gets its own spec.

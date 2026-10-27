@@ -1,6 +1,6 @@
 ---
 name: whats-next
-description: Session open. Read where the work stands (specs, plans and their ledgers, what Runway is running and which hands-on tickets wait, recent sessions), propose one or two things to pick up, and write this session's Intent. Use when the user says "what's next?", "what should I work on?", "where did we leave off?", "catch me up", or starts a session cold without a named task.
+description: Session open. Read where the work stands (specs, plans and their ledgers, what Runway is running and which hands-on tickets wait, in a Runway repo only; recent sessions), propose one or two things to pick up, and write this session's Intent. Use when the user says "what's next?", "what should I work on?", "where did we leave off?", "catch me up", or starts a session cold without a named task.
 ---
 
 # What's next
@@ -45,8 +45,9 @@ and read what's local.
   decisions are decision work, not build work. Decisions carrying a
   `Waiting on:` line go under *Waiting on you*. A cleared map's chunks are
   spec candidates, in the order it set.
-- **Runway:** `runway status` and `runway hands-on`, each once, on its own
-  line (the command on PATH, or the copy inside Runway.app). Its needs-you
+- **Runway,** only if `runway repo which` prints this repo's name (otherwise
+  skip this item silently: no Runway mention, no ask):
+  `runway status` and `runway hands-on`, each once, on its own line (the command on PATH, or the copy inside Runway.app). Its needs-you
   tickets go under *Waiting on you* with Runway's question as it gave it,
   never answered here. Hands-on tickets are this session's to pick up, with
   what waits on each. If Runway isn't on this machine, say so in a line
@@ -97,12 +98,17 @@ by its ordinal. On resume, reread that file's Intent and latest re-aim.
 
 ## 4. Work
 
-Shaped work goes to `agent-runway:file-tickets`, which sorts it into
-Runway tickets (they run on their own) and hands-on tickets. Hands-on
-tickets are done here, with the user in the loop, by `agent-runway:hands-on`:
+Shaped work is done here, with the user in the loop. In a repo that isn't in
+Runway, that is the whole story: no tickets, no Runway suggestions, no asking.
+In a Runway repo, the agent-runway skills ask once, after the spec is shaped
+and only when the work is a good fit (several independent, checkable pieces;
+not mostly device or by-eye work), "Run this through the Runway app, or do it
+here?", and keep the answer in the spec's front matter (`runway: yes|no`).
+`yes` goes to `agent-runway:file-tickets`; `no`, or a poor fit that is never
+asked about, goes hands-on here via `agent-runway:hands-on`:
 a plan when it's more than a step or two, run by
 `agent-runway:subagent-driven-development` or `agent-runway:executing-plans`,
-then `runway done` on the user's go. A quick, fully specified task is just
+then, for a Runway hands-on ticket, `runway done` on the user's go. A quick, fully specified task is just
 done, test-first.
 
 ## No history yet

@@ -23,7 +23,7 @@ Pushes, client messages and production keep their own permission.
   `.runway/sdd/` when present, and `git log --since=<session start> --oneline`.
 - Any spec written or changed this session (`docs/specs/`).
 - The conversation since the last stepping-away.
-- Runway tickets this session filed, took or closed (`runway status`, `runway hands-on`): what's running, what waits on the user, which hands-on tickets are still open.
+- In a Runway repo only (`runway repo which` prints its name), Runway tickets this session filed, took or closed (`runway status`, `runway hands-on`): what's running, what waits on the user, which hands-on tickets are still open.
 
 ## 2. Write the entry
 

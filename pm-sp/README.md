@@ -1,11 +1,12 @@
 # pm-sp: the light pm
 
 Joe's personal layer on top of **Agent Runway**. The `agent-runway` plugin
-carries the workflow: shaping (`grill`, `prototype`, `map`, `spec`),
-`file-tickets`, which sorts the shaped work into tickets Runway runs on its
-own and hands-on tickets done in your own session, and the `hands-on` skill
-with the Superpowers skills it builds with (plans, subagents, TDD, debugging,
-verification). pm-sp holds the session around it and adds what only Joe's
+carries the shaping (`grill`, `prototype`, `map`, `spec`) and the `hands-on`
+skill with the Superpowers skills it builds with (plans, subagents, TDD,
+debugging, verification). Runway itself is per repo: a repo that isn't added
+to it never sees tickets or Runway suggestions, and the work runs in the
+session. In a Runway repo, `file-tickets` can send well-fitting work to the
+app, after one ask kept in the spec's front matter (`runway: yes|no`). pm-sp holds the session around it and adds what only Joe's
 projects need. **Read [`WORKFLOW.md`](./WORKFLOW.md) first.**
 
 pm-sp **requires agent-runway**. The Runway app installs agent-runway on its
@@ -26,7 +27,7 @@ skills alongside it either: their flows compete with Runway's.
 **The session layer (pm-sp's own):**
 
 - `whats-next`: session open. Reads specs, plans and their ledgers, recent
-  sessions, what Runway is running and which hands-on tickets wait; proposes
+  sessions, and (in a Runway repo) what Runway is running and which hands-on tickets wait; proposes
   the pick-up; writes the Intent.
 - `stepping-away`: session close. Entry against the Intent, a resumable line
   per plan in flight, inbox capture, next-session offer.

@@ -21,7 +21,7 @@ Delegating visual exploration is not delegating the user's frontend taste. The u
 
 ## Where it sits in pm-sp (pm-sp)
 
-For work with screens the order is **data sample → screens in Claude Design → build**. Get a small real sample of the data first (an extract from the source system, or JSON fixtures shaped like it), because the screens need it to take shape. Then write this handoff in data mode, and the user takes it into Claude Design. The design the user approves is what `agent-runway:spec` links to and what the build and its Acceptance checks are measured against. How the built screens look and feel is the user's to judge: those Acceptance lines become hands-on tickets. The approved export comes back into the repo under `resources/design-handoff/`.
+For work with screens the order is **data sample → screens in Claude Design → build**. Get a small real sample of the data first (an extract from the source system, or JSON fixtures shaped like it), because the screens need it to take shape. Then write this handoff in data mode, and the user takes it into Claude Design. The design the user approves is what `agent-runway:spec` links to and what the build and its Acceptance checks are measured against. How the built screens look and feel is the user's to judge: those Acceptance lines are checked hands-on. The approved export comes back into the repo under `resources/design-handoff/`.
 
 ## Mode selection
 
