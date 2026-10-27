@@ -72,36 +72,33 @@ First check `python3 --version` reports 3.9 or newer. The credential guard
 and the session helpers need it; if it's missing or older, say so and stop
 before any git or session step.
 
-The workflow's first artifacts (design docs in `docs/specs/` from
-`brainstorming`, plans in `docs/plans/`) are *committed* files, so the
-project must be a repository.
+The workflow's first artifacts (specs in `docs/specs/` from Agent Runway's
+`spec`, plans in `docs/plans/`) are *committed* files, so the project must be
+a repository.
 
 - **New-folder modes:** if the target is not already inside a git worktree,
   `git init` it and make one baseline commit of the scaffold
   (`chore: scaffold from pm starter`). If it IS inside an existing worktree
   (e.g. a monorepo), say so and skip the init.
 - **In-place mode:** don't init anything — but if the folder isn't a git
-  repo, tell the user plainly that brainstorming, the plans and the
+  repo, tell the user plainly that the specs, the plans and the
   credential-guard hook all assume one, and ask whether to `git init`.
 
 ## 5. Wire the shared record
 
 - **No empty folders.** `docs/specs/`, `docs/plans/`, `docs/maps/` and
   `docs/adr/` are created the first time something is written into them
-  (brainstorming, writing-plans, wayfinder, domain-modeling).
-- **The tracker — local markdown by default (0.17).** The template ships
-  `docs/agents/issue-tracker.md` preset to the local-markdown
-  convention, with maps in `docs/maps/`; `/pm-sp:wayfinder` reads it, for
-  the rare foggy effort. Ask no tracker question. In-place mode: copy it from
+  (Agent Runway's spec, writing-plans and map; domain-modeling).
+- **Maps.** The template ships `docs/agents/issue-tracker.md`, which says
+  maps live in `docs/maps/` (Agent Runway's `map`); build work is done in
+  the session. Ask no tracker question. In-place mode: copy it from
   `${CLAUDE_PLUGIN_ROOT}/template/docs/agents/issue-tracker.md` **only if
-  absent** — an existing file is that repo's decision, never overwritten. Say
-  in the sign-off that a team repo can use GitHub Issues instead: copy
-  `${CLAUDE_PLUGIN_ROOT}/templates/issue-tracker-github.md` over it.
+  absent** — an existing file is that repo's decision, never overwritten.
 - **The inbox.** `docs/inbox.md` ships in the template (loose ideas, one
   line each, no status). In-place mode: copy it if absent, same rule.
 - **`.gitignore`** — the template's covers new-folder modes. In-place mode:
-  ensure `.env`, `account.md`, `_pm/transcripts/`, `.worktrees/` and `.superpowers/` (the
-  plan ledgers and brainstorming mockups) are ignored (append
+  ensure `.env`, `account.md`, `_pm/transcripts/`, `.worktrees/` and `.runway/` (the
+  plan ledgers for hands-on work) are ignored (append
   additively; pm-sp's `credential-guard` hook blocks staging them, but the
   ignore is the belt to that brace).
 - **Verification block** — the template `CLAUDE.md` already carries
@@ -180,9 +177,9 @@ artifact scales with content.
 
 Confirm what you did in 3–4 lines: what was created (new folder or in-place
 `_pm/`), git state (initialized / existing / declined), renames done,
-skeleton captured, tracker preset (local) and inbox present, stacks applied (or none), and — in-place —
-every file touched. Then point at the next step: *"Brainstorm the first piece
-of work — it writes a design doc in `docs/specs/` with its acceptance checks.
-Then `whats-next` when you start a working session."*
+skeleton captured, maps note and inbox present, stacks applied (or none), and — in-place —
+every file touched. Then point at the next step: *"Shape the first piece of
+work with Agent Runway's skills (`grill`, then `spec`, which writes `docs/specs/` with
+its acceptance checks). Then `whats-next` when you start a working session."*
 
 Don't start doing project work — scaffolding ends here.

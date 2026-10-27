@@ -1,17 +1,17 @@
 ---
 name: ship-acceptance
-description: Verify a deliverable against the Acceptance checks in its approved design doc and record delivery evidence. Use after implementation verification, when preparing a release, after a human deploys, or when deciding whether an intent is complete. Supports deployed systems and delivered documents or tools; never deploys production.
+description: Verify a deliverable against the Acceptance checks in its approved spec and record delivery evidence. Use after implementation verification, when preparing a release, after a human deploys, or when deciding whether an intent is complete. Supports deployed systems and delivered documents or tools; never deploys production.
 ---
 
 # Ship acceptance
 
-Own the last handoff: approved design → independently executed acceptance → delivery record. A plan can finish with every task green; this procedure decides whether the design's outcome was delivered.
+Own the last handoff: approved spec → independently executed acceptance → delivery record. Every ticket can merge green; this procedure decides whether the spec's outcome was delivered.
 
-**In pm-sp the "intent" is the approved design doc** in `docs/specs/`, written by `brainstorming`. Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that design doc. Older repos with `docs/intent/<slug>.md` files work the same way. Execution agreements, `dc-autonomy-v1` and Evidence requirements below come from pm's older intents; a pm-sp design doc has none of them unless it adds an `## Evidence requirements` block, so the single-evidence procedure applies by default.
+**In pm-sp the "intent" is the approved spec** in `docs/specs/`, written by `agent-runway:spec` (or a design doc from before 0.3.0). Its `## Acceptance` section holds the checks as `- [ ] A1: …` lines. Wherever this skill says intent, read that spec. In a Runway repo, Runway's function review already walked each line on each ticket's commit it ran; this skill checks the whole delivery, then production. Older repos with `docs/intent/<slug>.md` files work the same way. Execution agreements, `dc-autonomy-v1` and Evidence requirements below come from pm's older intents; a pm-sp spec has none of them unless it adds an `## Evidence requirements` block, so the single-evidence procedure applies by default.
 
 ## 1. Pin what will be checked
 
-Read the approved design doc (`docs/specs/<name>.md`), the candidate's exact revision (commit or artifact SHA-256), and review dispositions. Copy the Acceptance lines verbatim with stable IDs (assign A1, A2, … in the record for legacy unnumbered lines). Record the intent file's SHA-256. Changed criteria go back to the originator under existing authorization; they are never weakened to fit output. Completion metadata is excluded from this snapshot by saving the accepted intent bytes alongside the record before later adding its completion link.
+Read the approved spec (`docs/specs/<name>.md`), the candidate's exact revision (commit or artifact SHA-256), and review dispositions. Copy the Acceptance lines verbatim with stable IDs (assign A1, A2, … in the record for legacy unnumbered lines). Record the intent file's SHA-256. Changed criteria go back to the originator under existing authorization; they are never weakened to fit output. Completion metadata is excluded from this snapshot by saving the accepted intent bytes alongside the record before later adding its completion link.
 
 If the intent carries an `## Evidence requirements` block (acceptance ID → evidence channels: `automated`, `ui`, `state`, `human`), copy that mapping into the record **exactly** — the validator compares it against the accepted intent's digest and original criterion mapping, so a record that silently omits a UI requirement is blocked, not shipped. An intent whose approved `dc-autonomy-v1` Execution agreement lacks the block is itself blocked at validation. A legacy intent without the block keeps the original single-evidence procedure below.
 

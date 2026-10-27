@@ -17,11 +17,11 @@ If you find yourself writing "use a warm palette" or "the hero should feel cozy"
 
 ## Frontend taste checkpoints
 
-Delegating visual exploration is not delegating the user's frontend taste. The user reacts to the Claude Design screens before anything is built, and sees the built screens before anything is called delivered. Neither step is skipped, and no agent settles a look-and-feel call the user would notice. Record their reactions where the workflow records decisions (the map ticket, the design doc), not in the handoff file.
+Delegating visual exploration is not delegating the user's frontend taste. The user reacts to the Claude Design screens before anything is built, and sees the built screens before anything is called delivered. Neither step is skipped, and no agent settles a look-and-feel call the user would notice. Record their reactions where the workflow records decisions (the map decision, the spec), not in the handoff file.
 
 ## Where it sits in pm-sp (pm-sp)
 
-For work with screens the order is **data sample → screens in Claude Design → build**. Get a small real sample of the data first (an extract from the source system, or JSON fixtures shaped like it), because the screens need it to take shape. Then write this handoff in data mode, and the user takes it into Claude Design. The design the user approves is what `brainstorming`'s design doc links to and what the build and its Acceptance checks are measured against. The approved export comes back into the repo under `resources/design-handoff/`.
+For work with screens the order is **data sample → screens in Claude Design → build**. Get a small real sample of the data first (an extract from the source system, or JSON fixtures shaped like it), because the screens need it to take shape. Then write this handoff in data mode, and the user takes it into Claude Design. The design the user approves is what `agent-runway:spec` links to and what the build and its Acceptance checks are measured against. How the built screens look and feel is the user's to judge: those Acceptance lines are checked hands-on. The approved export comes back into the repo under `resources/design-handoff/`.
 
 ## Mode selection
 
@@ -62,7 +62,7 @@ If neither data sources nor a concept can be located, **stop and ask** the user 
 4. **Surface constraints / business rules.** What should the deliverable show, block, warn about, attribute, include, or order?
 5. **Identify out-of-scope.** What should Claude Design *not* produce this pass?
 6. **Flag tweak candidates.** Features or moves you're unsure about — list them so Claude Design builds them as Tweak variants rather than committing to v1.
-7. **Write the handoff** to `docs/specs/YYYY-MM-DD-<topic>-design-handoff.md` (pm-sp: next to the design doc it feeds), using the appropriate template.
+7. **Write the handoff** to `docs/specs/YYYY-MM-DD-<topic>-design-handoff.md` (pm-sp: next to the spec it feeds), using the appropriate template.
 8. **Tell the user the file path and the paste-in message.** See "Handoff message to user" at the bottom.
 
 ### Step 2 — Data mode

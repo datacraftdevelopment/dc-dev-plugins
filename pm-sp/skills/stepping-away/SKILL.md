@@ -20,10 +20,10 @@ Pushes, client messages and production keep their own permission.
   re-aim. No session was opened: allocate one now and mark its Intent
   retrospective.
 - The plans this session touched: `docs/plans/*.md`, their ledgers under
-  `.superpowers/sdd/` when present, and `git log --since=<session start> --oneline`.
-- Any design doc written or changed this session (`docs/specs/`).
+  `.runway/sdd/` when present, and `git log --since=<session start> --oneline`.
+- Any spec written or changed this session (`docs/specs/`).
 - The conversation since the last stepping-away.
-- Nested sessions this session started: what each finished, what's still running.
+- In a Runway repo only (`runway repo which` prints its name), Runway tickets this session filed, took or closed (`runway status`, `runway hands-on`): what's running, what waits on the user, which hands-on tickets are still open.
 
 ## 2. Write the entry
 
@@ -43,17 +43,18 @@ Three sections, leaving the Intent block untouched:
 For each plan in flight, one line under **Open threads**: the plan's path, the
 last finished task with its commit, the next task, and anything blocking it.
 The ledger is local and gitignored, so this line is what another machine or
-another person sees. A design waiting for approval or a go to plan gets a line
-too. Something that needs the user goes in its own line, starting `Waiting on you:`.
+another person sees. A spec waiting for approval or a go to file gets a line
+too, and so does each hands-on ticket left open (its id and what waits on it). Something that needs the user goes in its own line, starting `Waiting on you:`.
 
-Nested sessions: never close or stop one that is still working on its lane.
-Note it as running, with its name, and leave its ownership alone.
+Runway tickets: never take, give, drop or close one here. A hands-on ticket
+taken this session with work in its worktree gets a line saying so, and
+uncommitted work there is called out.
 
 ## 4. Capture loose ideas, matching first
 
-Anything that came up and isn't part of a design or plan (a someday idea, an
+Anything that came up and isn't part of a spec or plan (a someday idea, an
 ask nobody shaped) is offered for `docs/inbox.md`. Match it against the inbox
-and the design docs first, by subject: a repeat adds `· re-raised YYYY-MM-DD
+and the specs first, by subject: a repeat adds `· re-raised YYYY-MM-DD
 <source>` to the existing line, never a second line. A new one is
 `- YYYY-MM-DD · <source> · <the idea>`, in client-safe words.
 
@@ -68,7 +69,7 @@ and the design docs first, by subject: a repeat adds `· re-raised YYYY-MM-DD
   this project and the machine's global instructions name a library for it.
   The bar: if this note vanished, would the next engineer repeat the mistake or
   redo the investigation? If not, write nothing.
-- **ADR:** only for a durable choice not already recorded in a design doc.
+- **ADR:** only for a durable choice not already recorded in a spec.
   `docs/adr/`, in `domain-modeling`'s format.
 
 ## 6. Close the record
@@ -92,13 +93,12 @@ One short summary: what shipped against what was intended (call out drift),
 where each plan stands, and the one or two threads the next session should
 open on. If ready work remains, offer to start a fresh session for it with a
 short prompt: the checkout path, "run `whats-next`", those threads, and this
-session's file as the handoff. Several lanes at once is `nested-sessions`, not
-this offer. A session that only starts in a fresh worktree won't see
+session's file as the handoff. A session that only starts in a fresh worktree won't see
 uncommitted work or gitignored files such as `_pm/` and the ledgers: say so.
 
 ## What this skill does not do
 
 - Rewrite the Intent to match the outcome. The Intent stays as set.
-- Stop, pause or close a nested session or any other running work.
+- Stop, pause or close a Runway ticket or any other running work.
 - Fold several sessions into one entry, or reopen a closed session's file.
 - Push, message a client or touch production without its own permission.
