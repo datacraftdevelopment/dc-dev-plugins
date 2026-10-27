@@ -47,6 +47,11 @@
       "name": "basecamp-dc",
       "source": "./basecamp-dc",
       "description": "Basecamp client-face layer, opt-in per repo via .basecamp/config.json (inert without it; pm never depends on it). bc-client-face carries the conventions \u2014 client's side (New requests, Questions for you) and Joe's side (Shipped / Active / Backlog as the status), Work items as clusters with Ref footers, [bc:<id>] tokens in TASKS.md, the plain-copy rule every Basecamp write is swept against, quirk safety rules; bc-close-out ships a task (move to Shipped unchecked, comment, prepend to What shipped without duplicating images); a session-start hook surfaces the project when the config is present. Works through the official basecamp CLI (0.12.0+) or the Basecamp connector, whichever the machine has."
+    },
+    {
+      "name": "apple-dc",
+      "source": "./apple-dc",
+      "description": "Build, sign and ship Mac and iOS apps: new-apple-app scaffolds a Mac app (SwiftPM, menu bar or window, Sparkle updates, move-to-Applications, make-app.sh, CI dry run) or an iOS app (XcodeGen, simulator tests, ship.sh); app-icon drafts icons through Codex via Ringer and cuts the macOS tile and iOS icon; mac-release does Developer ID, notarization, DMG, Sparkle appcast and the GitHub release; app-store uploads to TestFlight and prepares App Store review. Every skill reads and writes a private app-support notebook (apps, machine, lessons) so each app starts from what the last one learned."
     }
   ]
 }

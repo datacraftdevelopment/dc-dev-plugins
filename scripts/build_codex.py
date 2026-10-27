@@ -23,8 +23,8 @@ PLUGINS = {
 }
 # Local plugins with no Codex edition.
 # pm-sp has no Codex edition yet: its session layer and Ringer-backed skills are
-# untested under Codex.
-CLAUDE_ONLY = {'pm-sp'}
+# untested under Codex. apple-dc is new and untested there too.
+CLAUDE_ONLY = {'pm-sp', 'apple-dc'}
 # Plugin source folders that differ from the plugin name.
 SOURCES = {}
 # Codex leaves these paths of a plugin out. pm's gate kit and review policy install
